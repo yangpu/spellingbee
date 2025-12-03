@@ -47,7 +47,7 @@ export const useWordsStore = defineStore('words', () => {
 
   // Computed
   const wordCount = computed(() => words.value.length)
-  
+
   const wordsByDifficulty = computed(() => {
     const grouped = { 1: [], 2: [], 3: [], 4: [], 5: [] }
     words.value.forEach(word => {
@@ -77,12 +77,12 @@ export const useWordsStore = defineStore('words', () => {
       if (authStore.user) {
         await fetchWordsFromSupabase()
       }
-      
+
       // If no words loaded, use local storage or default
       if (words.value.length === 0) {
         loadFromLocalStorage()
       }
-      
+
       // If still no words, load defaults
       if (words.value.length === 0) {
         words.value = [...defaultWords]
@@ -187,7 +187,7 @@ export const useWordsStore = defineStore('words', () => {
 
       if (error) throw error
     }
-    
+
     words.value = words.value.filter(w => w.id !== id)
     saveToLocalStorage()
   }
@@ -234,17 +234,17 @@ export const useWordsStore = defineStore('words', () => {
   // Get random words for practice/competition
   function getRandomWords(count = 10, difficulty = null) {
     let filtered = [...words.value]
-    
+
     if (difficulty !== null) {
       filtered = filtered.filter(w => w.difficulty === difficulty)
     }
-    
+
     // Fisher-Yates shuffle
     for (let i = filtered.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-      ;[filtered[i], filtered[j]] = [filtered[j], filtered[i]]
+        ;[filtered[i], filtered[j]] = [filtered[j], filtered[i]]
     }
-    
+
     return filtered.slice(0, count)
   }
 
@@ -256,11 +256,62 @@ export const useWordsStore = defineStore('words', () => {
   // Search words
   function searchWords(query) {
     const q = query.toLowerCase()
-    return words.value.filter(w => 
+    return words.value.filter(w =>
       w.word.toLowerCase().includes(q) ||
       w.definition.toLowerCase().includes(q)
     )
   }
+
+  // Load word list from JSON file
+  async function loadWordList(listName) {
+    loading.value = true
+    try {
+      const response = await fetch(`/words/${listName}.json`)
+      if (!response.ok) {
+        throw new Error(`Failed to load word list: ${listName}`)
+      }
+      const wordsData = await response.json()
+
+      // Merge with existing words, avoid duplicates
+      const existingWords = new Set(words.value.map(w => w.word.toLowerCase()))
+      const uniqueNewWords = wordsData.filter(w => !existingWords.has(w.word.toLowerCase()))
+      words.value = [...words.value, ...uniqueNewWords]
+      saveToLocalStorage()
+
+      return uniqueNewWords.length
+    } catch (error) {
+      console.error('Error loading word list:', error)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Replace all words with a word list
+  async function replaceWithWordList(listName) {
+    loading.value = true
+    try {
+      const response = await fetch(`/words/${listName}.json`)
+      if (!response.ok) {
+        throw new Error(`Failed to load word list: ${listName}`)
+      }
+      const wordsData = await response.json()
+      words.value = wordsData
+      saveToLocalStorage()
+
+      return wordsData.length
+    } catch (error) {
+      console.error('Error loading word list:', error)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Get available word lists
+  const availableWordLists = [
+    { name: 'grade3-400', label: '三年级词汇 (397词)', category: 'grade3' }
+  ]
 
   return {
     words,
@@ -269,6 +320,7 @@ export const useWordsStore = defineStore('words', () => {
     wordCount,
     wordsByDifficulty,
     wordsByCategory,
+    availableWordLists,
     init,
     addWord,
     updateWord,
@@ -277,7 +329,9 @@ export const useWordsStore = defineStore('words', () => {
     exportWords,
     getRandomWords,
     getWordById,
-    searchWords
+    searchWords,
+    loadWordList,
+    replaceWithWordList
   }
 })
 

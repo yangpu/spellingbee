@@ -1,0 +1,3972 @@
+[
+  {
+    "id": "456cd63a-2969-41a9-a09a-cc80e49d086d",
+    "word": "park",
+    "pronunciation": "/pɑːrk/",
+    "definition": "a piece of public land in or near a city that is kept free of houses and other buildings and can be used for pleasure and exercise",
+    "part_of_speech": "n.",
+    "example_sentence": "We went for a walk in the park.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1ee77e71-7c73-412d-a4e9-ae141f23fc35",
+    "word": "game",
+    "pronunciation": "/ɡeɪm/",
+    "definition": "a physical or mental activity or contest that has rules and that people do for pleasure",
+    "part_of_speech": "n.",
+    "example_sentence": "Baseball is my favorite game.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "78a219a4-1913-4fe4-8554-ff29d4d4cfb0",
+    "word": "kick",
+    "pronunciation": "/kɪk/",
+    "definition": "to hit (someone or something) with your foot",
+    "part_of_speech": "v.",
+    "example_sentence": "The attacker kicked him in the stomach.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "9bd9069a-9069-4709-804d-b8986769edae",
+    "word": "sheep",
+    "pronunciation": "/ʃiːp/",
+    "definition": "an animal with a thick woolly coat that is often raised for meat or for its wool and skin",
+    "part_of_speech": "n.",
+    "example_sentence": "There was one sheep in the field.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "050c7e6f-6a04-4df8-9603-e8a8c099c01d",
+    "word": "choose",
+    "pronunciation": "/tʃuːz/",
+    "definition": "to decide that a particular person or thing is the one that you want",
+    "part_of_speech": "v.",
+    "example_sentence": "Which shirt would you choose?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6bb6e5c5-c655-4fe6-ad50-f92afb85c9c9",
+    "word": "grasp",
+    "pronunciation": "/ɡræsp/",
+    "definition": "to take and hold (something) with your fingers, hands, etc.",
+    "part_of_speech": "v.",
+    "example_sentence": "I grasped the end of the rope and pulled as hard as I could.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "944c30a4-7298-450f-869b-745ccd74a92b",
+    "word": "high",
+    "pronunciation": "/haɪ/",
+    "definition": "rising or extending upward a great distance",
+    "part_of_speech": "adj.",
+    "example_sentence": "The apartment has high ceilings.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a424aea6-24b0-4c50-8757-a9f7b28ceb0e",
+    "word": "climb",
+    "pronunciation": "/klaɪm/",
+    "definition": "to move or go up (something) using your feet and often your hands",
+    "part_of_speech": "v.",
+    "example_sentence": "It took them six days to climb the mountain.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f59b4cf6-a95c-4efc-91ee-75317bb75a78",
+    "word": "case",
+    "pronunciation": "/keɪs/",
+    "definition": "a situation or occurrence that is an instance or example of something",
+    "part_of_speech": "n.",
+    "example_sentence": "That was true in all three cases.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d70e32e3-2f79-427c-bdcb-e5baa51ca0df",
+    "word": "night",
+    "pronunciation": "/naɪt/",
+    "definition": "the time of darkness between one day and the next",
+    "part_of_speech": "n.",
+    "example_sentence": "Who are you calling at this time of night?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a924ccd9-8c8f-4496-b7fa-3ef13356b2fb",
+    "word": "sweet",
+    "pronunciation": "/swiːt/",
+    "definition": "containing a lot of sugar",
+    "part_of_speech": "adj.",
+    "example_sentence": "I had a craving for something sweet.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8c8619ec-9dc8-4e88-942e-52f4a62a5db5",
+    "word": "wing",
+    "pronunciation": "/wɪŋ/",
+    "definition": "a part of an animal's body that is used for flying or gliding",
+    "part_of_speech": "n.",
+    "example_sentence": "The swan flapped its wings noisily.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "4b7664e7-4ed2-4398-bef1-186a8d9efdc3",
+    "word": "would",
+    "pronunciation": "/wʊd/",
+    "definition": "used to indicate what someone said or thought about what was going to happen or be done",
+    "part_of_speech": "v.",
+    "example_sentence": "She said (that) she would help me with my project.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a82cb1a1-5d34-4cf6-b525-073a06c271bb",
+    "word": "stock",
+    "pronunciation": "/stɑːk/",
+    "definition": "the supply of goods available for sale in a store",
+    "part_of_speech": "n.",
+    "example_sentence": "That camera is out of stock.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6378f6bd-e62a-4702-981a-6d953d8b0e5c",
+    "word": "paint",
+    "pronunciation": "/peɪnt/",
+    "definition": "to make a picture or design using paints",
+    "part_of_speech": "v.",
+    "example_sentence": "He painted that portrait of his wife.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "958748e6-3842-4ede-8668-e948d17092e3",
+    "word": "seed",
+    "pronunciation": "/siːd/",
+    "definition": "a small object produced by a plant from which a new plant can grow",
+    "part_of_speech": "n.",
+    "example_sentence": "He planted the seeds three inches apart.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "03c97cd1-2615-40ab-81b3-a74f4f8b4968",
+    "word": "roof",
+    "pronunciation": "/ruːf/",
+    "definition": "the cover or top of a building, vehicle, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "The roof is leaking.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "43a64b0f-c3af-47fc-b394-401adfd78605",
+    "word": "once",
+    "pronunciation": "/wʌns/",
+    "definition": "one time only",
+    "part_of_speech": "adv.",
+    "example_sentence": "I will repeat the question once.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "fb62086f-7038-4ace-86ef-0fc05765e94f",
+    "word": "drug",
+    "pronunciation": "/drʌɡ/",
+    "definition": "a substance that is used as a medicine",
+    "part_of_speech": "n.",
+    "example_sentence": "The doctor put me on a course of pain-killing drugs.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "20a5598c-f899-4174-a7b2-029bca4aa33f",
+    "word": "change",
+    "pronunciation": "/tʃeɪndʒ/",
+    "definition": "to become different",
+    "part_of_speech": "v.",
+    "example_sentence": "Her mood changes every hour.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2c4dd1f0-dd05-4688-8a6b-b0bca1999d29",
+    "word": "light",
+    "pronunciation": "/laɪt/",
+    "definition": "the form of energy that makes it possible to see things",
+    "part_of_speech": "n.",
+    "example_sentence": "The light was bright.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "76870b00-139d-4fae-8389-2545c456e384",
+    "word": "draw",
+    "pronunciation": "/drɔː/",
+    "definition": "to make (a picture, image, etc.) by making lines on a surface especially with a pencil, pen, marker, chalk, etc., but not usually with paint",
+    "part_of_speech": "v.",
+    "example_sentence": "You draw very well.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "68dba229-0be0-49ad-be94-be0e5c5b0a58",
+    "word": "drop",
+    "pronunciation": "/drɑːp/",
+    "definition": "a very small amount of liquid that falls in a rounded shape",
+    "part_of_speech": "n.",
+    "example_sentence": "He squeezed the bottle until a few drops came out.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7df53a3e-1ab2-4024-9547-b058f3004a91",
+    "word": "trail",
+    "pronunciation": "/treɪl/",
+    "definition": "to pull (something) behind you especially on the ground",
+    "part_of_speech": "v.",
+    "example_sentence": "The dog was trailing its leash.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a441b783-4062-4908-bbb5-b4d85c25be67",
+    "word": "poor",
+    "pronunciation": "/pɔːr/",
+    "definition": "having little money or few possessions",
+    "part_of_speech": "adj.",
+    "example_sentence": "We were too poor to buy new clothes.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "4884310c-92d0-47ec-bae3-264c8c1f427a",
+    "word": "nurse",
+    "pronunciation": "/nɜːrs/",
+    "definition": "a person who is trained to care for sick or injured people and who usually works in a hospital or doctor's office",
+    "part_of_speech": "n.",
+    "example_sentence": "The nurse will take your blood pressure before the doctor sees you.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "98e67cc2-48ff-4fd8-a7e0-89fc393e1462",
+    "word": "hike",
+    "pronunciation": "/haɪk/",
+    "definition": "to walk a long distance especially for pleasure or exercise",
+    "part_of_speech": "v.",
+    "example_sentence": "We spent the afternoon hiking around the lake.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "520f2085-488e-47f7-ae2f-3d1a604f8247",
+    "word": "health",
+    "pronunciation": "/helθ/",
+    "definition": "the condition of being well or free from disease",
+    "part_of_speech": "n.",
+    "example_sentence": "We nursed him back to health.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0b7eaf49-2389-431d-828c-c9587225044b",
+    "word": "arrive",
+    "pronunciation": "/əˈraɪv/",
+    "definition": "to come to or reach a place after traveling, being sent, etc.",
+    "part_of_speech": "v.",
+    "example_sentence": "He arrived home at six o'clock.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "babc133b-ac51-4fc2-b081-66f1e8c4a7b2",
+    "word": "tax",
+    "pronunciation": "/tæks/",
+    "definition": "an amount of money that you have to pay to the government so that it can pay for public services",
+    "part_of_speech": "n.",
+    "example_sentence": "The decision was made to raise taxes.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2f8fb991-999c-42a0-928c-ba2fde8ccc45",
+    "word": "church",
+    "pronunciation": "/tʃɜːrtʃ/",
+    "definition": "a building that is used for Christian religious services",
+    "part_of_speech": "n.",
+    "example_sentence": "This is the oldest church in town.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0a280e66-5ed9-4fdc-8bad-1f97dad48da9",
+    "word": "cook",
+    "pronunciation": "/kʊk/",
+    "definition": "someone who prepares and cooks food for eating at home, in a restaurant, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "He's a good cook.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "995e1b0e-555f-417d-857d-22e39ca0582c",
+    "word": "cent",
+    "pronunciation": "/sent/",
+    "definition": "a unit of money that is equal to ¹/₁₀₀ of the basic unit of money in many countries",
+    "part_of_speech": "n.",
+    "example_sentence": "A dime is worth 10 cents.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d4836b13-1949-41a3-8885-a6d3c98bfe3f",
+    "word": "sign",
+    "pronunciation": "/saɪn/",
+    "definition": "a piece of paper, wood, etc., with words or pictures on it that gives information about something",
+    "part_of_speech": "n.",
+    "example_sentence": "The sign in the store window says “OPEN.”",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f638d7b3-36f4-4823-a772-76c27067dba4",
+    "word": "hour",
+    "pronunciation": "/ˈaʊər/",
+    "definition": "one of the 24 equal parts of a day",
+    "part_of_speech": "n.",
+    "example_sentence": "She wasn't supposed to eat for six hours before the operation.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0b0295af-498a-4919-b7c9-149f82ac3bbb",
+    "word": "might",
+    "pronunciation": "/maɪt/",
+    "definition": "used to say that something is possible",
+    "part_of_speech": "v.",
+    "example_sentence": "It might be true.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "fd7ff2be-e622-4413-850b-bfc5b5d4d7cf",
+    "word": "bowl",
+    "pronunciation": "/boʊl/",
+    "definition": "a round container that has tall, curving sides and that is used for preparing or serving foods and liquids",
+    "part_of_speech": "n.",
+    "example_sentence": "This bowl has a history of over 300 years.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ba22bfd0-cd40-4dc9-9045-09c8df08c289",
+    "word": "glove",
+    "pronunciation": "/ɡlʌv/",
+    "definition": "a covering for the hand that has separate parts for each finger",
+    "part_of_speech": "n.",
+    "example_sentence": "He stuck his gloves in his pocket.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6832fcbe-9b30-4b81-b451-4d7fbec644e0",
+    "word": "pence",
+    "pronunciation": "/pens/",
+    "definition": "a plural of penny",
+    "part_of_speech": "n.",
+    "example_sentence": "That pen cost ten pence.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1124de5c-5749-4e5c-b321-c19e5676638c",
+    "word": "wolf",
+    "pronunciation": "/wʊlf/",
+    "definition": "a large wild animal that is similar to a dog and that often hunts in groups",
+    "part_of_speech": "n.",
+    "example_sentence": "The wolf is an endangered species.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5f17ace8-ba20-4afb-88bc-e1ecbb40dd83",
+    "word": "want",
+    "pronunciation": "/wɑːnt/",
+    "definition": "to desire or wish for (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "Do you want more coffee?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "12311f4f-847e-4ba8-b078-ba80c077eb53",
+    "word": "queen",
+    "pronunciation": "/kwiːn/",
+    "definition": "a woman who rules a country and who usually inherits her position and rules for life",
+    "part_of_speech": "n.",
+    "example_sentence": "She was crowned queen of England.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "db95bf17-5e68-48c3-b825-35d88ae0485a",
+    "word": "strong",
+    "pronunciation": "/strɔːŋ/",
+    "definition": "having great physical power and ability",
+    "part_of_speech": "adj.",
+    "example_sentence": "He's as strong as an ox.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1806adda-c93a-47ac-9c58-d99c4b8cf524",
+    "word": "show",
+    "pronunciation": "/ʃoʊ/",
+    "definition": "to cause or allow (something) to be seen",
+    "part_of_speech": "v.",
+    "example_sentence": "He showed her a picture.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7cd7d205-fea2-4e26-a25c-09805611a471",
+    "word": "fresh",
+    "pronunciation": "/freʃ/",
+    "definition": "newly produced, made, gathered, etc.",
+    "part_of_speech": "adj.",
+    "example_sentence": "The meat was kept fresh in the refrigerator.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "754799b4-9a24-4b9d-8e1d-0f5bb9404d6c",
+    "word": "form",
+    "pronunciation": "/fɔːrm/",
+    "definition": "a type or kind of something",
+    "part_of_speech": "n.",
+    "example_sentence": "Coal is a form of carbon.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "08e6b71f-6dd8-430c-9d71-b97d8bab1df6",
+    "word": "reach",
+    "pronunciation": "/riːtʃ/",
+    "definition": "to be able to touch, pick up, or grab (something) by moving or stretching",
+    "part_of_speech": "v.",
+    "example_sentence": "She couldn't reach the apple. She was too short.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "08e17e1f-1030-4749-a55e-885f19d47690",
+    "word": "force",
+    "pronunciation": "/fɔːrs/",
+    "definition": "physical strength, power, or effect",
+    "part_of_speech": "n.",
+    "example_sentence": "The front of the car took the full force of the collision.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0484d5c6-fd62-45af-a272-882bd9b8a510",
+    "word": "fruit",
+    "pronunciation": "/fruːt/",
+    "definition": "a usually sweet food (such as a blueberry, orange, or apple) that grows on a tree or bush",
+    "part_of_speech": "n.",
+    "example_sentence": "Eat plenty of fresh fruit and vegetables.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f42e5eb8-76e1-4133-acaf-cea3ff3c5381",
+    "word": "field",
+    "pronunciation": "/fiːld/",
+    "definition": "an open area of land without trees or buildings",
+    "part_of_speech": "n.",
+    "example_sentence": "He gazed out across the fields.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "4ed11853-dedb-4522-bd00-e611e584b363",
+    "word": "slow",
+    "pronunciation": "/sloʊ/",
+    "definition": "not moving quickly",
+    "part_of_speech": "adj.",
+    "example_sentence": "She is a slow driver.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c2b6ec40-381b-4a80-9aff-963694372c2a",
+    "word": "stop",
+    "pronunciation": "/stɑːp/",
+    "definition": "to not move, walk, etc., after doing so before",
+    "part_of_speech": "v.",
+    "example_sentence": "She was walking toward me, and then she suddenly stopped.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ddc6f590-2a93-464d-8a02-a94d27ccfad4",
+    "word": "earth",
+    "pronunciation": "/ɜːrθ/",
+    "definition": "the planet on which we live",
+    "part_of_speech": "n.",
+    "example_sentence": "Earth is the third planet from the sun.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2a92269e-ba6a-44b7-8d11-5a9c600aeafb",
+    "word": "pass",
+    "pronunciation": "/pæs/",
+    "definition": "to move past someone or something",
+    "part_of_speech": "v.",
+    "example_sentence": "The boat was too tall to pass under the bridge.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ccafc1b8-7d11-4a53-9d59-46174526a314",
+    "word": "low",
+    "pronunciation": "/loʊ/",
+    "definition": "not rising or extending upward a great distance",
+    "part_of_speech": "adj.",
+    "example_sentence": "The sun was low in the western sky.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f0b3e604-5c51-483c-bc1f-031454913941",
+    "word": "square",
+    "pronunciation": "/skwer/",
+    "definition": "a four-sided shape that is made up of four straight sides that are the same length and that has four right angles",
+    "part_of_speech": "n.",
+    "example_sentence": "The fabric is decorated with circles and squares.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "52f45cd0-9f58-4312-baa5-a6382eaf6a46",
+    "word": "wind",
+    "pronunciation": "/ˈwɪnd/",
+    "definition": "a natural movement of air outside",
+    "part_of_speech": "n.",
+    "example_sentence": "The storm was accompanied by northerly winds.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d1ea5a87-de29-44fe-bc44-b7e15aed391a",
+    "word": "floor",
+    "pronunciation": "/flɔːr/",
+    "definition": "the part of a room on which you stand",
+    "part_of_speech": "n.",
+    "example_sentence": "Keep your feet on the floor.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "38e9c438-9c98-41d4-8132-238a97321292",
+    "word": "cage",
+    "pronunciation": "/keɪdʒ/",
+    "definition": "a box made of wire or metal bars in which people keep animals or birds",
+    "part_of_speech": "n.",
+    "example_sentence": "There are two birds in the cage.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "435a751f-0e8c-4927-b57c-0a03e5d1e457",
+    "word": "swim",
+    "pronunciation": "/swɪm/",
+    "definition": "to move through water by moving your arms and legs",
+    "part_of_speech": "v.",
+    "example_sentence": "He's teaching the children to swim.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ef9159ef-6e64-439a-b2eb-a3f73c15bbec",
+    "word": "belt",
+    "pronunciation": "/belt/",
+    "definition": "a band of material (such as leather) that is worn around a person's waist",
+    "part_of_speech": "n.",
+    "example_sentence": "I fastened the buckle on my belt.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "3136eb0d-26fb-4b22-b985-b2de5259319c",
+    "word": "while",
+    "pronunciation": "/waɪl/",
+    "definition": "during the time that",
+    "part_of_speech": "conj.",
+    "example_sentence": "Someone called while you were out.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2439894d-493e-436f-a18d-d11322e72522",
+    "word": "young",
+    "pronunciation": "/jʌŋ/",
+    "definition": "in an early stage of life, growth, or development",
+    "part_of_speech": "adj.",
+    "example_sentence": "He looks young for his age.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "187f3d86-68c9-4a8b-8b0e-ce649ee83479",
+    "word": "moon",
+    "pronunciation": "/muːn/",
+    "definition": "the large round object that circles the Earth and that shines at night by reflecting light from the sun",
+    "part_of_speech": "n.",
+    "example_sentence": "The telescope makes the craters on the surface of the moon incredibly clear.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c2d21413-3b5e-4fbe-b879-5e218f954fa7",
+    "word": "north",
+    "pronunciation": "/nɔːrθ/",
+    "definition": "the direction that is to your left when you are facing the rising sun",
+    "part_of_speech": "n.",
+    "example_sentence": "The nearest town is 20 miles to the north (of here).",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "13fab43b-4bdf-425c-97aa-92c64f685c03",
+    "word": "course",
+    "pronunciation": "/kɔːrs/",
+    "definition": "a series of classes about a particular subject in a school",
+    "part_of_speech": "n.",
+    "example_sentence": "She's taking a chemistry course this semester.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "fabea0d9-e7d1-4419-a0e2-dd09edea9326",
+    "word": "back",
+    "pronunciation": "/bæk/",
+    "definition": "in return or reply",
+    "part_of_speech": "adv.",
+    "example_sentence": "I gave the book to him and he gave it back (to me).",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "cc8fdee0-1ada-47e2-a883-8c7c19ef6fba",
+    "word": "state",
+    "pronunciation": "/steɪt/",
+    "definition": "a region of a country that is controlled by the country's central government but that has the authority to make its own laws about certain things",
+    "part_of_speech": "n.",
+    "example_sentence": "Today is a state holiday here.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f2729f3a-656b-4aa8-935c-822e055bc050",
+    "word": "scene",
+    "pronunciation": "/siːn/",
+    "definition": "a division of an act in a play during which the action takes place in a single place without a break in time",
+    "part_of_speech": "n.",
+    "example_sentence": "The play's opening scene takes place in the courtyard.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a1e52913-bc5a-435e-9838-554a586d34c5",
+    "word": "bring",
+    "pronunciation": "/brɪŋ/",
+    "definition": "to come with (something or someone) to a place",
+    "part_of_speech": "v.",
+    "example_sentence": "I'll bring a bottle of wine (with me) when I come to your party.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1e93a842-188a-4858-8c8b-43437d01abc7",
+    "word": "bean",
+    "pronunciation": "/biːn/",
+    "definition": "a seed that is eaten as a vegetable and that comes from any one of many different kinds of climbing plants",
+    "part_of_speech": "n.",
+    "example_sentence": "We ate rice and beans for dinner.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7e480a5a-d23c-4fe1-8275-9c356de0c694",
+    "word": "plane",
+    "pronunciation": "/pleɪn/",
+    "definition": "a vehicle that has wings and an engine and can carry people or things in the air",
+    "part_of_speech": "n.",
+    "example_sentence": "We will be traveling to Rome by plane.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f375d611-416c-46b6-a7cb-d86d1354b2bb",
+    "word": "whose",
+    "pronunciation": "/huːz/",
+    "definition": "used in questions to ask who owns something, has something, etc.",
+    "part_of_speech": "adj.",
+    "example_sentence": "I wonder whose story was chosen.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "edd52096-86db-4ff3-814a-c7ddc7fa7bdf",
+    "word": "rule",
+    "pronunciation": "/ruːl/",
+    "definition": "a statement that tells you what is or is not allowed in a particular game, situation, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "I understand the basic rules of chess.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a32cc125-58a0-4163-aa28-17360889812a",
+    "word": "line",
+    "pronunciation": "/laɪn/",
+    "definition": "a long narrow mark on a surface",
+    "part_of_speech": "n.",
+    "example_sentence": "I drew a straight line down the page to separate the two lists.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "195d84e2-8aab-4702-972e-f5b3a601d39e",
+    "word": "threat",
+    "pronunciation": "/θret/",
+    "definition": "a statement saying you will be harmed if you do not do what someone wants you to do",
+    "part_of_speech": "n.",
+    "example_sentence": "He was willing to use violence and threats to get what he wanted.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f71f6a69-7fb4-4ce7-ab11-8eef29cfc6a7",
+    "word": "dress",
+    "pronunciation": "/dres/",
+    "definition": "a piece of clothing for a woman or a girl that has a top part that covers the upper body and a skirt that hangs down to cover the legs",
+    "part_of_speech": "n.",
+    "example_sentence": "She wore dresses only on special occasions.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ee873b36-7d3b-4419-a479-eab3b52048b0",
+    "word": "sauce",
+    "pronunciation": "/sɔːs/",
+    "definition": "a thick liquid that is eaten with or on food to add flavor to it",
+    "part_of_speech": "n.",
+    "example_sentence": "She tried several sauces before she found one she liked.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8401e461-2e45-4c58-9c2a-4a0b0e609e32",
+    "word": "throw",
+    "pronunciation": "/θroʊ/",
+    "definition": "to cause (something) to move out of your hand and through the air by quickly moving your arm forward",
+    "part_of_speech": "v.",
+    "example_sentence": "Throw me the car keys.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "4a855228-d5c8-493f-9ed7-b6fbb0d6070b",
+    "word": "cheap",
+    "pronunciation": "/tʃiːp/",
+    "definition": "not costing a lot of money",
+    "part_of_speech": "adj.",
+    "example_sentence": "Rent isn't cheap here.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0bd2caa4-fe68-4b62-90e9-2023fe953975",
+    "word": "shirt",
+    "pronunciation": "/ʃɜːrt/",
+    "definition": "a piece of clothing for the upper body that has sleeves and usually a collar and buttons down the front",
+    "part_of_speech": "n.",
+    "example_sentence": "“Aren't you ready yet?” “Keep your shirt on! I'll be ready in a minute.”",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "fb3d4300-95af-4fcb-8a69-121ce0d98f5a",
+    "word": "guess",
+    "pronunciation": "/ɡes/",
+    "definition": "to form an opinion or give an answer about something when you do not know much or anything about it",
+    "part_of_speech": "v.",
+    "example_sentence": "Can you guess how many people were there?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "875baa69-16e4-4daf-8465-6f91c469baec",
+    "word": "sure",
+    "pronunciation": "/ʃʊr/",
+    "definition": "used to say “yes” or to agree to a request or suggestion",
+    "part_of_speech": "adv.",
+    "example_sentence": "“Can you help me with this?” “Sure.”",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "94c78e6c-df3f-4a2a-92dc-b9efe1a8d856",
+    "word": "swing",
+    "pronunciation": "/swɪŋ/",
+    "definition": "a style of jazz music that has a lively rhythm and that is played mostly for dancing",
+    "part_of_speech": "n.",
+    "example_sentence": "They are a swing band.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "892f39f0-0059-431f-9392-e5eef20bf437",
+    "word": "note",
+    "pronunciation": "/noʊt/",
+    "definition": "a short piece of writing that is used to help someone remember something",
+    "part_of_speech": "n.",
+    "example_sentence": "She wrote a note to remind herself about the appointment.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1ee47915-b639-448c-91a9-26691df8f2db",
+    "word": "have",
+    "pronunciation": "/hæv/",
+    "definition": "to own, use, or hold (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "Do they have a new car?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "13e7a27d-8dec-4f37-8961-05a5df60737d",
+    "word": "warm",
+    "pronunciation": "/wɔːrm/",
+    "definition": "not cool or cold",
+    "part_of_speech": "adj.",
+    "example_sentence": "Be sure to keep warm when you go outside.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "85410e7d-3909-4ecd-af5a-5e9f0545877d",
+    "word": "deep",
+    "pronunciation": "/diːp/",
+    "definition": "having a large distance to the bottom from the surface or highest point",
+    "part_of_speech": "adj.",
+    "example_sentence": "We walked in the deep snow.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "46bea71f-f2e8-49d8-a0f9-32900e891e4c",
+    "word": "flag",
+    "pronunciation": "/flæɡ/",
+    "definition": "a piece of cloth with a special design that is used as a symbol of a nation or group",
+    "part_of_speech": "n.",
+    "example_sentence": "The flag was flying over the fort.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "3c99ea83-229c-43e4-a549-1e5cd377e345",
+    "word": "town",
+    "pronunciation": "/taʊn/",
+    "definition": "a place where people live that is larger than a village but smaller than a city",
+    "part_of_speech": "n.",
+    "example_sentence": "The nearest shopping mall is two towns away.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ef326b6e-1e0a-4381-bc72-3fea394bcac0",
+    "word": "count",
+    "pronunciation": "/kaʊnt/",
+    "definition": "to add (people or things) together to find the total number",
+    "part_of_speech": "v.",
+    "example_sentence": "Count the plates on the table.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c0041abd-c9a0-47b2-9adf-969524e1449b",
+    "word": "cheer",
+    "pronunciation": "/tʃɪr/",
+    "definition": "a shout of praise or encouragement",
+    "part_of_speech": "n.",
+    "example_sentence": "The audience let out a cheer.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5425ba70-a4dd-485c-967f-cdc47b3a3a41",
+    "word": "law",
+    "pronunciation": "/lɔː/",
+    "definition": "the whole system or set of rules made by the government of a town, state, country, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "People who are supposed to obey the law also need to know their rights under the law.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1feed601-e4e0-4add-829d-6ca07486183e",
+    "word": "bush",
+    "pronunciation": "/bʊʃ/",
+    "definition": "a plant that has stems of wood and is smaller than a tree",
+    "part_of_speech": "n.",
+    "example_sentence": "The bushes in my yard need to be trimmed.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7d1ca555-0eab-428a-9e2b-c040ecf634d5",
+    "word": "own",
+    "pronunciation": "/oʊn/",
+    "definition": "used to say that something belongs or relates to a particular person or thing and to no other",
+    "part_of_speech": "adj.",
+    "example_sentence": "The star of the show needs his own private dressing room.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "12a90e26-c14c-46f3-bc40-71838adf76d2",
+    "word": "tube",
+    "pronunciation": "/tuːb/",
+    "definition": "a long, hollow object that is used especially to control the flow of a liquid or gas",
+    "part_of_speech": "n.",
+    "example_sentence": "She was breathing oxygen through a tube.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8d4602c0-6805-4724-8303-2093f06ec4e8",
+    "word": "house",
+    "pronunciation": "/haʊs/",
+    "definition": "a building in which a family lives",
+    "part_of_speech": "n.",
+    "example_sentence": "Would you like to come to my house for dinner?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f3d98649-7f2b-4e73-8076-d70f04b1201f",
+    "word": "make",
+    "pronunciation": "/meɪk/",
+    "definition": "to build, create, or produce (something) by work or effort",
+    "part_of_speech": "v.",
+    "example_sentence": "He works in a factory that makes jet engines.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6d50919c-ab0b-45f0-83de-8e816cd64441",
+    "word": "least",
+    "pronunciation": "/liːst/",
+    "definition": "smallest in amount or degree",
+    "part_of_speech": "adj.",
+    "example_sentence": "The least noise would startle her.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f1bd92d7-9dbf-43bb-a87b-a97f9bef7aa7",
+    "word": "weird",
+    "pronunciation": "/wɪrd/",
+    "definition": "unusual or strange",
+    "part_of_speech": "adj.",
+    "example_sentence": "She listens to some really weird music.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a54475c9-371f-40ce-b99a-3098a6d2011b",
+    "word": "fight",
+    "pronunciation": "/faɪt/",
+    "definition": "to use weapons or physical force to try to hurt someone, to defeat an enemy, etc.",
+    "part_of_speech": "v.",
+    "example_sentence": "They vowed to fight the invaders of their homeland.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ce75650f-e774-499b-be08-48bc204ffe2a",
+    "word": "fork",
+    "pronunciation": "/fɔːrk/",
+    "definition": "a small tool with two or more pointed parts (called prongs or tines) used for picking up and eating food",
+    "part_of_speech": "n.",
+    "example_sentence": "Can you use knives and forks?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "29ff59d3-c84b-4d9d-a7fb-658ac05debd3",
+    "word": "stick",
+    "pronunciation": "/stɪk/",
+    "definition": "a cut or broken branch or twig",
+    "part_of_speech": "n.",
+    "example_sentence": "They collected dry sticks for the campfire.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "9a15382f-6f51-4f62-b9a7-f261b4d137ba",
+    "word": "month",
+    "pronunciation": "/mʌnθ/",
+    "definition": "any one of the 12 parts into which the year is divided",
+    "part_of_speech": "n.",
+    "example_sentence": "July is my favorite month.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "549af511-ecf1-4b62-9a7d-0696fd00a8be",
+    "word": "test",
+    "pronunciation": "/test/",
+    "definition": "a set of questions or problems that are designed to measure a person's knowledge, skills, or abilities",
+    "part_of_speech": "n.",
+    "example_sentence": "She is studying for her math test.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "bc33bfbf-c4dd-49f7-9043-6b7772382b37",
+    "word": "cave",
+    "pronunciation": "/keɪv/",
+    "definition": "a large hole that was formed by natural processes in the side of a cliff or hill or under the ground",
+    "part_of_speech": "n.",
+    "example_sentence": "The cave is difficult of access.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7475920f-7227-4734-8f57-3d0dbcc1f9a4",
+    "word": "weed",
+    "pronunciation": "/wiːd/",
+    "definition": "a plant that grows very quickly where it is not wanted and covers or kills more desirable plants",
+    "part_of_speech": "n.",
+    "example_sentence": "We pulled weeds from the garden.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c9bdc2e1-2fed-4539-9847-0ea20d456ebe",
+    "word": "smoke",
+    "pronunciation": "/smoʊk/",
+    "definition": "the cloud of black, gray, or white gases and dust that is produced by burning something",
+    "part_of_speech": "n.",
+    "example_sentence": "Smoke from the campfire stung my eyes.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c487a8cb-91d4-48af-ac19-70f29b25fec2",
+    "word": "feel",
+    "pronunciation": "/fiːl/",
+    "definition": "to be aware of (something that affects you physically, such as pain, heat, or an object touching your body)",
+    "part_of_speech": "v.",
+    "example_sentence": "I could feel the warmth of the sun.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "290a79d0-ae61-4fab-a4c2-bd6e7f0f4f75",
+    "word": "drum",
+    "pronunciation": "/drʌm/",
+    "definition": "a musical instrument consisting of a skin stretched tightly over a round frame",
+    "part_of_speech": "n.",
+    "example_sentence": "We heard the rhythmic beating of drums.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "494bb9d7-26cb-4cee-b279-41596769a39e",
+    "word": "spot",
+    "pronunciation": "/spɑːt/",
+    "definition": "a small area of a surface that is different from other areas",
+    "part_of_speech": "n.",
+    "example_sentence": "The wood still has some rough spots.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "eb31119d-573f-4ca3-93f4-4c818c17aff6",
+    "word": "many",
+    "pronunciation": "/ˈmeni/",
+    "definition": "used to refer to a large number of things or people",
+    "part_of_speech": "adj.",
+    "example_sentence": "They were one of the many, many families that came to watch the parade.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "af4b1533-50a5-4809-8aa8-cdca3d838bcf",
+    "word": "brush",
+    "pronunciation": "/brʌʃ/",
+    "definition": "to clean or smooth (something) with a brush",
+    "part_of_speech": "v.",
+    "example_sentence": "Brush the dirt off your pants.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "fa4a76c4-9551-43ad-ad69-56998ab5a41a",
+    "word": "chop",
+    "pronunciation": "/tʃɑːp/",
+    "definition": "to cut (something) into pieces by hitting it with the sharp edge of an ax, knife, etc.",
+    "part_of_speech": "v.",
+    "example_sentence": "She's in the kitchen chopping vegetables.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "bbdb2f42-7e8d-46de-b9d3-68f891326435",
+    "word": "bread",
+    "pronunciation": "/bred/",
+    "definition": "a baked food made from a mixture of flour and water",
+    "part_of_speech": "n.",
+    "example_sentence": "She bakes bread every day.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6509c792-6b49-4374-8a1f-5ab9b775071a",
+    "word": "these",
+    "pronunciation": "/ðiːz/",
+    "definition": "plural of this",
+    "part_of_speech": "pron.",
+    "example_sentence": "Then put these clothes in the wardrobe.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "acf626dd-bc0f-4010-a254-fd4475e0823d",
+    "word": "hunt",
+    "pronunciation": "/hʌnt/",
+    "definition": "to chase and kill (wild animals) for food or pleasure",
+    "part_of_speech": "v.",
+    "example_sentence": "The wolf was hunting its prey.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d6e7192c-9262-446e-8f24-a90ef211949e",
+    "word": "phone",
+    "pronunciation": "/foʊn/",
+    "definition": "a system that uses wires and radio signals to send people's voices over long distances",
+    "part_of_speech": "n.",
+    "example_sentence": "We spoke by phone earlier.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0fe39a7d-5de4-4175-88bd-871ebed68f09",
+    "word": "wave",
+    "pronunciation": "/weɪv/",
+    "definition": "to move your hand or something held in your hand usually in a repeated motion in order to signal or greet someone",
+    "part_of_speech": "v.",
+    "example_sentence": "We waved to our friends through the window.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "402f76fe-d41f-4129-b4a9-321f18ab0871",
+    "word": "soil",
+    "pronunciation": "/sɔɪl/",
+    "definition": "the top layer of earth in which plants grow",
+    "part_of_speech": "n.",
+    "example_sentence": "This kind of plant grows well in moist soil.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ce174fef-b86e-433a-b391-056c5fc0f3c5",
+    "word": "suit",
+    "pronunciation": "/suːt/",
+    "definition": "a set of clothes that usually consists of a jacket and a skirt or pair of pants that are made out of the same material",
+    "part_of_speech": "n.",
+    "example_sentence": "He wore his gray suit to the job interview.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7aff26c3-467d-45d7-833c-ad3da642e70f",
+    "word": "fail",
+    "pronunciation": "/feɪl/",
+    "definition": "to not succeed",
+    "part_of_speech": "v.",
+    "example_sentence": "He failed in his first attempt but succeeded in his second attempt.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "19b8cb79-2a70-49dd-becd-bfb429d2549b",
+    "word": "train",
+    "pronunciation": "/treɪn/",
+    "definition": "a group of vehicles that travel on a track and are connected to each other and usually to an engine",
+    "part_of_speech": "n.",
+    "example_sentence": "The train pulled into the station.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1e0b8c2c-dd2b-45d1-b351-36811d64945d",
+    "word": "trade",
+    "pronunciation": "/treɪd/",
+    "definition": "the activity or process of buying, selling, or exchanging goods or services",
+    "part_of_speech": "n.",
+    "example_sentence": "The tariff is a barrier to trade.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "28e91bf6-a0ef-4e1f-95f9-e045fbbfdea7",
+    "word": "laugh",
+    "pronunciation": "/læf/",
+    "definition": "to show that you are happy or that you think something is funny by smiling and making a sound from your throat",
+    "part_of_speech": "v.",
+    "example_sentence": "What are you laughing about?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1a13dfe0-9854-467d-8b0c-c14ef82a31aa",
+    "word": "catch",
+    "pronunciation": "/kætʃ/",
+    "definition": "to use your hands to stop and hold (an object that is moving through the air)",
+    "part_of_speech": "v.",
+    "example_sentence": "Catch the ball and throw it to first base.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "840aff16-2d63-4ab2-9a85-4b5a9b75fcac",
+    "word": "coin",
+    "pronunciation": "/kɔɪn/",
+    "definition": "a small, flat, and usually round piece of metal issued by a government as money",
+    "part_of_speech": "n.",
+    "example_sentence": "I have a dollar in coins.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2807e5a3-2000-4c9f-8a5e-a6364ea8d4c5",
+    "word": "youth",
+    "pronunciation": "/juːθ/",
+    "definition": "the time of life when someone is young",
+    "part_of_speech": "n.",
+    "example_sentence": "He spent his youth in the Midwest.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6a2cc8de-8c6d-42d4-8d51-e99c7915cbeb",
+    "word": "true",
+    "pronunciation": "/truː/",
+    "definition": "agreeing with the facts",
+    "part_of_speech": "adj.",
+    "example_sentence": "Indicate whether each of the following statements is true or false.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1e1ba7d0-a94c-4133-a691-3854d48133c5",
+    "word": "brown",
+    "pronunciation": "/braʊn/",
+    "definition": "having a color like coffee or chocolate",
+    "part_of_speech": "adj.",
+    "example_sentence": "The door was brown.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f8134468-f62a-44be-bd82-b77bce14522d",
+    "word": "pay",
+    "pronunciation": "/peɪ/",
+    "definition": "money received in exchange for work",
+    "part_of_speech": "n.",
+    "example_sentence": "She spent a week's pay in just one night.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "bf89cb5f-5a19-4ff9-9e35-92bcc0eace55",
+    "word": "thin",
+    "pronunciation": "/θɪn/",
+    "definition": "having a small distance between the top and bottom or front and back surfaces",
+    "part_of_speech": "adj.",
+    "example_sentence": "Cut the vegetables into thin strips.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "19374d81-2f5e-4c50-b158-888a7760eab7",
+    "word": "write",
+    "pronunciation": "/raɪt/",
+    "definition": "to form letters or numbers on a surface with a pen, pencil, etc.",
+    "part_of_speech": "v.",
+    "example_sentence": "I don't have anything to write with. Could I borrow a pen?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0352729c-34ed-4f00-9c84-1722aceb2443",
+    "word": "blood",
+    "pronunciation": "/blʌd/",
+    "definition": "the red liquid that flows through the bodies of people and animals",
+    "part_of_speech": "n.",
+    "example_sentence": "The accident victim has already lost a lot of blood.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d0458c99-1bed-449e-818e-7552568a3afe",
+    "word": "film",
+    "pronunciation": "/fɪlm/",
+    "definition": "a special material that is used for taking photographs",
+    "part_of_speech": "n.",
+    "example_sentence": "Have you bought any film for the camera?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a15136a9-65a8-4da8-b49c-cea6315dc68c",
+    "word": "scale",
+    "pronunciation": "/skeɪl/",
+    "definition": "a device that is used for weighing people or things",
+    "part_of_speech": "n.",
+    "example_sentence": "He stepped onto the bathroom scales.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5d3af82d-d24d-42f6-b96c-d67d37d943c8",
+    "word": "horse",
+    "pronunciation": "/hɔːrs/",
+    "definition": "a large animal that is used for riding and for carrying and pulling things",
+    "part_of_speech": "n.",
+    "example_sentence": "He still likes to bet on the horses.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "092f782c-e3ce-4eb6-be17-c10cfb4b5c3d",
+    "word": "tape",
+    "pronunciation": "/teɪp/",
+    "definition": "a thin piece of plastic that is coated with magnetic material on which information may be stored",
+    "part_of_speech": "n.",
+    "example_sentence": "The show was recorded on tape.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6db98c1c-8755-4c6e-88b3-d5f7d98dbeb7",
+    "word": "care",
+    "pronunciation": "/ker/",
+    "definition": "to be interested in or concerned about something",
+    "part_of_speech": "v.",
+    "example_sentence": "He doesn't care if he gets fired.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "fbb989a3-be89-4021-be61-7a63d2b916cc",
+    "word": "time",
+    "pronunciation": "/taɪm/",
+    "definition": "the thing that is measured as seconds, minutes, hours, days, years, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "The time passed slowly.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "75565632-f1f7-4b17-9d28-4b9c5955ab03",
+    "word": "chance",
+    "pronunciation": "/tʃæns/",
+    "definition": "an opportunity to do something",
+    "part_of_speech": "n.",
+    "example_sentence": "I wanted to call you, but I never got the chance.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6d1249f3-f5f8-418d-96b0-880454d587d8",
+    "word": "board",
+    "pronunciation": "/bɔːrd/",
+    "definition": "a long, thin, flat piece of wood",
+    "part_of_speech": "n.",
+    "example_sentence": "They nailed some boards over the broken window.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "69f591c8-9d77-4666-86c6-e4316ed351de",
+    "word": "fund",
+    "pronunciation": "/fʌnd/",
+    "definition": "an amount of money that is used for a special purpose",
+    "part_of_speech": "n.",
+    "example_sentence": "The concert will raise funds for research into Aids.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "4d4bad6b-d971-42ab-b175-d36ba75e05cb",
+    "word": "steer",
+    "pronunciation": "/stɪr/",
+    "definition": "to control the direction in which something (such as a ship, car, or airplane) moves",
+    "part_of_speech": "v.",
+    "example_sentence": "She steered the ship through the strait.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "23745d9e-4171-4f79-b2ec-4d2cd55f4c38",
+    "word": "knee",
+    "pronunciation": "/niː/",
+    "definition": "the joint that bends at the middle of your leg",
+    "part_of_speech": "n.",
+    "example_sentence": "I fell down and hurt my knee.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e17eaa4e-daa9-49c5-97d6-1df7b4539d43",
+    "word": "those",
+    "pronunciation": "/ðəʊz/",
+    "definition": "plural of that",
+    "part_of_speech": "pron.",
+    "example_sentence": "God helps those who help themselves.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ae4a727c-9c72-485b-b0de-1c997b135c47",
+    "word": "walk",
+    "pronunciation": "/wɔːk/",
+    "definition": "to move with your legs at a speed that is slower than running",
+    "part_of_speech": "v.",
+    "example_sentence": "Is your grandson walking yet?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "990d4bcd-68fb-4083-9b93-c1cf3d45e6bf",
+    "word": "drive",
+    "pronunciation": "/draɪv/",
+    "definition": "to direct the movement of (a car, truck, bus, etc.)",
+    "part_of_speech": "v.",
+    "example_sentence": "He is learning to drive.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "958a3ceb-9448-4197-a424-de4e3ed7bad4",
+    "word": "snow",
+    "pronunciation": "/snoʊ/",
+    "definition": "soft, white pieces of frozen water that fall to the ground from the sky in cold weather",
+    "part_of_speech": "n.",
+    "example_sentence": "Snow fell softly on the town.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a1a6d051-d70d-4b5e-809a-af98f5fae021",
+    "word": "snake",
+    "pronunciation": "/sneɪk/",
+    "definition": "an animal that has a long, thin body and no arms or legs",
+    "part_of_speech": "n.",
+    "example_sentence": "The back of this snake is green.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "03716f73-4028-49f0-89b9-9ff89e543198",
+    "word": "build",
+    "pronunciation": "/bɪld/",
+    "definition": "to make (something) by putting together parts or materials",
+    "part_of_speech": "v.",
+    "example_sentence": "The organization helps build houses for poor families.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d68a2806-adeb-4b6f-8f39-3dfa5275e9a3",
+    "word": "bill",
+    "pronunciation": "/bɪl/",
+    "definition": "a document that says how much money you owe for something you have bought or used",
+    "part_of_speech": "n.",
+    "example_sentence": "He paid the telephone bill.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5554be21-5839-4508-9892-2b97f80c66b6",
+    "word": "star",
+    "pronunciation": "/stɑːr/",
+    "definition": "an extremely famous and successful performer or athlete",
+    "part_of_speech": "n.",
+    "example_sentence": "His performance in that film made him a star.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ed8aa794-7b36-4885-9b18-20eac895bc70",
+    "word": "bone",
+    "pronunciation": "/boʊn/",
+    "definition": "any one of the hard pieces that form the frame (called a skeleton) inside a person's or animal's body",
+    "part_of_speech": "n.",
+    "example_sentence": "He broke a bone in his left arm.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "62ccaa04-43a2-4345-b9a5-009c6a44db75",
+    "word": "sleep",
+    "pronunciation": "/sliːp/",
+    "definition": "to rest your mind and body by closing your eyes and becoming unconscious",
+    "part_of_speech": "v.",
+    "example_sentence": "I couldn't sleep last night. I was awake all night long.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "269db34f-2817-452f-b48e-045ae28f7591",
+    "word": "spoon",
+    "pronunciation": "/spuːn/",
+    "definition": "an eating or cooking tool that has a small shallow bowl attached to a handle",
+    "part_of_speech": "n.",
+    "example_sentence": "He stirred his coffee with a spoon.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a6e10286-27e5-4771-bff9-1e777606f5b6",
+    "word": "string",
+    "pronunciation": "/strɪŋ/",
+    "definition": "a long, thin piece of twisted thread that you use to attach things, tie things together, or hang things",
+    "part_of_speech": "n.",
+    "example_sentence": "She tied a string around the boxes.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "25a676b7-9d3a-404d-8770-53bf7f6be63a",
+    "word": "tune",
+    "pronunciation": "/tuːn/",
+    "definition": "a series of musical notes that produce a pleasing sound when played or sung",
+    "part_of_speech": "n.",
+    "example_sentence": "I can't get that tune out of my head.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "67d92183-3c04-418e-abf0-2be94bff26a9",
+    "word": "cute",
+    "pronunciation": "/kjuːt/",
+    "definition": "having a pleasing and usually youthful appearance",
+    "part_of_speech": "adj.",
+    "example_sentence": "What a cute baby!",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "787fa20c-d938-4f6e-bee4-8e995cddc5b0",
+    "word": "leaf",
+    "pronunciation": "/liːf/",
+    "definition": "one of the flat and typically green parts of a plant that grow from a stem or twig",
+    "part_of_speech": "n.",
+    "example_sentence": "The trees have not yet come into leaf.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ff727f7e-04d2-44a6-bb8b-9fa526dcf957",
+    "word": "globe",
+    "pronunciation": "/ɡloʊb/",
+    "definition": "an object that is shaped like a large ball with a map of the world on it",
+    "part_of_speech": "n.",
+    "example_sentence": "She has a globe in her office.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "44fd193d-624b-4175-8dbb-0a9233986e6d",
+    "word": "crime",
+    "pronunciation": "/kraɪm/",
+    "definition": "an illegal act for which someone can be punished by the government",
+    "part_of_speech": "n.",
+    "example_sentence": "Have you ever been convicted of a crime?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6fa090c4-87a4-46b1-8324-0b5658e26434",
+    "word": "whale",
+    "pronunciation": "/weɪl/",
+    "definition": "an often very large animal that lives in the ocean and that is a mammal rather than a fish",
+    "part_of_speech": "n.",
+    "example_sentence": "The whale is the largest mammal.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "9b248752-83d6-4392-bc00-a840fbf7d704",
+    "word": "shark",
+    "pronunciation": "/ʃɑːrk/",
+    "definition": "a large and often dangerous sea fish with very sharp teeth",
+    "part_of_speech": "n.",
+    "example_sentence": "Sharks have no natural enemies.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "022282c5-ad17-43e2-abe5-05ea3773c987",
+    "word": "slide",
+    "pronunciation": "/slaɪd/",
+    "definition": "to move smoothly along a surface",
+    "part_of_speech": "v.",
+    "example_sentence": "The door slides open easily.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f84fc087-c406-4ef0-8808-53a153d3494a",
+    "word": "share",
+    "pronunciation": "/ʃer/",
+    "definition": "to have or use (something) with others",
+    "part_of_speech": "v.",
+    "example_sentence": "We share a house together.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2e1a740f-1bb0-4ad5-8823-0c04f9a5f709",
+    "word": "stuff",
+    "pronunciation": "/stʌf/",
+    "definition": "materials, supplies, or equipment",
+    "part_of_speech": "n.",
+    "example_sentence": "She got out the cooking stuff to bake some cookies.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f0568e49-da6c-46e1-835a-54540ef87b65",
+    "word": "pack",
+    "pronunciation": "/pæk/",
+    "definition": "to put (something) into a bag, suitcase, etc., so that you can take it with you",
+    "part_of_speech": "v.",
+    "example_sentence": "Don't forget to pack your toothbrush.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ef2b4333-44c3-4e76-a608-cff08777eadf",
+    "word": "staff",
+    "pronunciation": "/stæf/",
+    "definition": "a group of people who work for an organization or business",
+    "part_of_speech": "n.",
+    "example_sentence": "The entire staff has done a great job this year.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1aa2301a-aebb-438f-ae06-8cb76d9e9b00",
+    "word": "wait",
+    "pronunciation": "/weɪt/",
+    "definition": "to stay in a place until an expected event happens, until someone arrives, until it is your turn to do something, etc.",
+    "part_of_speech": "v.",
+    "example_sentence": "I hate waiting in long lines.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8503ca79-bc89-4885-b4c4-2a51e021b745",
+    "word": "smell",
+    "pronunciation": "/smel/",
+    "definition": "to use your nose to sense smells",
+    "part_of_speech": "v.",
+    "example_sentence": "She leaned over and smelled the flowers.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2626e9a6-472a-4391-906c-0749e1be8f58",
+    "word": "speak",
+    "pronunciation": "/spiːk/",
+    "definition": "to say words in order to express your thoughts, feelings, opinions, etc., to someone",
+    "part_of_speech": "v.",
+    "example_sentence": "They were speaking in Japanese.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d2b602f5-f9fd-46cd-b6c4-ffbd28bc1e13",
+    "word": "straw",
+    "pronunciation": "/strɔː/",
+    "definition": "the dry stems of wheat and other grain plants",
+    "part_of_speech": "n.",
+    "example_sentence": "He was leaning over the gate chewing on a straw.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "82b2a11f-5fa2-420d-8e8e-afbf40bbcd3b",
+    "word": "nest",
+    "pronunciation": "/nest/",
+    "definition": "the place where a bird lays its eggs and takes care of its young",
+    "part_of_speech": "n.",
+    "example_sentence": "The bird built a nest out of small twigs.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f764a1c2-84a1-41e6-b783-292585af0df6",
+    "word": "sword",
+    "pronunciation": "/sɔːrd/",
+    "definition": "a weapon with a long metal blade that has a sharp point and edge",
+    "part_of_speech": "n.",
+    "example_sentence": "Drop your sword please.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b145042d-4c25-4591-a1eb-f20574bf1f10",
+    "word": "lead",
+    "pronunciation": "/ˈliːd/",
+    "definition": "to guide someone to a place especially by going in front",
+    "part_of_speech": "v.",
+    "example_sentence": "You lead and we'll follow right behind you.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "259db433-d7e1-46c9-b3ae-3b00eb824fc3",
+    "word": "road",
+    "pronunciation": "/roʊd/",
+    "definition": "a hard flat surface for vehicles, people, and animals to travel on",
+    "part_of_speech": "n.",
+    "example_sentence": "We parked by the side of the road.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "983ea8e9-3005-490d-9983-43417ab3b24e",
+    "word": "news",
+    "pronunciation": "/nuːz/",
+    "definition": "new information or a report about something that has happened recently",
+    "part_of_speech": "n.",
+    "example_sentence": "Do you have any news to report?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "02f1165a-d1c2-4c21-8338-beda9d8f3247",
+    "word": "spray",
+    "pronunciation": "/spreɪ/",
+    "definition": "liquid that is forced out of a container in a stream of very small drops",
+    "part_of_speech": "n.",
+    "example_sentence": "The paint was applied in a fine spray.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f7151082-6da6-4eeb-824d-9b8d069f0c0c",
+    "word": "waste",
+    "pronunciation": "/weɪst/",
+    "definition": "loss of something valuable that occurs because too much of it is being used or because it is being used in a way that is not necessary or effective",
+    "part_of_speech": "n.",
+    "example_sentence": "The current system causes a lot of waste.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "3cdbff2c-ecd1-420c-b4a7-0722df380db6",
+    "word": "dream",
+    "pronunciation": "/driːm/",
+    "definition": "a series of thoughts, visions, or feelings that happen during sleep",
+    "part_of_speech": "n.",
+    "example_sentence": "He had a dream about climbing a mountain.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "53a0f63f-a74a-4515-8fef-ff4b1439a24e",
+    "word": "pause",
+    "pronunciation": "/pɔːz/",
+    "definition": "a temporary stop",
+    "part_of_speech": "n.",
+    "example_sentence": "There was a long pause in the conversation.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "3e4d4458-6aa7-4fc2-be16-c454b3af1410",
+    "word": "squeeze",
+    "pronunciation": "/skwiːz/",
+    "definition": "to press together the parts and especially the opposite sides of (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "Squeeze the bottle.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b8746130-200a-479e-99f4-75ed3916033f",
+    "word": "right",
+    "pronunciation": "/raɪt/",
+    "definition": "morally or socially correct or acceptable",
+    "part_of_speech": "adj.",
+    "example_sentence": "Stealing is not right.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "30d30392-170f-46a1-b9e2-5d84e01741b1",
+    "word": "warn",
+    "pronunciation": "/wɔːrn/",
+    "definition": "to tell (someone) about possible danger or trouble",
+    "part_of_speech": "v.",
+    "example_sentence": "I had been warned about the difficulties of the job.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "40db3cc2-2f18-4b48-a985-5e194cc338b0",
+    "word": "shell",
+    "pronunciation": "/ʃel/",
+    "definition": "the hard outer covering of an animal, insect, etc., that protects it",
+    "part_of_speech": "n.",
+    "example_sentence": "We collected shells at the beach.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1fc9e03a-65a1-4371-8527-c2add03d80fc",
+    "word": "south",
+    "pronunciation": "/saʊθ/",
+    "definition": "the direction that is to your right when you are facing the rising sun",
+    "part_of_speech": "n.",
+    "example_sentence": "The nearest town is 20 miles to the south (of here).",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5f5b0b4a-1d0e-4b3c-9087-75226eab8036",
+    "word": "grade",
+    "pronunciation": "/ɡreɪd/",
+    "definition": "a number or letter that indicates how a student performed in a class or on a test",
+    "part_of_speech": "n.",
+    "example_sentence": "Her grades are better this semester.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "fdf075ff-2a80-4b50-9491-1f4465d92378",
+    "word": "mind",
+    "pronunciation": "/maɪnd/",
+    "definition": "the part of a person that thinks, reasons, feels, and remembers",
+    "part_of_speech": "n.",
+    "example_sentence": "He read great literature to develop his mind.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "9edaf99a-a7da-4d28-a102-e470a54b9934",
+    "word": "life",
+    "pronunciation": "/laɪf/",
+    "definition": "the ability to grow, change, etc., that separates plants and animals from things like water or rocks",
+    "part_of_speech": "n.",
+    "example_sentence": "He believes that God gives life to all creatures.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a2768e1f-3851-4451-8347-843ad6bc692f",
+    "word": "plate",
+    "pronunciation": "/pleɪt/",
+    "definition": "a flat and usually round dish that is used for eating or serving food",
+    "part_of_speech": "n.",
+    "example_sentence": "Anita pushed her plate away; she had eaten virtually nothing.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "36002d9b-2b20-44e3-9b35-b9bd9bc5e69a",
+    "word": "role",
+    "pronunciation": "/roʊl/",
+    "definition": "the character played by an actor",
+    "part_of_speech": "n.",
+    "example_sentence": "He plays the role of the villain.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1cfa5244-e010-4fbb-a4a6-4d2c2d6bb7cc",
+    "word": "dance",
+    "pronunciation": "/dæns/",
+    "definition": "to move your body in a way that goes with the rhythm and style of music that is being played",
+    "part_of_speech": "v.",
+    "example_sentence": "He never learned how to dance.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c1ad0d7a-5791-4df0-86b0-d44ba0b4f463",
+    "word": "sale",
+    "pronunciation": "/seɪl/",
+    "definition": "the act of selling something",
+    "part_of_speech": "n.",
+    "example_sentence": "They profited from the sale of the house.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "caed258b-ce2f-4df7-96db-90a5bed39a03",
+    "word": "smile",
+    "pronunciation": "/smaɪl/",
+    "definition": "an expression on your face that makes the corners of your mouth turn up and that shows happiness, amusement, pleasure, affection, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "He greeted me with a big smile.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8f8fc55d-be28-43d2-a7b3-36b58a4d6f80",
+    "word": "ring",
+    "pronunciation": "/rɪŋ/",
+    "definition": "a piece of jewelry that is worn usually on a finger",
+    "part_of_speech": "n.",
+    "example_sentence": "He gave her a diamond ring.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f25492c3-1999-40c4-bf58-369cb4365830",
+    "word": "seal",
+    "pronunciation": "/siːl/",
+    "definition": "to close (something) tightly so that air, liquid, etc., cannot get in or out",
+    "part_of_speech": "v.",
+    "example_sentence": "He sealed the jar.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0ab1819e-ba86-402c-b897-0d103867d5d3",
+    "word": "remain",
+    "pronunciation": "/rɪˈmeɪn/",
+    "definition": "to continue in a specified state, condition, or position",
+    "part_of_speech": "v.",
+    "example_sentence": "Please remain standing.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "90f5167b-c362-49e5-941e-b0349aced672",
+    "word": "area",
+    "pronunciation": "/ˈeriə/",
+    "definition": "a part or section within a larger place",
+    "part_of_speech": "n.",
+    "example_sentence": "Settlers came to this area from the east.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "3702c46e-9492-4e7d-8f4b-8dd124cb62b8",
+    "word": "central",
+    "pronunciation": "/ˈsentrəl/",
+    "definition": "in the middle of something",
+    "part_of_speech": "adj.",
+    "example_sentence": "The country is in central Africa.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "3b131167-e088-4e66-8ab6-af9ecb8ae759",
+    "word": "ignore",
+    "pronunciation": "/ɪɡˈnɔːr/",
+    "definition": "to refuse to show that you hear or see (something or someone)",
+    "part_of_speech": "v.",
+    "example_sentence": "She tried to ignore him but he wouldn't leave her alone.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a4d44516-09c8-4ca3-9b01-b17b960ff7ed",
+    "word": "woman",
+    "pronunciation": "/ˈwʊmən/",
+    "definition": "an adult female human being",
+    "part_of_speech": "n.",
+    "example_sentence": "She was a shy and awkward girl who grew up to become a confident and beautiful woman.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "253c7f72-d74c-4b3b-9a43-01ab27820cb6",
+    "word": "solid",
+    "pronunciation": "/ˈsɑːlɪd/",
+    "definition": "firm or hard",
+    "part_of_speech": "adj.",
+    "example_sentence": "Concrete is a solid material.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "33580ef1-121c-40c7-ac14-77c4dcc8e01a",
+    "word": "student",
+    "pronunciation": "/ˈstuːdnt/",
+    "definition": "a person who attends a school, college, or university",
+    "part_of_speech": "n.",
+    "example_sentence": "She is a student at Georgetown University.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5f77f4d1-d01f-4c62-8684-9072bd3afc7a",
+    "word": "feeling",
+    "pronunciation": "/ˈfiːlɪŋ/",
+    "definition": "an awareness by your body of something in it or on it",
+    "part_of_speech": "n.",
+    "example_sentence": "I noticed tingling feelings in my fingers.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "3a3cf5cf-da5b-4126-8224-5b194dd1c04e",
+    "word": "today",
+    "pronunciation": "/təˈdeɪ/",
+    "definition": "on, during, or for this day",
+    "part_of_speech": "adv.",
+    "example_sentence": "We have to finish today.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "eef88f8a-781e-404d-bed7-a35c06efda48",
+    "word": "chatroom",
+    "pronunciation": "/'tʃæt,ru:m/",
+    "definition": "a Web site or computer program that allows people to send messages to each other instantly over the Internet",
+    "part_of_speech": "n.",
+    "example_sentence": "He used your identity to enter a chatroom.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "66e570fd-ad61-49f6-a4d9-22977a01a27a",
+    "word": "artist",
+    "pronunciation": "/ˈɑːrtɪst/",
+    "definition": "a person who creates art",
+    "part_of_speech": "n.",
+    "example_sentence": "Whoever made this cake is a real artist.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "efc4d39c-984b-4d59-8b14-7b85d3253322",
+    "word": "around",
+    "pronunciation": "/əˈraʊnd/",
+    "definition": "in a circle",
+    "part_of_speech": "prep.",
+    "example_sentence": "The wheel went around and around.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d7e8f6f4-63e8-48ac-b654-735bf23da372",
+    "word": "shoulder",
+    "pronunciation": "/ˈʃoʊldər/",
+    "definition": "the part of your body where your arm is connected",
+    "part_of_speech": "n.",
+    "example_sentence": "He rested the baby's head on his shoulder.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "56c2c71e-fd7e-4873-a074-a0fe0b988a3e",
+    "word": "relief",
+    "pronunciation": "/rɪˈliːf/",
+    "definition": "a pleasant and relaxed feeling that someone has when something unpleasant stops or does not happen",
+    "part_of_speech": "n.",
+    "example_sentence": "I felt such a sense of relief after I finished my thesis.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c91aad32-4018-406d-8f37-f7fb741606ad",
+    "word": "involve",
+    "pronunciation": "/ɪnˈvɑːlv/",
+    "definition": "to have or include (someone or something) as a part of something",
+    "part_of_speech": "v.",
+    "example_sentence": "Does this involve me?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f407eeea-dbd4-44fb-8971-7f54a0bd0e3f",
+    "word": "toward",
+    "pronunciation": "/tə'wɔːd/",
+    "definition": "in the direction of (something or someone)",
+    "part_of_speech": "prep.",
+    "example_sentence": "The poor boy walked toward the forest.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2ec36617-80fb-4885-bb4d-0870ff40abe5",
+    "word": "party",
+    "pronunciation": "/ˈpɑːrti/",
+    "definition": "a social event in which entertainment, food, and drinks are provided",
+    "part_of_speech": "n.",
+    "example_sentence": "We are having a party.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c31e2859-3bce-4af6-8cbd-9c73b74269fb",
+    "word": "country",
+    "pronunciation": "/ˈkʌntri/",
+    "definition": "an area of land that is controlled by its own government",
+    "part_of_speech": "n.",
+    "example_sentence": "The two countries have a lot in common.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "fee20ad5-8d22-4bbd-8231-f7810fb20814",
+    "word": "police",
+    "pronunciation": "/pəˈliːs/",
+    "definition": "the people or the department of people who enforce laws, investigate crimes, and make arrests",
+    "part_of_speech": "n.",
+    "example_sentence": "Police blocked the street to clear a path for the parade.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "21b266d2-23ac-4529-bcd9-63f9a32a10ba",
+    "word": "summer",
+    "pronunciation": "/ˈsʌmər/",
+    "definition": "the warmest season of the year that is after spring and before autumn",
+    "part_of_speech": "n.",
+    "example_sentence": "What are your plans for this summer?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "36d80b52-5443-41aa-a564-5718123b505d",
+    "word": "expect",
+    "pronunciation": "/ɪkˈspekt/",
+    "definition": "to think that something will probably or certainly happen",
+    "part_of_speech": "v.",
+    "example_sentence": "We expect (that) the economy will improve.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "088eedce-a647-474e-ab96-c04abd1f62e5",
+    "word": "factor",
+    "pronunciation": "/ˈfæktər/",
+    "definition": "something that helps produce or influence a result",
+    "part_of_speech": "n.",
+    "example_sentence": "There were several factors contributing to their recent decline.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "acc232b4-644d-4d14-aa01-d4ef03bf1e52",
+    "word": "answer",
+    "pronunciation": "/ˈænsər/",
+    "definition": "something you say or write when someone asks you a question",
+    "part_of_speech": "n.",
+    "example_sentence": "I asked him a simple question and he gave me a long and confusing answer.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e4a73274-4147-46f9-91c8-0f66e5970e9b",
+    "word": "desert",
+    "pronunciation": "/ˈdezərt/",
+    "definition": "an area of very dry land that is usually covered with sand and is very hot",
+    "part_of_speech": "n.",
+    "example_sentence": "Many settlers died while trying to cross the desert.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2870e579-dbdd-4dca-840e-fd6e1dd465ba",
+    "word": "relate",
+    "pronunciation": "/rɪˈleɪt/",
+    "definition": "to show or make a connection between (two or more things)",
+    "part_of_speech": "v.",
+    "example_sentence": "I can relate to your feelings.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a8c12df8-d290-47b7-a8e0-018d6949d6a9",
+    "word": "power",
+    "pronunciation": "/ˈpaʊər/",
+    "definition": "the ability or right to control people or things",
+    "part_of_speech": "n.",
+    "example_sentence": "She is from a very wealthy family with a lot of social power.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e1fa442d-5553-4ad0-b510-12ea3346709c",
+    "word": "merely",
+    "pronunciation": "/'mɪəlɪ/",
+    "definition": "someone or something is small, unimportant, etc.",
+    "part_of_speech": "adv.",
+    "example_sentence": "This is merely a minor delay.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1067fb53-2c2c-48b8-b2af-07acba0e1c52",
+    "word": "nearly",
+    "pronunciation": "/ˈnɪrli/",
+    "definition": "not completely",
+    "part_of_speech": "adv.",
+    "example_sentence": "I see her nearly every day.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "da0d3c30-2db2-49c8-a4bb-ade3bda64d5e",
+    "word": "maybe",
+    "pronunciation": "/ˈmeɪbi/",
+    "definition": "possibly but not certainly",
+    "part_of_speech": "adv.",
+    "example_sentence": "Maybe we'll meet again.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b7cff31d-f539-4636-93a9-462207dfbceb",
+    "word": "beyond",
+    "pronunciation": "/bɪˈjɑːnd/",
+    "definition": "on or to the farther part or side",
+    "part_of_speech": "adv.",
+    "example_sentence": "From the house we can see the valley and the hills beyond.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e5c4fecd-7b7e-4958-8bf7-d52b07c495c1",
+    "word": "center/\ncentre",
+    "pronunciation": "/ˈsɛntə/",
+    "definition": "the middle point or part of something",
+    "part_of_speech": "n.",
+    "example_sentence": "Where's the tourist information center?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8517848c-e96f-4733-99ab-9081049490aa",
+    "word": "require",
+    "pronunciation": "/rɪˈkwaɪər/",
+    "definition": "to need (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "We require your assistance.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6785c029-79c2-4b1c-86dc-499786ff5d60",
+    "word": "dinner",
+    "pronunciation": "/ˈdɪnər/",
+    "definition": "the main meal of the day",
+    "part_of_speech": "n.",
+    "example_sentence": "We had many pleasant dinners together.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7eb1eb38-07d8-4933-a6b0-48f98c946577",
+    "word": "support",
+    "pronunciation": "/səˈpɔːrt/",
+    "definition": "to agree with or approve of (someone or something)",
+    "part_of_speech": "v.",
+    "example_sentence": "I completely support your decision to stay.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7c427d12-6455-430e-9bc2-8be88e6582a0",
+    "word": "unit",
+    "pronunciation": "/ˈjuːnɪt/",
+    "definition": "a single thing, person, or group that is a part of something larger",
+    "part_of_speech": "n.",
+    "example_sentence": "The family is the basic unit of society.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "3b35c41b-5812-4968-a689-b299d3deaba3",
+    "word": "believe",
+    "pronunciation": "/bɪˈliːv/",
+    "definition": "to accept or regard (something) as true",
+    "part_of_speech": "v.",
+    "example_sentence": "The scientists believed the reports.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "73208257-3b9f-498f-932d-fb80d57cd122",
+    "word": "studio",
+    "pronunciation": "/ˈstuːdioʊ/",
+    "definition": "the building or room where an artist works",
+    "part_of_speech": "n.",
+    "example_sentence": "She was in her studio again, painting onto a large canvas.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "4e5a5a6b-2ee6-4de8-8be6-fc4fe0637be6",
+    "word": "agree",
+    "pronunciation": "/əˈɡriː/",
+    "definition": "to have the same opinion",
+    "part_of_speech": "v.",
+    "example_sentence": "We agreed about some things, but we disagreed about others.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b75c13d7-aaf5-4cf8-a711-9d8590f726b8",
+    "word": "funny",
+    "pronunciation": "/ˈfʌni/",
+    "definition": "causing laughter",
+    "part_of_speech": "adj.",
+    "example_sentence": "He told a funny story.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "eac9e971-e027-4495-9ae7-626f1996961c",
+    "word": "progress",
+    "pronunciation": "/ˈprɑːɡres/",
+    "definition": "movement forward or toward a place",
+    "part_of_speech": "n.",
+    "example_sentence": "We have made great progress in controlling inflation.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "349d8d0c-6f0c-4b85-8218-0365021ea386",
+    "word": "monthly",
+    "pronunciation": "/ˈmʌnθli/",
+    "definition": "happening, done, or made every month",
+    "part_of_speech": "adj.",
+    "example_sentence": "The monthly meeting is today.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8209b7e3-cf88-41b1-bc1a-5cd2e011ca20",
+    "word": "degree",
+    "pronunciation": "/dɪˈɡriː/",
+    "definition": "a unit for measuring temperature",
+    "part_of_speech": "n.",
+    "example_sentence": "Bake the bread at 350 degrees (Fahrenheit) for 35 minutes.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "89e46514-8159-4de1-8351-7a43ac439891",
+    "word": "pattern",
+    "pronunciation": "/ˈpætərn/",
+    "definition": "a repeated form or design especially that is used to decorate something",
+    "part_of_speech": "n.",
+    "example_sentence": "The dishes have a floral pattern around the rim.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "28d173f1-fd64-4231-80d0-93e1265a89e0",
+    "word": "stomach",
+    "pronunciation": "/ˈstʌmək/",
+    "definition": "the organ in your body where food goes and begins to be digested after you swallow it",
+    "part_of_speech": "n.",
+    "example_sentence": "She has problems with her stomach.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2f674551-fa96-4500-9656-88a4c4b61d7e",
+    "word": "minute",
+    "pronunciation": "/ˈmɪnɪt/",
+    "definition": "a unit of time equal to 60 seconds",
+    "part_of_speech": "n.",
+    "example_sentence": "Bake the cake for 25-30 minutes.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6e29bce8-b0d9-4f38-9a9e-7b620d8dae79",
+    "word": "better",
+    "pronunciation": "/ˈbetər/",
+    "definition": "higher in quality",
+    "part_of_speech": "adj.",
+    "example_sentence": "Her second book is better than her first one.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d64638e6-da49-4016-9efc-7cc8c17353dc",
+    "word": "foreign",
+    "pronunciation": "/ˈfɔːrən/",
+    "definition": "located outside a particular place or country and especially outside your own country",
+    "part_of_speech": "adj.",
+    "example_sentence": "They've visited several foreign countries.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0b82e8db-5ac7-455a-8f60-27e1e9e45cbf",
+    "word": "structure",
+    "pronunciation": "/ˈstrʌktʃər/",
+    "definition": "the way that something is built, arranged, or organized",
+    "part_of_speech": "n.",
+    "example_sentence": "They studied the compound's molecular structure.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2db74ef7-33f5-4984-8ee4-45897dad4b55",
+    "word": "single",
+    "pronunciation": "/ˈsɪŋɡl/",
+    "definition": "not having or including another",
+    "part_of_speech": "adj.",
+    "example_sentence": "They lost by a single point.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2c7ada21-9109-47b1-8aec-7f72f464c5cf",
+    "word": "former",
+    "pronunciation": "/ˈfɔːrmər/",
+    "definition": "existing in the past",
+    "part_of_speech": "adj.",
+    "example_sentence": "This beautiful old building has been restored to its former glory.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8079f6be-c822-4b84-892f-bf990f696931",
+    "word": "cancer",
+    "pronunciation": "/ˈkænsər/",
+    "definition": "a serious disease caused by cells that are not normal and that can spread to one or many parts of the body",
+    "part_of_speech": "n.",
+    "example_sentence": "He was diagnosed with cancer.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "9a53db5a-3990-4e1e-98c9-50b62b7763c7",
+    "word": "mountain",
+    "pronunciation": "/ˈmaʊntn/",
+    "definition": "an area of land that rises very high above the land around it and that is higher than a hill",
+    "part_of_speech": "n.",
+    "example_sentence": "She watched the sun set behind the mountains.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "115ec6bb-6c87-459e-8837-3445fcb30a96",
+    "word": "present",
+    "pronunciation": "/ˈpreznt/",
+    "definition": "to give something to someone in a formal way or in a ceremony",
+    "part_of_speech": "v.",
+    "example_sentence": "He presented the queen with a diamond necklace.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "bcee5307-803b-45aa-ab5c-03fb46da338d",
+    "word": "compare",
+    "pronunciation": "/kəmˈper/",
+    "definition": "to say that (something) is similar to something else",
+    "part_of_speech": "v.",
+    "example_sentence": "The poet compared his sweetheart to a beautiful rose.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b6ce75fe-6c7a-45b4-9dca-b2009efd8093",
+    "word": "building",
+    "pronunciation": "/ˈbɪldɪŋ/",
+    "definition": "a structure (such as a house, hospital, school, etc.) with a roof and walls that is used as a place for people to live, work, do activities, store things, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "My office is in that small brick building.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a77a2b56-8cd7-4772-8940-3edb6c2a8920",
+    "word": "escape",
+    "pronunciation": "/ɪˈskeɪp/",
+    "definition": "to get away from a place (such as a prison) where you are being held or kept",
+    "part_of_speech": "v.",
+    "example_sentence": "The prisoner escaped (from jail).",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2439796c-61a6-46e8-b853-059b39d37dcc",
+    "word": "election",
+    "pronunciation": "/ɪˈlekʃn/",
+    "definition": "the act or process of choosing someone for a public office by voting",
+    "part_of_speech": "n.",
+    "example_sentence": "He's favored to win the election.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "532ea0d9-1b03-46a1-9c1a-f9eed21a32b9",
+    "word": "predict",
+    "pronunciation": "/prɪˈdɪkt/",
+    "definition": "to say that (something) will or might happen in the future",
+    "part_of_speech": "v.",
+    "example_sentence": "All the local forecasters are predicting rain for this afternoon.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "992e6df0-f593-4936-92cc-1b9539163f5b",
+    "word": "parent",
+    "pronunciation": "/ˈperənt/",
+    "definition": "a person who is a father or mother",
+    "part_of_speech": "n.",
+    "example_sentence": "My parents live in New York.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0b74bf16-f58a-4e1e-9eea-4198042b20ba",
+    "word": "order",
+    "pronunciation": "/ˈɔːrdər/",
+    "definition": "a statement made by a person with authority that tells someone to do something",
+    "part_of_speech": "n.",
+    "example_sentence": "The captain was barking out orders to the crew.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b3cd1ff3-6f8e-4916-aa41-09c8bbfc6d75",
+    "word": "intend",
+    "pronunciation": "/ɪnˈtend/",
+    "definition": "to plan or want to do (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "He intended that his daughter would inherit the business.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b9592bee-5eed-47a0-bf93-50a8e9866217",
+    "word": "kitchen",
+    "pronunciation": "/ˈkɪtʃɪn/",
+    "definition": "a room in which food is cooked",
+    "part_of_speech": "n.",
+    "example_sentence": "She wants a house with a large kitchen.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ef71a605-bbac-43c8-b629-ad424687fbbd",
+    "word": "offer",
+    "pronunciation": "/ˈɔːfər/",
+    "definition": "to give someone the opportunity to accept or take (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "We'd like to offer the job to you.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f57e7cc2-8a38-4cb4-b03f-e3396a31364c",
+    "word": "district",
+    "pronunciation": "/ˈdɪstrɪkt/",
+    "definition": "an area or section of a country, city, or town",
+    "part_of_speech": "n.",
+    "example_sentence": "She represents the eighth congressional district.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0312b17d-ce4d-4d3f-81d5-fd76c27bf604",
+    "word": "research",
+    "pronunciation": "/rɪˈsɜːrtʃ/",
+    "definition": "careful study that is done to find and report new knowledge about something",
+    "part_of_speech": "n.",
+    "example_sentence": "Recent research shows that the disease is caused in part by bad nutrition.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b0ad5336-1d39-488f-b176-b2761cea58be",
+    "word": "surprise",
+    "pronunciation": "/sərˈpraɪz/",
+    "definition": "an unexpected event, piece of information, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "What a pleasant surprise to see you!",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d6a6e302-e756-4551-88fa-51604b35d72f",
+    "word": "people",
+    "pronunciation": "/ˈpiːpl/",
+    "definition": "individual human beings, the plural of person.",
+    "part_of_speech": "n.",
+    "example_sentence": "We met all sorts of people on the trip.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0671abab-3784-4258-9a94-33c327549eeb",
+    "word": "novel",
+    "pronunciation": "/ˈnɑːvl/",
+    "definition": "a long written story usually about imaginary characters and events",
+    "part_of_speech": "n.",
+    "example_sentence": "This novel is worth reading.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ab232d59-fcea-4e1d-a531-87a22bb94d80",
+    "word": "disease",
+    "pronunciation": "/dɪˈziːz/",
+    "definition": "an illness that affects a person, animal, or plant",
+    "part_of_speech": "n.",
+    "example_sentence": "He suffers from a rare genetic disease.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5d1e376c-0a20-4512-9f62-cb2fecef84ae",
+    "word": "commit",
+    "pronunciation": "/kəˈmɪt/",
+    "definition": "to do (something that is illegal or harmful)",
+    "part_of_speech": "v.",
+    "example_sentence": "The massacre was committed by the rebel army.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "071bf95d-04f2-466f-a3ff-2f43e8970942",
+    "word": "mission",
+    "pronunciation": "/ˈmɪʃn/",
+    "definition": "a task or job that someone is given to do",
+    "part_of_speech": "n.",
+    "example_sentence": "Our mission was to recover the stolen plans.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "289107ab-8107-4d39-9d8f-a5c5912340b7",
+    "word": "mention",
+    "pronunciation": "/ˈmenʃn/",
+    "definition": "to talk about, write about, or refer to (something or someone) especially in a brief way",
+    "part_of_speech": "v.",
+    "example_sentence": "In her speech, she mentioned (the help of) her parents, husband, and fellow actors.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "fda30a24-61d8-4d83-abb1-50130457c9b6",
+    "word": "within",
+    "pronunciation": "/wɪˈðɪn/",
+    "definition": "inside (a certain area or space)",
+    "part_of_speech": "prep.",
+    "example_sentence": "They live within the city limits.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "eb18b5b4-b34f-4b28-a288-bcadc50dd276",
+    "word": "extent",
+    "pronunciation": "/ɪkˈstent/",
+    "definition": "the range, distance, or space that is covered or affected by something or included in something",
+    "part_of_speech": "n.",
+    "example_sentence": "She tried to determine the extent of the damage.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "70ef9430-33a2-41bd-b941-a150b9f6be71",
+    "word": "recent",
+    "pronunciation": "/ˈriːsnt/",
+    "definition": "happening or beginning not long ago",
+    "part_of_speech": "adj.",
+    "example_sentence": "Recent events have brought attention to the problem.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "cdc04158-8531-4c18-9478-96da7c9e8d64",
+    "word": "account",
+    "pronunciation": "/əˈkaʊnt/",
+    "definition": "a record of money that has been paid and money that has been received",
+    "part_of_speech": "n.",
+    "example_sentence": "He kept detailed accounts.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "dbee4c42-1cb1-448f-8630-d8266d0101aa",
+    "word": "culture",
+    "pronunciation": "/ˈkʌltʃər/",
+    "definition": "the beliefs, customs, arts, etc., of a particular society, group, place, or time",
+    "part_of_speech": "n.",
+    "example_sentence": "Her art shows the influence of popular culture.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "9c8da9a4-2fa5-4b1c-bda9-f681c247eb4f",
+    "word": "quiet",
+    "pronunciation": "/ˈkwaɪət/",
+    "definition": "making very little noise",
+    "part_of_speech": "adj.",
+    "example_sentence": "He spoke in a very quiet voice.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d8046d33-57b2-4369-bd66-483d81fc12da",
+    "word": "southern",
+    "pronunciation": "/ˈsʌðərn/",
+    "definition": "located in or toward the south",
+    "part_of_speech": "adj.",
+    "example_sentence": "The family resides in Southern France.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "82332863-bc92-43f9-8ac5-220dd9fe07dc",
+    "word": "always",
+    "pronunciation": "/ˈɔːlweɪz/",
+    "definition": "at all times :  in a way that does not change",
+    "part_of_speech": "adv.",
+    "example_sentence": "Always lock your car.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a20da798-696f-42c5-944c-4a8b743a7cfe",
+    "word": "response",
+    "pronunciation": "/rɪˈspɑːns/",
+    "definition": "something that is said or written as a reply to something",
+    "part_of_speech": "n.",
+    "example_sentence": "He got a response to his letter.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "cee4763b-900b-456a-ac91-e936b872c4d0",
+    "word": "describe",
+    "pronunciation": "/dɪˈskraɪb/",
+    "definition": "to tell someone the appearance, sound, smell, events, etc., of (something or someone)",
+    "part_of_speech": "v.",
+    "example_sentence": "The witness wasn't able to describe the robber.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "af8f91da-54d4-4692-a038-19ca8e40b18c",
+    "word": "careful",
+    "pronunciation": "/ˈkerfl/",
+    "definition": "using care",
+    "part_of_speech": "adj.",
+    "example_sentence": "He is a careful driver.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "69afe505-775d-4b58-8d76-947aedbf2676",
+    "word": "because",
+    "pronunciation": "/bɪ'kɔz/",
+    "definition": "for the reason that",
+    "part_of_speech": "conj.",
+    "example_sentence": "I ran because I was afraid.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e41c8375-2df9-4326-abc2-5da5f87af784",
+    "word": "garden",
+    "pronunciation": "/ˈɡɑːrdn/",
+    "definition": "an area of ground where plants (such as flowers or vegetables) are grown",
+    "part_of_speech": "n.",
+    "example_sentence": "We planted a small garden in our backyard.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "17e7224e-ad07-4f0b-87c2-611f827e5ceb",
+    "word": "contain",
+    "pronunciation": "/kənˈteɪn/",
+    "definition": "to have (something) inside",
+    "part_of_speech": "v.",
+    "example_sentence": "The box contains an assortment of old papers.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e415e97c-9fa4-4ce1-9220-7d083692ea34",
+    "word": "forest",
+    "pronunciation": "/ˈfɔːrɪst/",
+    "definition": "a thick growth of trees and bushes that covers a large area",
+    "part_of_speech": "n.",
+    "example_sentence": "Fires destroyed acres of forest.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "50e254cc-0a1e-4b29-bdcf-518fc8319f58",
+    "word": "forward",
+    "pronunciation": "/'fɔrwɚd/",
+    "definition": "to send (something that has arrived, such as a letter) to another place",
+    "part_of_speech": "v.",
+    "example_sentence": "Please forward my mail to my new address.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "decd2c0d-cea9-4954-95b2-24670c77a74a",
+    "word": "weapon",
+    "pronunciation": "/ˈwepən/",
+    "definition": "something (such as a gun, knife, club, or bomb) that is used for fighting or attacking someone or for defending yourself when someone is attacking you",
+    "part_of_speech": "n.",
+    "example_sentence": "The police still haven't found the murder weapon.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d4b768c0-9e1f-4393-bb84-4804f94295a3",
+    "word": "language",
+    "pronunciation": "/ˈlæŋɡwɪdʒ/",
+    "definition": "the system of words or signs that people use to express thoughts and feelings to each other",
+    "part_of_speech": "n.",
+    "example_sentence": "Tears are the silent language of grief.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "85fea7e4-c1ea-49c8-be72-a35dac7cc133",
+    "word": "media",
+    "pronunciation": "/ˈmiːdiə/",
+    "definition": "the radio stations, television stations, and newspapers through which information is communicated to the public",
+    "part_of_speech": "n.",
+    "example_sentence": "The event attracted a lot of attention from the media.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2a9fe8ac-572a-4300-9a71-edd4ac226c7d",
+    "word": "although",
+    "pronunciation": "/ɔːlˈðoʊ/",
+    "definition": "despite the fact that",
+    "part_of_speech": "conj.",
+    "example_sentence": "Although he was hungry, he could not eat.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "21023c5f-8a72-43de-8f27-5b558c695091",
+    "word": "appear",
+    "pronunciation": "/əˈpɪr/",
+    "definition": "to seem to be something",
+    "part_of_speech": "v.",
+    "example_sentence": "She appears angry.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "9233d069-e48b-48c6-8777-d890b1a3b803",
+    "word": "local",
+    "pronunciation": "/ˈloʊkl/",
+    "definition": "relating to or occurring in a particular area, city, or town",
+    "part_of_speech": "adj.",
+    "example_sentence": "Are you making a local (telephone) call or a long-distance one?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "843893b0-df2b-4aad-9b99-874628dff5c6",
+    "word": "neither",
+    "pronunciation": "/ˈnaɪðər/",
+    "definition": "not one or the other of two people or things",
+    "part_of_speech": "adj.",
+    "example_sentence": "Neither answer is correct.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "bb0f0db1-bea9-44d6-a62d-0fabd4f58d67",
+    "word": "college",
+    "pronunciation": "/ˈkɑːlɪdʒ/",
+    "definition": "a school in the U.S. that you go to after high school",
+    "part_of_speech": "n.",
+    "example_sentence": "She teaches art at a local college.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8bae9de3-dae4-4f0e-9087-d5808fd14569",
+    "word": "driver",
+    "pronunciation": "/ˈdraɪvər/",
+    "definition": "a person who drives a car, truck, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "Who was the driver at the time of the accident?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e84d753d-6db8-48d1-af62-3cc2aec92c4c",
+    "word": "office",
+    "pronunciation": "/ˈɔːfɪs/",
+    "definition": "a building or room in which people work at desks doing business or professional activities",
+    "part_of_speech": "n.",
+    "example_sentence": "She works at our Chicago office.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8b099957-66db-4717-bf0b-354f197ebf4c",
+    "word": "weekly",
+    "pronunciation": "/ˈwiːkli/",
+    "definition": "happening, done, or made every week",
+    "part_of_speech": "adj.",
+    "example_sentence": "I make weekly trips to the grocery store.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "59908850-ad0f-4723-bbf9-1b9e1e9a9ee6",
+    "word": "finger",
+    "pronunciation": "/ˈfɪŋɡər/",
+    "definition": "one of the five long parts of the hand that are used for holding things",
+    "part_of_speech": "n.",
+    "example_sentence": "Don't stick your fingers in the cookie batter!",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "9e0759d8-925a-42e1-a674-e5da376b5a9c",
+    "word": "dollar",
+    "pronunciation": "/ˈdɑːlər/",
+    "definition": "a basic unit of money in the U.S., Canada, Australia, and other countries that is equal to 100 cents",
+    "part_of_speech": "n.",
+    "example_sentence": "The shirt costs 20 dollars.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b2fef037-c236-4440-b852-bc35d4fa4f8b",
+    "word": "training",
+    "pronunciation": "/ˈtreɪnɪŋ/",
+    "definition": "a process by which someone is taught the skills that are needed for an art, profession, or job",
+    "part_of_speech": "n.",
+    "example_sentence": "The job requires special training.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8dedfd7b-852d-454c-ae3e-aebf45a3298b",
+    "word": "review",
+    "pronunciation": "/rɪˈvjuː/",
+    "definition": "an act of carefully looking at or examining the quality or condition of something or someone",
+    "part_of_speech": "n.",
+    "example_sentence": "Changes to the building had to be made after the review by the safety inspectors.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "aadea7e7-bf65-4ac5-bcb8-683b6c07e7b6",
+    "word": "maintain",
+    "pronunciation": "/meɪnˈteɪn/",
+    "definition": "to cause (something) to exist or continue without changing",
+    "part_of_speech": "v.",
+    "example_sentence": "They have always maintained high standards of professional conduct.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "28de677e-c5fa-4325-97bd-8de242ba32d8",
+    "word": "paper",
+    "pronunciation": "/ˈpeɪpər/",
+    "definition": "the material that is used in the form of thin sheets for writing or printing on, wrapping things, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "We'll need pens, glue, and some paper.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "32ada175-1b01-46b9-80b6-ee5a7f18f9b9",
+    "word": "manner",
+    "pronunciation": "/ˈmænər/",
+    "definition": "the way that something is done or happens",
+    "part_of_speech": "n.",
+    "example_sentence": "She has a very forceful manner of speaking.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "858c24f1-d38a-48b8-a862-abc1e6d2d2c6",
+    "word": "control",
+    "pronunciation": "/kənˈtroʊl/",
+    "definition": "to direct the behavior of (a person or animal)",
+    "part_of_speech": "v.",
+    "example_sentence": "The parents could not control their child.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c4536510-167c-4e79-83ae-7ec1791387a8",
+    "word": "permit",
+    "pronunciation": "/pərˈmɪt/",
+    "definition": "to allow (something) to happen",
+    "part_of_speech": "v.",
+    "example_sentence": "The judge permitted the release of the prisoner.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8a3f76da-1d62-478f-b79c-505731903a4e",
+    "word": "argue",
+    "pronunciation": "/ˈɑːrɡjuː/",
+    "definition": "to give reasons for or against something",
+    "part_of_speech": "v.",
+    "example_sentence": "She argued against the proposed law.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "32ba843c-9d4a-4089-84d6-7869492af740",
+    "word": "result",
+    "pronunciation": "/rɪˈzʌlt/",
+    "definition": "something that is caused by something else that happened or was done before",
+    "part_of_speech": "n.",
+    "example_sentence": "The book is the result of years of hard work and dedication.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "48ed49ac-53e6-4078-8d03-78b1fb05956a",
+    "word": "decide",
+    "pronunciation": "/dɪˈsaɪd/",
+    "definition": "to make a choice about (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "He decided that dinner would be at 7 o'clock, and asked guests to arrive at 6.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5f081545-920a-41ea-8c62-2236cdc6bc78",
+    "word": "social",
+    "pronunciation": "/ˈsoʊʃl/",
+    "definition": "relating to or involving activities in which people spend time talking to each other or doing enjoyable things with each other",
+    "part_of_speech": "adj.",
+    "example_sentence": "She has poor social skills.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "124029a7-5405-4e5b-93e3-4e74341b07e3",
+    "word": "select",
+    "pronunciation": "/sɪˈlekt/",
+    "definition": "to choose (someone or something) from a group",
+    "part_of_speech": "v.",
+    "example_sentence": "Please select one item from the list.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "831648cc-4909-4e61-94de-9010119f27fa",
+    "word": "silent",
+    "pronunciation": "/ˈsaɪlənt/",
+    "definition": "not speaking or making noise",
+    "part_of_speech": "adj.",
+    "example_sentence": "She was silent for a few minutes as she thought about how to answer him.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b3985f74-25d3-4d58-9975-964ba608fea8",
+    "word": "against",
+    "pronunciation": "/əˈɡenst/",
+    "definition": "in opposition to (someone or something)",
+    "part_of_speech": "prep.",
+    "example_sentence": "Everyone was against them.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "05ecf073-404f-41f0-9d6c-7bc79a03b917",
+    "word": "effort",
+    "pronunciation": "/ˈefərt/",
+    "definition": "work done by the mind or body",
+    "part_of_speech": "n.",
+    "example_sentence": "He put a lot of effort into finishing the project on time.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a6745117-d8dd-4484-9559-1c1951763ba2",
+    "word": "increase",
+    "pronunciation": "/ɪnˈkriːs/",
+    "definition": "to become larger or greater in size, amount, number, etc.",
+    "part_of_speech": "v.",
+    "example_sentence": "Sales increased this year.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e1c15f98-fe50-44d7-b734-b40c6ec83923",
+    "word": "private",
+    "pronunciation": "/ˈpraɪvət/",
+    "definition": "for the use of a single person or group",
+    "part_of_speech": "adj.",
+    "example_sentence": "He returned to the country on his private jet.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c54c9585-8186-4f85-adb8-f8687dd86777",
+    "word": "labor/\nlabour",
+    "pronunciation": "/ˈleɪbə/",
+    "definition": "physical or mental effort",
+    "part_of_speech": "n.",
+    "example_sentence": "A day's labor should get the job done.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ae6c3ae3-bd41-44a2-98e3-078367d200ef",
+    "word": "action",
+    "pronunciation": "/ˈækʃn/",
+    "definition": "something that a person or group does",
+    "part_of_speech": "n.",
+    "example_sentence": "As its first official action , the committee elected Ms. Jones as its president.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0c2cbe10-7ee5-4766-b5dd-806e0ed728ff",
+    "word": "enter",
+    "pronunciation": "/ˈentər/",
+    "definition": "to go or come into (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "Knock on the door before you enter the room.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7a025965-7f1e-4ed0-8968-1e82eaa36865",
+    "word": "pleasure",
+    "pronunciation": "/ˈpleʒər/",
+    "definition": "a feeling of happiness, enjoyment, or satisfaction",
+    "part_of_speech": "n.",
+    "example_sentence": "I paint for the sheer pleasure of it.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "582fc3a2-ab40-4928-989a-d95ff8c0efe0",
+    "word": "certain",
+    "pronunciation": "/ˈsɜːrtn/",
+    "definition": "not having any doubt about something",
+    "part_of_speech": "adj.",
+    "example_sentence": "Are you certain you want to leave today?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f2311852-10da-4375-9f4c-4ff691402139",
+    "word": "common",
+    "pronunciation": "/ˈkɑːmən/",
+    "definition": "belonging to or shared by two or more people or groups",
+    "part_of_speech": "adj.",
+    "example_sentence": "They have a common ancestor.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e5a8a82b-569c-42b3-9a32-716bdb6c83ff",
+    "word": "level",
+    "pronunciation": "/ˈlevl/",
+    "definition": "a specific height",
+    "part_of_speech": "n.",
+    "example_sentence": "The pictures were hung on the wall at eye level.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e1946b17-a2c6-46bf-a360-2daaec93863f",
+    "word": "event",
+    "pronunciation": "/ɪˈvent/",
+    "definition": "something (especially something important or notable) that happens",
+    "part_of_speech": "n.",
+    "example_sentence": "The article recounted the events of the past year.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f39a9a11-8e76-4bdf-8ffa-df42443fa5fc",
+    "word": "village",
+    "pronunciation": "/ˈvɪlɪdʒ/",
+    "definition": "a small town in the country",
+    "part_of_speech": "n.",
+    "example_sentence": "We stayed in a charming bed-and-breakfast in a lakeside village.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6b61b057-ea7c-4e2d-a4f7-1aeddc5a364e",
+    "word": "quarter",
+    "pronunciation": "/ˈkwɔːrtər/",
+    "definition": "one of four equal parts of something",
+    "part_of_speech": "n.",
+    "example_sentence": "Cut the pie into quarters.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7b543cae-ab63-4125-a75b-60613e02b854",
+    "word": "weather",
+    "pronunciation": "/ˈweðər/",
+    "definition": "the state of the air and atmosphere at a particular time and place",
+    "part_of_speech": "n.",
+    "example_sentence": "How's the weather?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "aac98ec4-2736-4964-975f-655d172bb9e6",
+    "word": "second",
+    "pronunciation": "/ˈsekənd/",
+    "definition": "occupying the number two position in a series",
+    "part_of_speech": "adj.",
+    "example_sentence": "We sat in the second row.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "9e273b12-e40f-4718-aee1-33b9c2110642",
+    "word": "music",
+    "pronunciation": "/ˈmjuːzɪk/",
+    "definition": "sounds that are sung by voices or played on musical instruments",
+    "part_of_speech": "n.",
+    "example_sentence": "This is one of my favorite pieces of music.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ca75b788-72f7-4144-82bd-a7de3c839d69",
+    "word": "member",
+    "pronunciation": "/ˈmembər/",
+    "definition": "someone or something that belongs to or is a part of a group or an organization",
+    "part_of_speech": "n.",
+    "example_sentence": "The club has 300 members.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d9a243b4-7189-431b-8095-320d5df63192",
+    "word": "receive",
+    "pronunciation": "/rɪˈsiːv/",
+    "definition": "to get or be given (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "You will be charged a late fee if the electric company does not receive your payment on time.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7a4af75e-64d9-4e7f-96d2-3c9ce83bf873",
+    "word": "prison",
+    "pronunciation": "/ˈprɪzn/",
+    "definition": "a building where people are kept as punishment for a crime or while they are waiting to go to court",
+    "part_of_speech": "n.",
+    "example_sentence": "The state plans to build two more prisons.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "51cb19b5-b387-4651-a082-0860d6778e5d",
+    "word": "hardly",
+    "pronunciation": "/ˈhɑːrdli/",
+    "definition": "almost not at all",
+    "part_of_speech": "adv.",
+    "example_sentence": "She could hardly bear to look at him.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "eb4b035d-44bb-4c59-a7f0-700da9b0a456",
+    "word": "critic",
+    "pronunciation": "/ˈkrɪtɪk/",
+    "definition": "a person who gives opinions about books, movies, or other forms of art",
+    "part_of_speech": "n.",
+    "example_sentence": "He is an influential literary critic.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "a9e35892-aa2b-436b-ae82-0144ad5d3cd7",
+    "word": "picture",
+    "pronunciation": "/ˈpɪktʃər/",
+    "definition": "a painting, drawing, or photograph of someone or something",
+    "part_of_speech": "n.",
+    "example_sentence": "I hung the picture on the wall.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c85a4b58-25fc-4ac9-81c9-97d0a63f71bf",
+    "word": "never",
+    "pronunciation": "/ˈnevər/",
+    "definition": "not at any time",
+    "part_of_speech": "adv.",
+    "example_sentence": "I will never shop at that store again.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "43b9aaaa-e202-4e78-9f1b-1f68812aed9f",
+    "word": "success",
+    "pronunciation": "/səkˈses/",
+    "definition": "the fact of getting or achieving wealth, respect, or fame",
+    "part_of_speech": "n.",
+    "example_sentence": "Success came easily to him.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d428b661-d64b-4f07-8021-8c3100c5812d",
+    "word": "among",
+    "pronunciation": "/əˈmʌŋ/",
+    "definition": "in or through (a group of people or things)",
+    "part_of_speech": "prep.",
+    "example_sentence": "The disease spread quickly among the members of the community.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "df61c95a-802e-4fdd-bc98-3c69974e95cc",
+    "word": "between",
+    "pronunciation": "/bɪˈtwiːn/",
+    "definition": "in the space that separates (two things or people)",
+    "part_of_speech": "prep.",
+    "example_sentence": "The ball rolled between the desk and the wall.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "17a21ce5-1c00-476a-a8c1-10953d89a32e",
+    "word": "farmer",
+    "pronunciation": "/ˈfɑːrmər/",
+    "definition": "a person who runs a farm",
+    "part_of_speech": "n.",
+    "example_sentence": "My uncle has been a farmer for 60 years.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "aad9eed6-9d0b-415c-abb5-eb7b952d8b5b",
+    "word": "process",
+    "pronunciation": "/ˈprɑːses/",
+    "definition": "a series of actions that produce something or that lead to a particular result",
+    "part_of_speech": "n.",
+    "example_sentence": "How does the election process work?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e2d5181d-b96d-40ee-822a-6b87bdc5339f",
+    "word": "session",
+    "pronunciation": "/ˈseʃn/",
+    "definition": "a period of time that is used to do a particular activity",
+    "part_of_speech": "n.",
+    "example_sentence": "Her health insurance will cover 12 one-hour sessions of therapy per year.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "aef2cbcd-e002-4125-83ae-08d73633cea2",
+    "word": "prevent",
+    "pronunciation": "/prɪˈvent/",
+    "definition": "to stop (something) from happening or existing",
+    "part_of_speech": "v.",
+    "example_sentence": "Seatbelts in cars often prevent serious injuries.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "190968bb-3481-4c4f-ae28-fc7e39698f16",
+    "word": "image",
+    "pronunciation": "/ˈɪmɪdʒ/",
+    "definition": "a picture that is produced by a camera, artist, mirror, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "She studied her image in the mirror.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "61cef22c-02fe-4411-9b72-a94b864e0618",
+    "word": "penny",
+    "pronunciation": "/ˈpeni/",
+    "definition": "a coin or a unit of money equal to ¹/₁₀₀ of a dollar",
+    "part_of_speech": "n.",
+    "example_sentence": "We got the car for just pennies.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "cea3759a-e321-4241-ae40-28d66001fe3c",
+    "word": "nature",
+    "pronunciation": "/ˈneɪtʃər/",
+    "definition": "the physical world and everything in it (such as plants, animals, mountains, oceans, stars, etc.) that is not made by people",
+    "part_of_speech": "n.",
+    "example_sentence": "The most amazing thing about nature is its infinite variety.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "4f1ee5e4-f5b1-4d6b-864c-77ea597974a4",
+    "word": "senior",
+    "pronunciation": "/ˈsiːniər/",
+    "definition": "older in age",
+    "part_of_speech": "adj.",
+    "example_sentence": "She is five years senior to me.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c9313851-493d-4cfe-8d24-8e0dbc057657",
+    "word": "purchase",
+    "pronunciation": "/ˈpɜːrtʃəs/",
+    "definition": "to buy (property, goods, etc.)",
+    "part_of_speech": "v.",
+    "example_sentence": "He purchased a new suit for a hundred dollars.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8440d082-4bbb-41a5-b9a5-de49a8598a0f",
+    "word": "pretty",
+    "pronunciation": "/ˈprɪti/",
+    "definition": "attractive to look at usually in a simple or delicate way",
+    "part_of_speech": "adj.",
+    "example_sentence": "She has a pretty face.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "8461d301-399b-4c4f-b267-73490572f65f",
+    "word": "golden",
+    "pronunciation": "/ˈɡoʊldən/",
+    "definition": "made of gold",
+    "part_of_speech": "adj.",
+    "example_sentence": "She wore golden earrings.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1353aeff-8240-4bbf-97a1-0007ce358d03",
+    "word": "able",
+    "pronunciation": "/ˈeɪbl/",
+    "definition": "having the power, skill, money, etc., that is needed to do something",
+    "part_of_speech": "adj.",
+    "example_sentence": "He will buy a new car as soon as he is able.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2aea84e5-ba3c-4aca-a593-5eb42c4726c8",
+    "word": "apartment",
+    "pronunciation": "/əˈpɑːrtmənt/",
+    "definition": "a usually rented room or set of rooms that is part of a building and is used as a place to live",
+    "part_of_speech": "n.",
+    "example_sentence": "We lived in an apartment for several years before buying a house.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "4858573d-d88b-45ff-bdf0-4be51007fcd7",
+    "word": "planet",
+    "pronunciation": "/ˈplænɪt/",
+    "definition": "a large, round object in space (such as the Earth) that travels around a star (such as the sun)",
+    "part_of_speech": "n.",
+    "example_sentence": "We must help preserve the planet.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5dfc5222-dece-45c4-bd6c-a421ddc9d222",
+    "word": "create",
+    "pronunciation": "/kriˈeɪt/",
+    "definition": "to make or produce (something)",
+    "part_of_speech": "v.",
+    "example_sentence": "Several new government programs were created while she was governor.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "83539ab5-e351-4be1-a1b0-130d22b72442",
+    "word": "pressure",
+    "pronunciation": "/ˈpreʃər/",
+    "definition": "the weight or force that is produced when something presses or pushes against something else",
+    "part_of_speech": "n.",
+    "example_sentence": "Keep steady pressure on the cap as you turn it.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d1bd2259-bc89-4702-ae55-4bebadb769a0",
+    "word": "product",
+    "pronunciation": "/ˈprɑːdʌkt/",
+    "definition": "something that is made or grown to be sold or used",
+    "part_of_speech": "n.",
+    "example_sentence": "The company's newest product is selling well.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "4fed7730-a7d1-48f6-a8a9-56648e8c335a",
+    "word": "couple",
+    "pronunciation": "/ˈkʌpl/",
+    "definition": "two people who are married or who have a romantic or sexual relationship",
+    "part_of_speech": "n.",
+    "example_sentence": "Seventeen couples participated in the survey.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d09e6dbd-6fe5-42ff-9c2f-e6f1b5005ead",
+    "word": "express",
+    "pronunciation": "/ɪkˈspres/",
+    "definition": "to talk or write about (something that you are thinking or feeling)",
+    "part_of_speech": "v.",
+    "example_sentence": "He expressed an interest in meeting her.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "480698ac-3712-4bd3-87d8-291298988ad0",
+    "word": "twenty",
+    "pronunciation": "/ˈtwenti/",
+    "definition": "the number 20",
+    "part_of_speech": "n.",
+    "example_sentence": "I have told you twenty times.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "49889614-dfa5-473e-b028-2d4cdbd24d03",
+    "word": "senate",
+    "pronunciation": "/ˈsenət/",
+    "definition": "the smaller group of the two groups of people who meet to discuss and make the laws of a country, state, etc.",
+    "part_of_speech": "n.",
+    "example_sentence": "The Senate is expected to pass the bill shortly.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "884909c7-4075-4c9e-a4ed-f72ee2740ecc",
+    "word": "available",
+    "pronunciation": "/əˈveɪləbl/",
+    "definition": "easy or possible to get or use",
+    "part_of_speech": "adj.",
+    "example_sentence": "The family kept emergency supplies available.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "73455265-9cf8-4e8d-8df0-e1c8e476a137",
+    "word": "resource",
+    "pronunciation": "/ˈriːsɔːrs/",
+    "definition": "something that a country has and can use to increase its wealth",
+    "part_of_speech": "n.",
+    "example_sentence": "Oil is essentially their only resource.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "edd4c8d6-69ad-4eac-8726-4b357f0430db",
+    "word": "impossible",
+    "pronunciation": "/ɪmˈpɑːsəbl/",
+    "definition": "unable to be done or to happen",
+    "part_of_speech": "adj.",
+    "example_sentence": "It's impossible to predict the future.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "dd75d4b0-3298-41d4-bb90-0ab139bce45e",
+    "word": "busy",
+    "pronunciation": "/ˈbɪzi/",
+    "definition": "actively doing something",
+    "part_of_speech": "adj.",
+    "example_sentence": "She's busy preparing for her test.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "541de5bd-5056-4c33-8429-b2cbc542c9c9",
+    "word": "number",
+    "pronunciation": "/ˈnʌmbər/",
+    "definition": "a word or symbol (such as “five” or “16”) that represents a specific amount or quantity",
+    "part_of_speech": "n.",
+    "example_sentence": "I think you have the wrong number.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f0085509-5a1b-4245-92df-febc81dfd0d5",
+    "word": "future",
+    "pronunciation": "/ˈfjuːtʃər/",
+    "definition": "the period of time that will come after the present time",
+    "part_of_speech": "n.",
+    "example_sentence": "He promises to do better in future.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c86f2068-c5e8-4448-b5fc-9cfdd76ca44f",
+    "word": "option",
+    "pronunciation": "/ˈɑːpʃn/",
+    "definition": "the opportunity or ability to choose something or to choose between two or more things",
+    "part_of_speech": "n.",
+    "example_sentence": "You have the option of staying home or coming with us.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "0e2194ce-f14a-4891-8c89-513ed6a5a982",
+    "word": "accept",
+    "pronunciation": "/əkˈsept/",
+    "definition": "to receive or take (something offered)",
+    "part_of_speech": "v.",
+    "example_sentence": "They offered him the job, and he accepted it.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "067634d6-7c84-46bc-a2e2-759fa4471a08",
+    "word": "giant",
+    "pronunciation": "/ˈdʒaɪənt/",
+    "definition": "very large",
+    "part_of_speech": "adj.",
+    "example_sentence": "The team's mascot is a giant swan.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6183333c-ec8d-4663-be0c-cecb403445d4",
+    "word": "strawberry",
+    "pronunciation": "/ˈstrɔːberi/",
+    "definition": "a soft, juicy red fruit that grows on a low plant with white flowers",
+    "part_of_speech": "n.",
+    "example_sentence": "We picked strawberries.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "608da11e-8848-4136-8375-2e4b1b3aac08",
+    "word": "stable",
+    "pronunciation": "/ˈsteɪbl/",
+    "definition": "in a good state or condition that is not easily changed or likely to change",
+    "part_of_speech": "adj.",
+    "example_sentence": "They have a stable relationship.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "ed19eed1-65b0-4c9a-ab01-c4d177d969cd",
+    "word": "outline",
+    "pronunciation": "/ˈaʊtlaɪn/",
+    "definition": "a drawing or picture that shows only the shape of an object",
+    "part_of_speech": "n.",
+    "example_sentence": "An outline of his face showed his high forehead, long nose, and small chin.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "5a08cb55-7701-46b2-8236-b389ee35aa88",
+    "word": "tutor",
+    "pronunciation": "/ˈtuːtər/",
+    "definition": "a teacher who works with one student",
+    "part_of_speech": "n.",
+    "example_sentence": "I got a tutor to help me with my homework.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "26bf962a-cb30-479a-bb0d-877509aae996",
+    "word": "overseas",
+    "pronunciation": "/ˌoʊvərˈsiːz/",
+    "definition": "in or to a foreign country that is across a sea or ocean",
+    "part_of_speech": "adv.",
+    "example_sentence": "I lived overseas for a time.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "26cf216a-f16c-4907-a004-ac09ddf2aa21",
+    "word": "puppy",
+    "pronunciation": "/ˈpʌpi/",
+    "definition": "a young dog",
+    "part_of_speech": "n.",
+    "example_sentence": "Our dog just had four puppies.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "3cb16244-6d26-422e-86ec-e850267578b3",
+    "word": "snowy",
+    "pronunciation": "/ˈsnoʊi/",
+    "definition": "having a lot of snow",
+    "part_of_speech": "adj.",
+    "example_sentence": "The weather has been very snowy recently.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c6f5c303-6d69-4efb-93f2-d6fa36645dc6",
+    "word": "castle",
+    "pronunciation": "/ˈkæsl/",
+    "definition": "a large building usually with high, thick walls and towers that was built in the past to protect against attack",
+    "part_of_speech": "n.",
+    "example_sentence": "Millionaires built their castles along the lake.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "baa836a9-b507-4621-bc00-ebc32269452a",
+    "word": "bacon",
+    "pronunciation": "/ˈbeɪkən/",
+    "definition": "thin strips of salted and smoked meat from the sides and the back of a pig",
+    "part_of_speech": "n.",
+    "example_sentence": "We ate bacon and eggs for breakfast.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f8ba5b2c-e03e-45eb-899e-748e89a0d5fb",
+    "word": "grocery",
+    "pronunciation": "/ˈɡroʊsəri/",
+    "definition": "food sold by a grocer",
+    "part_of_speech": "n.",
+    "example_sentence": "She stopped to pick up some groceries for supper.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "029ba40b-885b-4f38-9504-1f5b40181702",
+    "word": "hanger",
+    "pronunciation": "/ˈhæŋər/",
+    "definition": "a usually curved piece of metal, plastic, or wood that is used for hanging clothing",
+    "part_of_speech": "n.",
+    "example_sentence": "I hung my coat up on a hanger.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "1641f980-d821-42be-8900-648a1a25d32d",
+    "word": "railway",
+    "pronunciation": "/ˈreɪlweɪ/",
+    "definition": "a track with rails on which trains run",
+    "part_of_speech": "n.",
+    "example_sentence": "The railway is still under construction.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "d9140f1a-5cc6-4dc6-95f3-a41452cee814",
+    "word": "windy",
+    "pronunciation": "/ˈwɪndi/",
+    "definition": "having a lot of wind",
+    "part_of_speech": "adj.",
+    "example_sentence": "It's a windy day.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "529a402f-21e5-4928-a5c0-ba4f2fb725d8",
+    "word": "puzzle",
+    "pronunciation": "/ˈpʌzl/",
+    "definition": "a question or problem that requires thought, skill, or cleverness to be answered or solved",
+    "part_of_speech": "n.",
+    "example_sentence": "Can you figure out this puzzle?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "844a0da1-961b-489f-abbb-6f8ef7a4bb35",
+    "word": "borrow",
+    "pronunciation": "/ˈbɑːroʊ/",
+    "definition": "to take and use (something that belongs to someone else) for a period of time before returning it",
+    "part_of_speech": "v.",
+    "example_sentence": "Can I borrow your camera?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e408d26c-61e3-43d5-ac01-cf82cb06a13b",
+    "word": "metro",
+    "pronunciation": "/ˈmetroʊ/",
+    "definition": "an underground railway system in some cities",
+    "part_of_speech": "n.",
+    "example_sentence": "Can you reach the park by metro?",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "180afe9a-c139-4413-8a05-5bd1a9d0b4e9",
+    "word": "laughter",
+    "pronunciation": "/ˈlæftər/",
+    "definition": "the action or sound of laughing",
+    "part_of_speech": "n.",
+    "example_sentence": "Laughter filled the air.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2fa4b2ad-8382-41b7-be7c-d276579c3df0",
+    "word": "shorten",
+    "pronunciation": "/ˈʃɔːrtn/",
+    "definition": "to become shorter",
+    "part_of_speech": "v.",
+    "example_sentence": "The days have begun to shorten.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "c9342be4-c266-412d-9db9-2fc7f59f298a",
+    "word": "pollute",
+    "pronunciation": "/pəˈluːt/",
+    "definition": "to make (land, water, air, etc.) dirty and not safe or suitable to use",
+    "part_of_speech": "v.",
+    "example_sentence": "Waste from the factory had polluted the river.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "e8093969-504b-4dbc-aceb-879b2d7a0467",
+    "word": "cookie",
+    "pronunciation": "/ˈkʊki/",
+    "definition": "a sweet baked food that is usually small, flat, and round and is made from flour and sugar",
+    "part_of_speech": "n.",
+    "example_sentence": "This recipe makes about two dozen cookies.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2fa6d120-a7df-47e1-b721-f340d231980f",
+    "word": "medic",
+    "pronunciation": "/ˈmɛdɪk/",
+    "definition": "a person who does medical work",
+    "part_of_speech": "n.",
+    "example_sentence": "A medic at the border post told me about a family who'd recently arrived.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "f6d17fca-a023-42df-9c99-3a778bf315d0",
+    "word": "lemon",
+    "pronunciation": "/ˈlemən/",
+    "definition": "a yellow citrus fruit that has a sour taste",
+    "part_of_speech": "n.",
+    "example_sentence": "The recipe calls for the juice of two lemons.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "7acbb2af-acb4-42a0-82c2-55127ecc41f2",
+    "word": "salon",
+    "pronunciation": "/səˈlɑːn/",
+    "definition": "a business that gives customers beauty treatments (such as haircuts)",
+    "part_of_speech": "n.",
+    "example_sentence": "There is a new hair salon on the second floor.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "dd66329e-c27b-44b7-b581-c408fb7414fb",
+    "word": "thicken",
+    "pronunciation": "/ˈθɪkən/",
+    "definition": "to make (something) thick or thicker or to become thick or thicker",
+    "part_of_speech": "v.",
+    "example_sentence": "I thickened the gravy with flour.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2ec2bbdf-618c-45a5-97cc-e03fab176e41",
+    "word": "channel",
+    "pronunciation": "/ˈtʃænl/",
+    "definition": "a television or radio station",
+    "part_of_speech": "n.",
+    "example_sentence": "The TV program airs at 8:00 p.m. on Channel 5.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "2158c9e0-8a25-4ff1-bb10-48023538c938",
+    "word": "dragon",
+    "pronunciation": "/ˈdræɡən/",
+    "definition": "an imaginary animal that can breathe out fire and looks like a very large lizard with wings, a long tail, and large claws",
+    "part_of_speech": "n.",
+    "example_sentence": "Dragons are legendary animals.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "6659c9d6-a3c1-47df-9e65-296a7912dd7f",
+    "word": "lettuce",
+    "pronunciation": "/ˈletɪs/",
+    "definition": "a plant that has large leaves that are eaten especially in salads",
+    "part_of_speech": "n.",
+    "example_sentence": "Clean the lettuce leaves one by one.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "719b634f-b457-43a9-8823-e1f12054ee33",
+    "word": "tennis",
+    "pronunciation": "/ˈtenɪs/",
+    "definition": "a game that is played by two people or two pairs of people on a special court (called a tennis court) where they hit a small ball back and forth over a net using rackets",
+    "part_of_speech": "n.",
+    "example_sentence": "He is a great tennis player.",
+    "difficulty": 2,
+    "category": "grade3"
+  },
+  {
+    "id": "b8596b13-06ba-4618-a7d7-e0ac23c1dc90",
+    "word": "tractor",
+    "pronunciation": "/ˈtræktər/",
+    "definition": "a large vehicle that has two large back wheels and two smaller front wheels and that is used to pull farm equipment",
+    "part_of_speech": "n.",
+    "example_sentence": "Our tractor is out of order.",
+    "difficulty": 2,
+    "category": "grade3"
+  }
+]

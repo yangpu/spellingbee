@@ -61,7 +61,7 @@
         </div>
 
         <t-button theme="primary" size="large" block @click="startCompetition">
-          <t-icon name="play-circle" />
+          <template #icon><t-icon name="play-circle" /></template>
           开始比赛
         </t-button>
       </div>
@@ -116,7 +116,7 @@
           @click="askQuestion('pronunciation')"
           :disabled="askedQuestions.pronunciation"
         >
-          <t-icon name="sound" />
+          <template #icon><t-icon name="sound" /></template>
           发音
         </t-button>
         <t-button
@@ -124,7 +124,7 @@
           @click="askQuestion('definition')"
           :disabled="askedQuestions.definition"
         >
-          <t-icon name="books" />
+          <template #icon><t-icon name="books" /></template>
           释义
         </t-button>
         <t-button
@@ -132,7 +132,7 @@
           @click="askQuestion('partOfSpeech')"
           :disabled="askedQuestions.partOfSpeech"
         >
-          <t-icon name="layers" />
+          <template #icon><t-icon name="layers" /></template>
           词性
         </t-button>
         <t-button
@@ -140,11 +140,11 @@
           @click="askQuestion('example')"
           :disabled="askedQuestions.example"
         >
-          <t-icon name="chat" />
+          <template #icon><t-icon name="chat" /></template>
           例句
         </t-button>
         <t-button variant="outline" @click="repeatWord">
-          <t-icon name="refresh" />
+          <template #icon><t-icon name="refresh" /></template>
           重复
         </t-button>
       </div>
@@ -700,7 +700,7 @@ watch(
       gap: 0.5rem;
       font-size: 1.5rem;
       font-weight: 700;
-      font-family: 'Crimson Pro', monospace;
+      font-family: 'Courier New', Courier, monospace;
 
       &.timer--warning {
         color: var(--warning);
@@ -768,7 +768,7 @@ watch(
         justify-content: center;
         font-size: 1.5rem;
         font-weight: 700;
-        font-family: 'Crimson Pro', monospace;
+        font-family: 'Courier New', Courier, monospace;
         background: var(--honey-100);
         border: 2px solid var(--honey-300);
         border-radius: 8px;
@@ -871,7 +871,7 @@ watch(
         .score-value {
           font-size: 3rem;
           font-weight: 700;
-          font-family: 'Crimson Pro', serif;
+          font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
         }
 
         .score-label {

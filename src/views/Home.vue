@@ -18,7 +18,7 @@
             size="large"
             @click="$router.push('/competition')"
           >
-            <t-icon name="microphone" />
+            <template #icon><t-icon name="microphone" /></template>
             开始比赛
           </t-button>
           <t-button
@@ -26,7 +26,7 @@
             size="large"
             @click="$router.push('/learn')"
           >
-            <t-icon name="books" />
+            <template #icon><t-icon name="book-open" /></template>
             学习单词
           </t-button>
         </div>
@@ -197,7 +197,7 @@ onMounted(async () => {
   }
 
   .hero-title {
-    font-family: 'Crimson Pro', serif;
+    font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
     font-size: 4rem;
     font-weight: 700;
     color: var(--charcoal-900);
@@ -412,7 +412,7 @@ onMounted(async () => {
       font-size: 2.5rem;
       font-weight: 700;
       color: var(--honey-700);
-      font-family: 'Crimson Pro', serif;
+      font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
     }
 
     .stat-label {

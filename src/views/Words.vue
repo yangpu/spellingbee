@@ -45,8 +45,15 @@
         </t-select>
       </div>
       <div class="toolbar-right">
+        <t-dropdown :options="wordListOptions" @click="handleLoadWordList">
+          <t-button variant="outline">
+            <template #icon><t-icon name="folder-open" /></template>
+            加载词库
+            <template #suffix><t-icon name="chevron-down" /></template>
+          </t-button>
+        </t-dropdown>
         <t-button variant="outline" @click="handleExport">
-          <t-icon name="download" />
+          <template #icon><t-icon name="download" /></template>
           导出
         </t-button>
         <t-upload
@@ -55,12 +62,12 @@
           theme="custom"
         >
           <t-button variant="outline">
-            <t-icon name="upload" />
+            <template #icon><t-icon name="upload" /></template>
             导入
           </t-button>
         </t-upload>
         <t-button theme="primary" @click="showAddDialog = true">
-          <t-icon name="add" />
+          <template #icon><t-icon name="add" /></template>
           添加单词
         </t-button>
       </div>
@@ -94,7 +101,7 @@
           <div class="word-cell">
             <span class="word-text">{{ row.word }}</span>
             <t-button size="small" variant="text" @click="speakWord(row.word)">
-              <t-icon name="sound" />
+              <template #icon><t-icon name="sound" /></template>
             </t-button>
           </div>
         </template>
@@ -255,6 +262,21 @@ const categories = computed(() => {
   return Array.from(cats).sort()
 })
 
+const wordListOptions = computed(() => {
+  return [
+    { content: '追加到当前词库', value: 'merge', divider: true },
+    ...wordsStore.availableWordLists.map(list => ({
+      content: `📚 ${list.label} (追加)`,
+      value: `merge:${list.name}`
+    })),
+    { content: '替换当前词库', value: 'replace', divider: true },
+    ...wordsStore.availableWordLists.map(list => ({
+      content: `🔄 ${list.label} (替换)`,
+      value: `replace:${list.name}`
+    }))
+  ]
+})
+
 const difficultyCounts = computed(() => {
   const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
   wordsStore.words.forEach(w => {
@@ -370,6 +392,27 @@ function handleExport() {
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
   MessagePlugin.success('导出成功')
+}
+
+async function handleLoadWordList(data) {
+  const value = data.value
+  if (!value || value === 'merge' || value === 'replace') return
+  
+  const [action, listName] = value.split(':')
+  if (!listName) return
+  
+  try {
+    let count = 0
+    if (action === 'merge') {
+      count = await wordsStore.loadWordList(listName)
+      MessagePlugin.success(`成功追加 ${count} 个新单词`)
+    } else if (action === 'replace') {
+      count = await wordsStore.replaceWithWordList(listName)
+      MessagePlugin.success(`已加载 ${count} 个单词`)
+    }
+  } catch (error) {
+    MessagePlugin.error(`加载词库失败: ${error.message}`)
+  }
 }
 
 onMounted(() => {

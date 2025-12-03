@@ -11,7 +11,7 @@
           <span>首页</span>
         </router-link>
         <router-link to="/learn" class="nav-link">
-          <t-icon name="books" />
+          <t-icon name="book-open" />
           <span>学习</span>
         </router-link>
         <router-link to="/competition" class="nav-link">
@@ -206,7 +206,7 @@ authStore.init();
     }
 
     .brand-text {
-      font-family: 'Crimson Pro', serif;
+      font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
       font-size: 1.5rem;
       font-weight: 700;
       color: var(--text-primary);

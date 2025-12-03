@@ -293,7 +293,7 @@ onMounted(() => {
         .stat-value {
           font-size: 1.75rem;
           font-weight: 700;
-          font-family: 'Crimson Pro', serif;
+          font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
           color: var(--charcoal-900);
         }
 
@@ -359,7 +359,7 @@ onMounted(() => {
         .score-value {
           font-size: 2rem;
           font-weight: 700;
-          font-family: 'Crimson Pro', serif;
+          font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
           color: var(--honey-600);
         }
 

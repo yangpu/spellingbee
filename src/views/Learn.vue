@@ -22,7 +22,7 @@
         </t-select>
       </div>
       <t-button theme="primary" size="large" @click="startLearning">
-        <t-icon name="play" />
+        <template #icon><t-icon name="play" /></template>
         开始学习
       </t-button>
     </div>
@@ -47,7 +47,7 @@
               <div class="word-display" @click="speakWord">
                 {{ currentWord.word }}
                 <t-button variant="text" size="small" class="speak-btn">
-                  <t-icon name="sound" size="24px" />
+                  <template #icon><t-icon name="sound" size="24px" /></template>
                 </t-button>
               </div>
               <div class="word-pronunciation">{{ currentWord.pronunciation }}</div>
@@ -79,11 +79,11 @@
       <!-- Actions -->
       <div class="card-actions">
         <t-button variant="outline" size="large" @click="markReview" :disabled="isFlipped === false">
-          <t-icon name="refresh" />
+          <template #icon><t-icon name="refresh" /></template>
           需要复习
         </t-button>
         <t-button theme="primary" size="large" @click="markMastered" :disabled="isFlipped === false">
-          <t-icon name="check" />
+          <template #icon><t-icon name="check" /></template>
           已掌握
         </t-button>
       </div>
@@ -366,7 +366,7 @@ onUnmounted(() => {
     }
 
     .word-display {
-      font-family: 'Crimson Pro', serif;
+      font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
       font-size: 4rem;
       font-weight: 700;
       color: var(--charcoal-900);
@@ -387,7 +387,7 @@ onUnmounted(() => {
     }
 
     .word-display-small {
-      font-family: 'Crimson Pro', serif;
+      font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
       font-size: 2.5rem;
       font-weight: 700;
       color: var(--charcoal-900);
@@ -494,7 +494,7 @@ onUnmounted(() => {
         .value {
           font-size: 2.5rem;
           font-weight: 700;
-          font-family: 'Crimson Pro', serif;
+          font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
 
           &.text-success { color: var(--success); }
           &.text-warning { color: var(--warning); }
