@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="beeGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700"/>
+      <stop offset="100%" style="stop-color:#FFA500"/>
+    </linearGradient>
+  </defs>
+  <!-- Bee body -->
+  <ellipse cx="50" cy="55" rx="25" ry="20" fill="url(#beeGold)"/>
+  <!-- Stripes -->
+  <path d="M30 50 Q50 45 70 50" stroke="#2C2C2C" stroke-width="4" fill="none"/>
+  <path d="M28 58 Q50 53 72 58" stroke="#2C2C2C" stroke-width="4" fill="none"/>
+  <path d="M32 66 Q50 61 68 66" stroke="#2C2C2C" stroke-width="4" fill="none"/>
+  <!-- Head -->
+  <circle cx="50" cy="32" r="12" fill="#2C2C2C"/>
+  <!-- Eyes -->
+  <circle cx="45" cy="30" r="3" fill="white"/>
+  <circle cx="55" cy="30" r="3" fill="white"/>
+  <circle cx="45" cy="30" r="1.5" fill="#2C2C2C"/>
+  <circle cx="55" cy="30" r="1.5" fill="#2C2C2C"/>
+  <!-- Antennae -->
+  <path d="M45 22 Q42 12 38 8" stroke="#2C2C2C" stroke-width="2" fill="none"/>
+  <path d="M55 22 Q58 12 62 8" stroke="#2C2C2C" stroke-width="2" fill="none"/>
+  <circle cx="38" cy="8" r="3" fill="url(#beeGold)"/>
+  <circle cx="62" cy="8" r="3" fill="url(#beeGold)"/>
+  <!-- Wings -->
+  <ellipse cx="32" cy="45" rx="12" ry="8" fill="rgba(255,255,255,0.7)" transform="rotate(-20 32 45)"/>
+  <ellipse cx="68" cy="45" rx="12" ry="8" fill="rgba(255,255,255,0.7)" transform="rotate(20 68 45)"/>
+  <!-- Stinger -->
+  <path d="M50 75 L50 82" stroke="#2C2C2C" stroke-width="3" stroke-linecap="round"/>
+</svg>

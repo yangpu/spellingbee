@@ -1,0 +1,283 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { supabase } from '@/lib/supabase'
+import { useAuthStore } from './auth'
+
+// Default word list for offline/demo mode
+const defaultWords = [
+  { id: '1', word: 'abandon', pronunciation: '/əˈbændən/', definition: 'to leave someone or something completely', part_of_speech: 'verb', example_sentence: 'The ship was abandoned by its crew.', difficulty: 2, category: 'basic' },
+  { id: '2', word: 'brilliant', pronunciation: '/ˈbrɪliənt/', definition: 'very bright, intelligent, or successful', part_of_speech: 'adjective', example_sentence: 'She had a brilliant idea.', difficulty: 2, category: 'basic' },
+  { id: '3', word: 'calculate', pronunciation: '/ˈkælkjuleɪt/', definition: 'to find an answer using numbers', part_of_speech: 'verb', example_sentence: 'Can you calculate the total cost?', difficulty: 2, category: 'basic' },
+  { id: '4', word: 'democracy', pronunciation: '/dɪˈmɒkrəsi/', definition: 'a system of government by the whole population', part_of_speech: 'noun', example_sentence: 'Democracy allows citizens to vote.', difficulty: 3, category: 'social' },
+  { id: '5', word: 'enthusiasm', pronunciation: '/ɪnˈθjuːziæzəm/', definition: 'intense enjoyment or interest', part_of_speech: 'noun', example_sentence: 'He showed great enthusiasm for the project.', difficulty: 3, category: 'emotion' },
+  { id: '6', word: 'fascinating', pronunciation: '/ˈfæsɪneɪtɪŋ/', definition: 'extremely interesting', part_of_speech: 'adjective', example_sentence: 'The documentary was fascinating.', difficulty: 3, category: 'emotion' },
+  { id: '7', word: 'guarantee', pronunciation: '/ˌɡærənˈtiː/', definition: 'a formal promise or assurance', part_of_speech: 'noun', example_sentence: 'The product comes with a guarantee.', difficulty: 3, category: 'business' },
+  { id: '8', word: 'hypothesis', pronunciation: '/haɪˈpɒθəsɪs/', definition: 'a proposed explanation for a phenomenon', part_of_speech: 'noun', example_sentence: 'Scientists test their hypothesis through experiments.', difficulty: 4, category: 'science' },
+  { id: '9', word: 'immediately', pronunciation: '/ɪˈmiːdiətli/', definition: 'at once; instantly', part_of_speech: 'adverb', example_sentence: 'Please respond immediately.', difficulty: 3, category: 'basic' },
+  { id: '10', word: 'jurisdiction', pronunciation: '/ˌdʒʊərɪsˈdɪkʃn/', definition: 'the official power to make legal decisions', part_of_speech: 'noun', example_sentence: 'This matter falls outside our jurisdiction.', difficulty: 4, category: 'legal' },
+  { id: '11', word: 'knowledge', pronunciation: '/ˈnɒlɪdʒ/', definition: 'facts, information, and skills acquired', part_of_speech: 'noun', example_sentence: 'Knowledge is power.', difficulty: 2, category: 'basic' },
+  { id: '12', word: 'laboratory', pronunciation: '/ləˈbɒrətri/', definition: 'a room for scientific experiments', part_of_speech: 'noun', example_sentence: 'The scientists worked in the laboratory.', difficulty: 3, category: 'science' },
+  { id: '13', word: 'magnificent', pronunciation: '/mæɡˈnɪfɪsnt/', definition: 'extremely beautiful or impressive', part_of_speech: 'adjective', example_sentence: 'The view from the mountain was magnificent.', difficulty: 3, category: 'emotion' },
+  { id: '14', word: 'necessary', pronunciation: '/ˈnesəsəri/', definition: 'required to be done; essential', part_of_speech: 'adjective', example_sentence: 'It is necessary to complete the form.', difficulty: 3, category: 'basic' },
+  { id: '15', word: 'occurrence', pronunciation: '/əˈkʌrəns/', definition: 'an incident or event', part_of_speech: 'noun', example_sentence: 'Such occurrences are rare.', difficulty: 4, category: 'basic' },
+  { id: '16', word: 'phenomenon', pronunciation: '/fɪˈnɒmɪnən/', definition: 'a fact or situation that is observed', part_of_speech: 'noun', example_sentence: 'The northern lights are a beautiful phenomenon.', difficulty: 4, category: 'science' },
+  { id: '17', word: 'questionnaire', pronunciation: '/ˌkwestʃəˈneə/', definition: 'a set of written questions', part_of_speech: 'noun', example_sentence: 'Please complete this questionnaire.', difficulty: 4, category: 'basic' },
+  { id: '18', word: 'recommend', pronunciation: '/ˌrekəˈmend/', definition: 'to suggest something is good or suitable', part_of_speech: 'verb', example_sentence: 'I recommend this restaurant.', difficulty: 3, category: 'basic' },
+  { id: '19', word: 'sophisticated', pronunciation: '/səˈfɪstɪkeɪtɪd/', definition: 'complex and refined', part_of_speech: 'adjective', example_sentence: 'She has a sophisticated taste in art.', difficulty: 4, category: 'emotion' },
+  { id: '20', word: 'temperature', pronunciation: '/ˈtemprətʃə/', definition: 'the degree of heat or cold', part_of_speech: 'noun', example_sentence: 'The temperature dropped below zero.', difficulty: 3, category: 'science' },
+  { id: '21', word: 'unanimous', pronunciation: '/juːˈnænɪməs/', definition: 'fully in agreement', part_of_speech: 'adjective', example_sentence: 'The decision was unanimous.', difficulty: 4, category: 'basic' },
+  { id: '22', word: 'vocabulary', pronunciation: '/vəˈkæbjələri/', definition: 'the body of words used in a language', part_of_speech: 'noun', example_sentence: 'Reading helps expand your vocabulary.', difficulty: 3, category: 'basic' },
+  { id: '23', word: 'weather', pronunciation: '/ˈweðə/', definition: 'the state of the atmosphere', part_of_speech: 'noun', example_sentence: 'The weather is nice today.', difficulty: 2, category: 'basic' },
+  { id: '24', word: 'xylophone', pronunciation: '/ˈzaɪləfəʊn/', definition: 'a musical instrument', part_of_speech: 'noun', example_sentence: 'She plays the xylophone.', difficulty: 4, category: 'music' },
+  { id: '25', word: 'yesterday', pronunciation: '/ˈjestədeɪ/', definition: 'the day before today', part_of_speech: 'noun', example_sentence: 'I saw him yesterday.', difficulty: 1, category: 'basic' },
+  { id: '26', word: 'zealous', pronunciation: '/ˈzeləs/', definition: 'having great energy or enthusiasm', part_of_speech: 'adjective', example_sentence: 'She was a zealous supporter.', difficulty: 4, category: 'emotion' },
+  { id: '27', word: 'acquaintance', pronunciation: '/əˈkweɪntəns/', definition: 'a person one knows slightly', part_of_speech: 'noun', example_sentence: 'He is an acquaintance from work.', difficulty: 4, category: 'social' },
+  { id: '28', word: 'bureaucracy', pronunciation: '/bjʊəˈrɒkrəsi/', definition: 'a system of government with many rules', part_of_speech: 'noun', example_sentence: 'The bureaucracy slowed down the process.', difficulty: 5, category: 'social' },
+  { id: '29', word: 'conscience', pronunciation: '/ˈkɒnʃəns/', definition: 'a moral sense of right and wrong', part_of_speech: 'noun', example_sentence: 'His conscience troubled him.', difficulty: 4, category: 'emotion' },
+  { id: '30', word: 'descendant', pronunciation: '/dɪˈsendənt/', definition: 'a person descended from an ancestor', part_of_speech: 'noun', example_sentence: 'She is a descendant of royalty.', difficulty: 4, category: 'social' }
+]
+
+export const useWordsStore = defineStore('words', () => {
+  const words = ref([])
+  const userWords = ref([])
+  const loading = ref(false)
+  const useLocalStorage = ref(true)
+
+  const authStore = useAuthStore()
+
+  // Computed
+  const wordCount = computed(() => words.value.length)
+  
+  const wordsByDifficulty = computed(() => {
+    const grouped = { 1: [], 2: [], 3: [], 4: [], 5: [] }
+    words.value.forEach(word => {
+      if (grouped[word.difficulty]) {
+        grouped[word.difficulty].push(word)
+      }
+    })
+    return grouped
+  })
+
+  const wordsByCategory = computed(() => {
+    const grouped = {}
+    words.value.forEach(word => {
+      if (!grouped[word.category]) {
+        grouped[word.category] = []
+      }
+      grouped[word.category].push(word)
+    })
+    return grouped
+  })
+
+  // Initialize words
+  async function init() {
+    loading.value = true
+    try {
+      // Try to load from Supabase first
+      if (authStore.user) {
+        await fetchWordsFromSupabase()
+      }
+      
+      // If no words loaded, use local storage or default
+      if (words.value.length === 0) {
+        loadFromLocalStorage()
+      }
+      
+      // If still no words, load defaults
+      if (words.value.length === 0) {
+        words.value = [...defaultWords]
+        saveToLocalStorage()
+      }
+    } catch (error) {
+      console.error('Error initializing words:', error)
+      // Fallback to local storage
+      loadFromLocalStorage()
+      if (words.value.length === 0) {
+        words.value = [...defaultWords]
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Fetch from Supabase
+  async function fetchWordsFromSupabase() {
+    const { data, error } = await supabase
+      .from('words')
+      .select('*')
+      .order('word')
+
+    if (error) throw error
+    if (data && data.length > 0) {
+      words.value = data
+      useLocalStorage.value = false
+    }
+  }
+
+  // Local storage operations
+  function loadFromLocalStorage() {
+    const stored = localStorage.getItem('spellingbee_words')
+    if (stored) {
+      try {
+        words.value = JSON.parse(stored)
+      } catch (e) {
+        console.error('Error parsing stored words:', e)
+      }
+    }
+  }
+
+  function saveToLocalStorage() {
+    localStorage.setItem('spellingbee_words', JSON.stringify(words.value))
+  }
+
+  // CRUD operations
+  async function addWord(wordData) {
+    const newWord = {
+      id: crypto.randomUUID(),
+      ...wordData,
+      created_at: new Date().toISOString()
+    }
+
+    if (!useLocalStorage.value && authStore.user) {
+      const { data, error } = await supabase
+        .from('words')
+        .insert(newWord)
+        .select()
+        .single()
+
+      if (error) throw error
+      words.value.push(data)
+    } else {
+      words.value.push(newWord)
+      saveToLocalStorage()
+    }
+
+    return newWord
+  }
+
+  async function updateWord(id, updates) {
+    if (!useLocalStorage.value && authStore.user) {
+      const { data, error } = await supabase
+        .from('words')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+      const index = words.value.findIndex(w => w.id === id)
+      if (index !== -1) {
+        words.value[index] = data
+      }
+    } else {
+      const index = words.value.findIndex(w => w.id === id)
+      if (index !== -1) {
+        words.value[index] = { ...words.value[index], ...updates }
+        saveToLocalStorage()
+      }
+    }
+  }
+
+  async function deleteWord(id) {
+    if (!useLocalStorage.value && authStore.user) {
+      const { error } = await supabase
+        .from('words')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+    }
+    
+    words.value = words.value.filter(w => w.id !== id)
+    saveToLocalStorage()
+  }
+
+  // Import words from JSON
+  async function importWords(wordsData) {
+    const newWords = wordsData.map(w => ({
+      id: w.id || crypto.randomUUID(),
+      word: w.word,
+      pronunciation: w.pronunciation || '',
+      definition: w.definition || '',
+      part_of_speech: w.part_of_speech || '',
+      example_sentence: w.example_sentence || '',
+      difficulty: w.difficulty || 3,
+      category: w.category || 'imported',
+      created_at: new Date().toISOString()
+    }))
+
+    if (!useLocalStorage.value && authStore.user) {
+      const { data, error } = await supabase
+        .from('words')
+        .upsert(newWords)
+        .select()
+
+      if (error) throw error
+      // Refresh words list
+      await fetchWordsFromSupabase()
+    } else {
+      // Merge with existing words, avoid duplicates
+      const existingWords = new Set(words.value.map(w => w.word.toLowerCase()))
+      const uniqueNewWords = newWords.filter(w => !existingWords.has(w.word.toLowerCase()))
+      words.value = [...words.value, ...uniqueNewWords]
+      saveToLocalStorage()
+    }
+
+    return newWords.length
+  }
+
+  // Export words to JSON
+  function exportWords() {
+    return JSON.stringify(words.value, null, 2)
+  }
+
+  // Get random words for practice/competition
+  function getRandomWords(count = 10, difficulty = null) {
+    let filtered = [...words.value]
+    
+    if (difficulty !== null) {
+      filtered = filtered.filter(w => w.difficulty === difficulty)
+    }
+    
+    // Fisher-Yates shuffle
+    for (let i = filtered.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[filtered[i], filtered[j]] = [filtered[j], filtered[i]]
+    }
+    
+    return filtered.slice(0, count)
+  }
+
+  // Get word by ID
+  function getWordById(id) {
+    return words.value.find(w => w.id === id)
+  }
+
+  // Search words
+  function searchWords(query) {
+    const q = query.toLowerCase()
+    return words.value.filter(w => 
+      w.word.toLowerCase().includes(q) ||
+      w.definition.toLowerCase().includes(q)
+    )
+  }
+
+  return {
+    words,
+    userWords,
+    loading,
+    wordCount,
+    wordsByDifficulty,
+    wordsByCategory,
+    init,
+    addWord,
+    updateWord,
+    deleteWord,
+    importWords,
+    exportWords,
+    getRandomWords,
+    getWordById,
+    searchWords
+  }
+})
+
