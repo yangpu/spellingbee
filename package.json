@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "deploy": "scp -r dist root@yangruoji.com:/root/spellingbee",
     "preview": "vite preview",
     "convert-words": "node scripts/convert-excel.js"
   },

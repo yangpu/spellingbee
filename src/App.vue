@@ -2,7 +2,7 @@
   <div class="app-container">
     <nav class="app-nav">
       <div class="nav-brand">
-        <img src="/bee.svg" alt="Bee" class="brand-icon" />
+        <img :src="`${baseUrl}bee.svg`" alt="Bee" class="brand-icon" />
         <span class="brand-text">Spelling Bee</span>
       </div>
       <div class="nav-links">
@@ -105,6 +105,8 @@
 import { ref, reactive } from 'vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { useAuthStore } from '@/stores/auth';
+
+const baseUrl = import.meta.env.BASE_URL;
 
 const authStore = useAuthStore();
 const showAuthDialog = ref(false);

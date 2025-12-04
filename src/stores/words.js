@@ -266,7 +266,8 @@ export const useWordsStore = defineStore('words', () => {
   async function loadWordList(listName) {
     loading.value = true
     try {
-      const response = await fetch(`/words/${listName}.json`)
+      const baseUrl = import.meta.env.BASE_URL
+      const response = await fetch(`${baseUrl}words/${listName}.json`)
       if (!response.ok) {
         throw new Error(`Failed to load word list: ${listName}`)
       }
@@ -291,7 +292,8 @@ export const useWordsStore = defineStore('words', () => {
   async function replaceWithWordList(listName) {
     loading.value = true
     try {
-      const response = await fetch(`/words/${listName}.json`)
+      const baseUrl = import.meta.env.BASE_URL
+      const response = await fetch(`${baseUrl}words/${listName}.json`)
       if (!response.ok) {
         throw new Error(`Failed to load word list: ${listName}`)
       }
