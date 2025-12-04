@@ -6,8 +6,9 @@
     "definition": "a piece of public land in or near a city that is kept free of houses and other buildings and can be used for pleasure and exercise",
     "part_of_speech": "n.",
     "example_sentence": "We went for a walk in the park.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "公园；停放（车辆）"
   },
   {
     "id": "1ee77e71-7c73-412d-a4e9-ae141f23fc35",
@@ -16,8 +17,9 @@
     "definition": "a physical or mental activity or contest that has rules and that people do for pleasure",
     "part_of_speech": "n.",
     "example_sentence": "Baseball is my favorite game.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "游戏；比赛；猎物"
   },
   {
     "id": "78a219a4-1913-4fe4-8554-ff29d4d4cfb0",
@@ -26,8 +28,9 @@
     "definition": "to hit (someone or something) with your foot",
     "part_of_speech": "v.",
     "example_sentence": "The attacker kicked him in the stomach.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "踢；踢腿"
   },
   {
     "id": "9bd9069a-9069-4709-804d-b8986769edae",
@@ -36,8 +39,9 @@
     "definition": "an animal with a thick woolly coat that is often raised for meat or for its wool and skin",
     "part_of_speech": "n.",
     "example_sentence": "There was one sheep in the field.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "绵羊；羊"
   },
   {
     "id": "050c7e6f-6a04-4df8-9603-e8a8c099c01d",
@@ -47,7 +51,8 @@
     "part_of_speech": "v.",
     "example_sentence": "Which shirt would you choose?",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "选择；挑选"
   },
   {
     "id": "6bb6e5c5-c655-4fe6-ad50-f92afb85c9c9",
@@ -56,8 +61,9 @@
     "definition": "to take and hold (something) with your fingers, hands, etc.",
     "part_of_speech": "v.",
     "example_sentence": "I grasped the end of the rope and pulled as hard as I could.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "抓住；掌握；理解"
   },
   {
     "id": "944c30a4-7298-450f-869b-745ccd74a92b",
@@ -66,8 +72,9 @@
     "definition": "rising or extending upward a great distance",
     "part_of_speech": "adj.",
     "example_sentence": "The apartment has high ceilings.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "高的；高度的；高级的"
   },
   {
     "id": "a424aea6-24b0-4c50-8757-a9f7b28ceb0e",
@@ -77,7 +84,8 @@
     "part_of_speech": "v.",
     "example_sentence": "It took them six days to climb the mountain.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "攀登；爬"
   },
   {
     "id": "f59b4cf6-a95c-4efc-91ee-75317bb75a78",
@@ -87,7 +95,8 @@
     "part_of_speech": "n.",
     "example_sentence": "That was true in all three cases.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "情况；案例；箱子"
   },
   {
     "id": "d70e32e3-2f79-427c-bdcb-e5baa51ca0df",
@@ -96,8 +105,9 @@
     "definition": "the time of darkness between one day and the next",
     "part_of_speech": "n.",
     "example_sentence": "Who are you calling at this time of night?",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "夜晚；晚上"
   },
   {
     "id": "a924ccd9-8c8f-4496-b7fa-3ef13356b2fb",
@@ -106,8 +116,9 @@
     "definition": "containing a lot of sugar",
     "part_of_speech": "adj.",
     "example_sentence": "I had a craving for something sweet.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "甜的；可爱的；糖果"
   },
   {
     "id": "8c8619ec-9dc8-4e88-942e-52f4a62a5db5",
@@ -117,7 +128,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The swan flapped its wings noisily.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "翅膀；机翼；侧翼"
   },
   {
     "id": "4b7664e7-4ed2-4398-bef1-186a8d9efdc3",
@@ -127,7 +139,8 @@
     "part_of_speech": "v.",
     "example_sentence": "She said (that) she would help me with my project.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "将会；愿意"
   },
   {
     "id": "a82cb1a1-5d34-4cf6-b525-073a06c271bb",
@@ -136,8 +149,9 @@
     "definition": "the supply of goods available for sale in a store",
     "part_of_speech": "n.",
     "example_sentence": "That camera is out of stock.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "库存；股票；储备"
   },
   {
     "id": "6378f6bd-e62a-4702-981a-6d953d8b0e5c",
@@ -147,7 +161,8 @@
     "part_of_speech": "v.",
     "example_sentence": "He painted that portrait of his wife.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "油漆；颜料；绘画"
   },
   {
     "id": "958748e6-3842-4ede-8668-e948d17092e3",
@@ -157,7 +172,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He planted the seeds three inches apart.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "种子；籽；根源"
   },
   {
     "id": "03c97cd1-2615-40ab-81b3-a74f4f8b4968",
@@ -167,7 +183,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The roof is leaking.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "屋顶；顶部"
   },
   {
     "id": "43a64b0f-c3af-47fc-b394-401adfd78605",
@@ -176,8 +193,9 @@
     "definition": "one time only",
     "part_of_speech": "adv.",
     "example_sentence": "I will repeat the question once.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "一次；曾经；一旦"
   },
   {
     "id": "fb62086f-7038-4ace-86ef-0fc05765e94f",
@@ -186,8 +204,9 @@
     "definition": "a substance that is used as a medicine",
     "part_of_speech": "n.",
     "example_sentence": "The doctor put me on a course of pain-killing drugs.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "药物；毒品"
   },
   {
     "id": "20a5598c-f899-4174-a7b2-029bca4aa33f",
@@ -196,8 +215,9 @@
     "definition": "to become different",
     "part_of_speech": "v.",
     "example_sentence": "Her mood changes every hour.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "改变；变化；零钱"
   },
   {
     "id": "2c4dd1f0-dd05-4688-8a6b-b0bca1999d29",
@@ -206,8 +226,9 @@
     "definition": "the form of energy that makes it possible to see things",
     "part_of_speech": "n.",
     "example_sentence": "The light was bright.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "光；灯；轻的；点燃"
   },
   {
     "id": "76870b00-139d-4fae-8389-2545c456e384",
@@ -217,7 +238,8 @@
     "part_of_speech": "v.",
     "example_sentence": "You draw very well.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "画；拉；吸引；抽签"
   },
   {
     "id": "68dba229-0be0-49ad-be94-be0e5c5b0a58",
@@ -226,8 +248,9 @@
     "definition": "a very small amount of liquid that falls in a rounded shape",
     "part_of_speech": "n.",
     "example_sentence": "He squeezed the bottle until a few drops came out.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "滴；落下；下降"
   },
   {
     "id": "7df53a3e-1ab2-4024-9547-b058f3004a91",
@@ -236,8 +259,9 @@
     "definition": "to pull (something) behind you especially on the ground",
     "part_of_speech": "v.",
     "example_sentence": "The dog was trailing its leash.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "小径；踪迹；拖；跟踪"
   },
   {
     "id": "a441b783-4062-4908-bbb5-b4d85c25be67",
@@ -246,8 +270,9 @@
     "definition": "having little money or few possessions",
     "part_of_speech": "adj.",
     "example_sentence": "We were too poor to buy new clothes.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "贫穷的；可怜的；差的"
   },
   {
     "id": "4884310c-92d0-47ec-bae3-264c8c1f427a",
@@ -257,7 +282,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The nurse will take your blood pressure before the doctor sees you.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "护士；保姆；护理"
   },
   {
     "id": "98e67cc2-48ff-4fd8-a7e0-89fc393e1462",
@@ -267,7 +293,8 @@
     "part_of_speech": "v.",
     "example_sentence": "We spent the afternoon hiking around the lake.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "远足；徒步旅行；提高"
   },
   {
     "id": "520f2085-488e-47f7-ae2f-3d1a604f8247",
@@ -277,7 +304,8 @@
     "part_of_speech": "n.",
     "example_sentence": "We nursed him back to health.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "健康；卫生"
   },
   {
     "id": "0b7eaf49-2389-431d-828c-c9587225044b",
@@ -287,7 +315,8 @@
     "part_of_speech": "v.",
     "example_sentence": "He arrived home at six o'clock.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "到达；抵达；来临"
   },
   {
     "id": "babc133b-ac51-4fc2-b081-66f1e8c4a7b2",
@@ -296,8 +325,9 @@
     "definition": "an amount of money that you have to pay to the government so that it can pay for public services",
     "part_of_speech": "n.",
     "example_sentence": "The decision was made to raise taxes.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "税；税款；征税"
   },
   {
     "id": "2f8fb991-999c-42a0-928c-ba2fde8ccc45",
@@ -307,7 +337,8 @@
     "part_of_speech": "n.",
     "example_sentence": "This is the oldest church in town.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "教堂；教会"
   },
   {
     "id": "0a280e66-5ed9-4fdc-8bad-1f97dad48da9",
@@ -316,8 +347,9 @@
     "definition": "someone who prepares and cooks food for eating at home, in a restaurant, etc.",
     "part_of_speech": "n.",
     "example_sentence": "He's a good cook.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "烹饪；厨师；烹调"
   },
   {
     "id": "995e1b0e-555f-417d-857d-22e39ca0582c",
@@ -327,7 +359,8 @@
     "part_of_speech": "n.",
     "example_sentence": "A dime is worth 10 cents.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "分（货币单位）；百分之一"
   },
   {
     "id": "d4836b13-1949-41a3-8885-a6d3c98bfe3f",
@@ -337,7 +370,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The sign in the store window says “OPEN.”",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "标志；符号；签名；迹象"
   },
   {
     "id": "f638d7b3-36f4-4823-a772-76c27067dba4",
@@ -346,8 +380,9 @@
     "definition": "one of the 24 equal parts of a day",
     "part_of_speech": "n.",
     "example_sentence": "She wasn't supposed to eat for six hours before the operation.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "小时；钟点"
   },
   {
     "id": "0b0295af-498a-4919-b7c9-149f82ac3bbb",
@@ -357,7 +392,8 @@
     "part_of_speech": "v.",
     "example_sentence": "It might be true.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "可能；力量（may的过去式）"
   },
   {
     "id": "fd7ff2be-e622-4413-850b-bfc5b5d4d7cf",
@@ -366,8 +402,9 @@
     "definition": "a round container that has tall, curving sides and that is used for preparing or serving foods and liquids",
     "part_of_speech": "n.",
     "example_sentence": "This bowl has a history of over 300 years.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "碗；盆；保龄球"
   },
   {
     "id": "ba22bfd0-cd40-4dc9-9045-09c8df08c289",
@@ -377,7 +414,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He stuck his gloves in his pocket.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "手套"
   },
   {
     "id": "6832fcbe-9b30-4b81-b451-4d7fbec644e0",
@@ -386,8 +424,9 @@
     "definition": "a plural of penny",
     "part_of_speech": "n.",
     "example_sentence": "That pen cost ten pence.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "便士（penny的复数）"
   },
   {
     "id": "1124de5c-5749-4e5c-b321-c19e5676638c",
@@ -397,7 +436,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The wolf is an endangered species.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "狼"
   },
   {
     "id": "5f17ace8-ba20-4afb-88bc-e1ecbb40dd83",
@@ -406,8 +446,9 @@
     "definition": "to desire or wish for (something)",
     "part_of_speech": "v.",
     "example_sentence": "Do you want more coffee?",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "想要；需要；缺乏"
   },
   {
     "id": "12311f4f-847e-4ba8-b078-ba80c077eb53",
@@ -417,7 +458,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She was crowned queen of England.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "女王；王后；皇后"
   },
   {
     "id": "db95bf17-5e68-48c3-b825-35d88ae0485a",
@@ -426,8 +468,9 @@
     "definition": "having great physical power and ability",
     "part_of_speech": "adj.",
     "example_sentence": "He's as strong as an ox.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "强壮的；坚强的；强烈的"
   },
   {
     "id": "1806adda-c93a-47ac-9c58-d99c4b8cf524",
@@ -436,8 +479,9 @@
     "definition": "to cause or allow (something) to be seen",
     "part_of_speech": "v.",
     "example_sentence": "He showed her a picture.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "展示；表演；节目"
   },
   {
     "id": "7cd7d205-fea2-4e26-a25c-09805611a471",
@@ -446,8 +490,9 @@
     "definition": "newly produced, made, gathered, etc.",
     "part_of_speech": "adj.",
     "example_sentence": "The meat was kept fresh in the refrigerator.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "新鲜的；清新的"
   },
   {
     "id": "754799b4-9a24-4b9d-8e1d-0f5bb9404d6c",
@@ -457,7 +502,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Coal is a form of carbon.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "形式；表格；形成"
   },
   {
     "id": "08e6b71f-6dd8-430c-9d71-b97d8bab1df6",
@@ -467,7 +513,8 @@
     "part_of_speech": "v.",
     "example_sentence": "She couldn't reach the apple. She was too short.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "到达；伸手；达到"
   },
   {
     "id": "08e17e1f-1030-4749-a55e-885f19d47690",
@@ -477,7 +524,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The front of the car took the full force of the collision.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "力量；武力；强迫"
   },
   {
     "id": "0484d5c6-fd62-45af-a272-882bd9b8a510",
@@ -486,8 +534,9 @@
     "definition": "a usually sweet food (such as a blueberry, orange, or apple) that grows on a tree or bush",
     "part_of_speech": "n.",
     "example_sentence": "Eat plenty of fresh fruit and vegetables.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "水果；果实"
   },
   {
     "id": "f42e5eb8-76e1-4133-acaf-cea3ff3c5381",
@@ -497,7 +546,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He gazed out across the fields.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "田野；领域；场地"
   },
   {
     "id": "4ed11853-dedb-4522-bd00-e611e584b363",
@@ -506,8 +556,9 @@
     "definition": "not moving quickly",
     "part_of_speech": "adj.",
     "example_sentence": "She is a slow driver.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "慢的；缓慢的"
   },
   {
     "id": "c2b6ec40-381b-4a80-9aff-963694372c2a",
@@ -516,8 +567,9 @@
     "definition": "to not move, walk, etc., after doing so before",
     "part_of_speech": "v.",
     "example_sentence": "She was walking toward me, and then she suddenly stopped.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "停止；阻止；站点"
   },
   {
     "id": "ddc6f590-2a93-464d-8a02-a94d27ccfad4",
@@ -526,8 +578,9 @@
     "definition": "the planet on which we live",
     "part_of_speech": "n.",
     "example_sentence": "Earth is the third planet from the sun.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "地球；土地；泥土"
   },
   {
     "id": "2a92269e-ba6a-44b7-8d11-5a9c600aeafb",
@@ -537,7 +590,8 @@
     "part_of_speech": "v.",
     "example_sentence": "The boat was too tall to pass under the bridge.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "通过；经过；传递；及格"
   },
   {
     "id": "ccafc1b8-7d11-4a53-9d59-46174526a314",
@@ -546,8 +600,9 @@
     "definition": "not rising or extending upward a great distance",
     "part_of_speech": "adj.",
     "example_sentence": "The sun was low in the western sky.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "低的；矮的；低落的"
   },
   {
     "id": "f0b3e604-5c51-483c-bc1f-031454913941",
@@ -557,7 +612,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The fabric is decorated with circles and squares.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "正方形；广场；平方"
   },
   {
     "id": "52f45cd0-9f58-4312-baa5-a6382eaf6a46",
@@ -566,8 +622,9 @@
     "definition": "a natural movement of air outside",
     "part_of_speech": "n.",
     "example_sentence": "The storm was accompanied by northerly winds.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "风；气息；蜿蜒"
   },
   {
     "id": "d1ea5a87-de29-44fe-bc44-b7e15aed391a",
@@ -576,8 +633,9 @@
     "definition": "the part of a room on which you stand",
     "part_of_speech": "n.",
     "example_sentence": "Keep your feet on the floor.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "地板；楼层"
   },
   {
     "id": "38e9c438-9c98-41d4-8132-238a97321292",
@@ -587,7 +645,8 @@
     "part_of_speech": "n.",
     "example_sentence": "There are two birds in the cage.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "笼子；牢笼"
   },
   {
     "id": "435a751f-0e8c-4927-b57c-0a03e5d1e457",
@@ -596,8 +655,9 @@
     "definition": "to move through water by moving your arms and legs",
     "part_of_speech": "v.",
     "example_sentence": "He's teaching the children to swim.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "游泳；漂浮"
   },
   {
     "id": "ef9159ef-6e64-439a-b2eb-a3f73c15bbec",
@@ -607,7 +667,8 @@
     "part_of_speech": "n.",
     "example_sentence": "I fastened the buckle on my belt.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "腰带；皮带；地带"
   },
   {
     "id": "3136eb0d-26fb-4b22-b985-b2de5259319c",
@@ -617,7 +678,8 @@
     "part_of_speech": "conj.",
     "example_sentence": "Someone called while you were out.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "当...时；一会儿；虽然"
   },
   {
     "id": "2439894d-493e-436f-a18d-d11322e72522",
@@ -626,8 +688,9 @@
     "definition": "in an early stage of life, growth, or development",
     "part_of_speech": "adj.",
     "example_sentence": "He looks young for his age.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "年轻的"
   },
   {
     "id": "187f3d86-68c9-4a8b-8b0e-ce649ee83479",
@@ -636,8 +699,9 @@
     "definition": "the large round object that circles the Earth and that shines at night by reflecting light from the sun",
     "part_of_speech": "n.",
     "example_sentence": "The telescope makes the craters on the surface of the moon incredibly clear.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "月亮；月球"
   },
   {
     "id": "c2d21413-3b5e-4fbe-b879-5e218f954fa7",
@@ -646,8 +710,9 @@
     "definition": "the direction that is to your left when you are facing the rising sun",
     "part_of_speech": "n.",
     "example_sentence": "The nearest town is 20 miles to the north (of here).",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "北方；北部"
   },
   {
     "id": "13fab43b-4bdf-425c-97aa-92c64f685c03",
@@ -657,7 +722,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She's taking a chemistry course this semester.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "课程；过程；路线"
   },
   {
     "id": "fabea0d9-e7d1-4419-a0e2-dd09edea9326",
@@ -666,8 +732,9 @@
     "definition": "in return or reply",
     "part_of_speech": "adv.",
     "example_sentence": "I gave the book to him and he gave it back (to me).",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "背部；后面；返回"
   },
   {
     "id": "cc8fdee0-1ada-47e2-a883-8c7c19ef6fba",
@@ -677,7 +744,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Today is a state holiday here.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "状态；州；国家；陈述"
   },
   {
     "id": "f2729f3a-656b-4aa8-935c-822e055bc050",
@@ -687,7 +755,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The play's opening scene takes place in the courtyard.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "场景；景象；现场"
   },
   {
     "id": "a1e52913-bc5a-435e-9838-554a586d34c5",
@@ -696,8 +765,9 @@
     "definition": "to come with (something or someone) to a place",
     "part_of_speech": "v.",
     "example_sentence": "I'll bring a bottle of wine (with me) when I come to your party.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "带来；引起"
   },
   {
     "id": "1e93a842-188a-4858-8c8b-43437d01abc7",
@@ -706,8 +776,9 @@
     "definition": "a seed that is eaten as a vegetable and that comes from any one of many different kinds of climbing plants",
     "part_of_speech": "n.",
     "example_sentence": "We ate rice and beans for dinner.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "豆；豆类"
   },
   {
     "id": "7e480a5a-d23c-4fe1-8275-9c356de0c694",
@@ -716,8 +787,9 @@
     "definition": "a vehicle that has wings and an engine and can carry people or things in the air",
     "part_of_speech": "n.",
     "example_sentence": "We will be traveling to Rome by plane.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "飞机；平面；水平"
   },
   {
     "id": "f375d611-416c-46b6-a7cb-d86d1354b2bb",
@@ -727,7 +799,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "I wonder whose story was chosen.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "谁的"
   },
   {
     "id": "edd52096-86db-4ff3-814a-c7ddc7fa7bdf",
@@ -737,7 +810,8 @@
     "part_of_speech": "n.",
     "example_sentence": "I understand the basic rules of chess.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "规则；统治；支配"
   },
   {
     "id": "a32cc125-58a0-4163-aa28-17360889812a",
@@ -746,8 +820,9 @@
     "definition": "a long narrow mark on a surface",
     "part_of_speech": "n.",
     "example_sentence": "I drew a straight line down the page to separate the two lists.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "线；排；行；路线"
   },
   {
     "id": "195d84e2-8aab-4702-972e-f5b3a601d39e",
@@ -756,8 +831,9 @@
     "definition": "a statement saying you will be harmed if you do not do what someone wants you to do",
     "part_of_speech": "n.",
     "example_sentence": "He was willing to use violence and threats to get what he wanted.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "威胁；恐吓；凶兆"
   },
   {
     "id": "f71f6a69-7fb4-4ce7-ab11-8eef29cfc6a7",
@@ -766,8 +842,9 @@
     "definition": "a piece of clothing for a woman or a girl that has a top part that covers the upper body and a skirt that hangs down to cover the legs",
     "part_of_speech": "n.",
     "example_sentence": "She wore dresses only on special occasions.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "连衣裙；穿衣"
   },
   {
     "id": "ee873b36-7d3b-4419-a479-eab3b52048b0",
@@ -777,7 +854,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She tried several sauces before she found one she liked.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "酱汁；调味汁"
   },
   {
     "id": "8401e461-2e45-4c58-9c2a-4a0b0e609e32",
@@ -787,7 +865,8 @@
     "part_of_speech": "v.",
     "example_sentence": "Throw me the car keys.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "投掷；扔；抛"
   },
   {
     "id": "4a855228-d5c8-493f-9ed7-b6fbb0d6070b",
@@ -796,8 +875,9 @@
     "definition": "not costing a lot of money",
     "part_of_speech": "adj.",
     "example_sentence": "Rent isn't cheap here.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "便宜的"
   },
   {
     "id": "0bd2caa4-fe68-4b62-90e9-2023fe953975",
@@ -806,8 +886,9 @@
     "definition": "a piece of clothing for the upper body that has sleeves and usually a collar and buttons down the front",
     "part_of_speech": "n.",
     "example_sentence": "“Aren't you ready yet?” “Keep your shirt on! I'll be ready in a minute.”",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "衬衫；衬衣"
   },
   {
     "id": "fb3d4300-95af-4fcb-8a69-121ce0d98f5a",
@@ -817,7 +898,8 @@
     "part_of_speech": "v.",
     "example_sentence": "Can you guess how many people were there?",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "猜测；推测"
   },
   {
     "id": "875baa69-16e4-4daf-8465-6f91c469baec",
@@ -826,8 +908,9 @@
     "definition": "used to say “yes” or to agree to a request or suggestion",
     "part_of_speech": "adv.",
     "example_sentence": "“Can you help me with this?” “Sure.”",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "确定的；肯定的；当然"
   },
   {
     "id": "94c78e6c-df3f-4a2a-92dc-b9efe1a8d856",
@@ -837,7 +920,8 @@
     "part_of_speech": "n.",
     "example_sentence": "They are a swing band.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "摇摆；秋千；挥动"
   },
   {
     "id": "892f39f0-0059-431f-9392-e5eef20bf437",
@@ -847,7 +931,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She wrote a note to remind herself about the appointment.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "笔记；便条；音符；注意"
   },
   {
     "id": "1ee47915-b639-448c-91a9-26691df8f2db",
@@ -856,8 +941,9 @@
     "definition": "to own, use, or hold (something)",
     "part_of_speech": "v.",
     "example_sentence": "Do they have a new car?",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "有；拥有；吃；经历"
   },
   {
     "id": "13e7a27d-8dec-4f37-8961-05a5df60737d",
@@ -866,8 +952,9 @@
     "definition": "not cool or cold",
     "part_of_speech": "adj.",
     "example_sentence": "Be sure to keep warm when you go outside.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "温暖的；热情的"
   },
   {
     "id": "85410e7d-3909-4ecd-af5a-5e9f0545877d",
@@ -876,8 +963,9 @@
     "definition": "having a large distance to the bottom from the surface or highest point",
     "part_of_speech": "adj.",
     "example_sentence": "We walked in the deep snow.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "深的；深刻的；深奥的"
   },
   {
     "id": "46bea71f-f2e8-49d8-a0f9-32900e891e4c",
@@ -887,7 +975,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The flag was flying over the fort.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "旗帜；国旗；标志"
   },
   {
     "id": "3c99ea83-229c-43e4-a549-1e5cd377e345",
@@ -896,8 +985,9 @@
     "definition": "a place where people live that is larger than a village but smaller than a city",
     "part_of_speech": "n.",
     "example_sentence": "The nearest shopping mall is two towns away.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "城镇；市镇"
   },
   {
     "id": "ef326b6e-1e0a-4381-bc72-3fea394bcac0",
@@ -907,7 +997,8 @@
     "part_of_speech": "v.",
     "example_sentence": "Count the plates on the table.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "计数；数数"
   },
   {
     "id": "c0041abd-c9a0-47b2-9adf-969524e1449b",
@@ -917,7 +1008,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The audience let out a cheer.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "欢呼；喝彩；振奋"
   },
   {
     "id": "5425ba70-a4dd-485c-967f-cdc47b3a3a41",
@@ -927,7 +1019,8 @@
     "part_of_speech": "n.",
     "example_sentence": "People who are supposed to obey the law also need to know their rights under the law.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "法律；法规；定律"
   },
   {
     "id": "1feed601-e4e0-4add-829d-6ca07486183e",
@@ -937,7 +1030,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The bushes in my yard need to be trimmed.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "灌木；矮树丛"
   },
   {
     "id": "7d1ca555-0eab-428a-9e2b-c040ecf634d5",
@@ -946,8 +1040,9 @@
     "definition": "used to say that something belongs or relates to a particular person or thing and to no other",
     "part_of_speech": "adj.",
     "example_sentence": "The star of the show needs his own private dressing room.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "自己的；拥有"
   },
   {
     "id": "12a90e26-c14c-46f3-bc40-71838adf76d2",
@@ -957,7 +1052,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She was breathing oxygen through a tube.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "管子；地铁；电子管"
   },
   {
     "id": "8d4602c0-6805-4724-8303-2093f06ec4e8",
@@ -966,8 +1062,9 @@
     "definition": "a building in which a family lives",
     "part_of_speech": "n.",
     "example_sentence": "Would you like to come to my house for dinner?",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "房子；住宅；家庭"
   },
   {
     "id": "f3d98649-7f2b-4e73-8076-d70f04b1201f",
@@ -976,8 +1073,9 @@
     "definition": "to build, create, or produce (something) by work or effort",
     "part_of_speech": "v.",
     "example_sentence": "He works in a factory that makes jet engines.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "制作；使得；做"
   },
   {
     "id": "6d50919c-ab0b-45f0-83de-8e816cd64441",
@@ -987,7 +1085,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "The least noise would startle her.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "最少的；最小的"
   },
   {
     "id": "f1bd92d7-9dbf-43bb-a87b-a97f9bef7aa7",
@@ -996,8 +1095,9 @@
     "definition": "unusual or strange",
     "part_of_speech": "adj.",
     "example_sentence": "She listens to some really weird music.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "奇怪的；怪异的"
   },
   {
     "id": "a54475c9-371f-40ce-b99a-3098a6d2011b",
@@ -1007,7 +1107,8 @@
     "part_of_speech": "v.",
     "example_sentence": "They vowed to fight the invaders of their homeland.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "战斗；打架"
   },
   {
     "id": "ce75650f-e774-499b-be08-48bc204ffe2a",
@@ -1017,7 +1118,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Can you use knives and forks?",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "叉子；餐叉；岔路"
   },
   {
     "id": "29ff59d3-c84b-4d9d-a7fb-658ac05debd3",
@@ -1027,7 +1129,8 @@
     "part_of_speech": "n.",
     "example_sentence": "They collected dry sticks for the campfire.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "棍子；粘贴；刺"
   },
   {
     "id": "9a15382f-6f51-4f62-b9a7-f261b4d137ba",
@@ -1036,8 +1139,9 @@
     "definition": "any one of the 12 parts into which the year is divided",
     "part_of_speech": "n.",
     "example_sentence": "July is my favorite month.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "月份；一个月"
   },
   {
     "id": "549af511-ecf1-4b62-9a7d-0696fd00a8be",
@@ -1046,8 +1150,9 @@
     "definition": "a set of questions or problems that are designed to measure a person's knowledge, skills, or abilities",
     "part_of_speech": "n.",
     "example_sentence": "She is studying for her math test.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "测试；考试；检验"
   },
   {
     "id": "bc33bfbf-c4dd-49f7-9043-6b7772382b37",
@@ -1057,7 +1162,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The cave is difficult of access.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "洞穴；山洞"
   },
   {
     "id": "7475920f-7227-4734-8f57-3d0dbcc1f9a4",
@@ -1067,7 +1173,8 @@
     "part_of_speech": "n.",
     "example_sentence": "We pulled weeds from the garden.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "杂草；野草；除草"
   },
   {
     "id": "c9bdc2e1-2fed-4539-9847-0ea20d456ebe",
@@ -1077,7 +1184,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Smoke from the campfire stung my eyes.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "烟；吸烟；冒烟"
   },
   {
     "id": "c487a8cb-91d4-48af-ac19-70f29b25fec2",
@@ -1086,8 +1194,9 @@
     "definition": "to be aware of (something that affects you physically, such as pain, heat, or an object touching your body)",
     "part_of_speech": "v.",
     "example_sentence": "I could feel the warmth of the sun.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "感觉；触摸；认为"
   },
   {
     "id": "290a79d0-ae61-4fab-a4c2-bd6e7f0f4f75",
@@ -1097,7 +1206,8 @@
     "part_of_speech": "n.",
     "example_sentence": "We heard the rhythmic beating of drums.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "鼓；鼓声；敲打"
   },
   {
     "id": "494bb9d7-26cb-4cee-b279-41596769a39e",
@@ -1107,7 +1217,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The wood still has some rough spots.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "地点；斑点；污点；发现"
   },
   {
     "id": "eb31119d-573f-4ca3-93f4-4c818c17aff6",
@@ -1116,8 +1227,9 @@
     "definition": "used to refer to a large number of things or people",
     "part_of_speech": "adj.",
     "example_sentence": "They were one of the many, many families that came to watch the parade.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "许多的；很多"
   },
   {
     "id": "af4b1533-50a5-4809-8aa8-cdca3d838bcf",
@@ -1127,7 +1239,8 @@
     "part_of_speech": "v.",
     "example_sentence": "Brush the dirt off your pants.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "刷子；画笔；刷"
   },
   {
     "id": "fa4a76c4-9551-43ad-ad69-56998ab5a41a",
@@ -1137,7 +1250,8 @@
     "part_of_speech": "v.",
     "example_sentence": "She's in the kitchen chopping vegetables.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "砍；切；剁"
   },
   {
     "id": "bbdb2f42-7e8d-46de-b9d3-68f891326435",
@@ -1146,8 +1260,9 @@
     "definition": "a baked food made from a mixture of flour and water",
     "part_of_speech": "n.",
     "example_sentence": "She bakes bread every day.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "面包"
   },
   {
     "id": "6509c792-6b49-4374-8a1f-5ab9b775071a",
@@ -1156,8 +1271,9 @@
     "definition": "plural of this",
     "part_of_speech": "pron.",
     "example_sentence": "Then put these clothes in the wardrobe.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "这些"
   },
   {
     "id": "acf626dd-bc0f-4010-a254-fd4475e0823d",
@@ -1167,7 +1283,8 @@
     "part_of_speech": "v.",
     "example_sentence": "The wolf was hunting its prey.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "打猎；搜寻；追捕"
   },
   {
     "id": "d6e7192c-9262-446e-8f24-a90ef211949e",
@@ -1176,8 +1293,9 @@
     "definition": "a system that uses wires and radio signals to send people's voices over long distances",
     "part_of_speech": "n.",
     "example_sentence": "We spoke by phone earlier.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "电话；手机"
   },
   {
     "id": "0fe39a7d-5de4-4175-88bd-871ebed68f09",
@@ -1187,7 +1305,8 @@
     "part_of_speech": "v.",
     "example_sentence": "We waved to our friends through the window.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "波浪；挥手；波动"
   },
   {
     "id": "402f76fe-d41f-4129-b4a9-321f18ab0871",
@@ -1197,7 +1316,8 @@
     "part_of_speech": "n.",
     "example_sentence": "This kind of plant grows well in moist soil.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "土壤；泥土；弄脏"
   },
   {
     "id": "ce174fef-b86e-433a-b391-056c5fc0f3c5",
@@ -1207,7 +1327,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He wore his gray suit to the job interview.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "套装；西装；适合"
   },
   {
     "id": "7aff26c3-467d-45d7-833c-ad3da642e70f",
@@ -1217,7 +1338,8 @@
     "part_of_speech": "v.",
     "example_sentence": "He failed in his first attempt but succeeded in his second attempt.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "失败；不及格；衰退"
   },
   {
     "id": "19b8cb79-2a70-49dd-becd-bfb429d2549b",
@@ -1226,8 +1348,9 @@
     "definition": "a group of vehicles that travel on a track and are connected to each other and usually to an engine",
     "part_of_speech": "n.",
     "example_sentence": "The train pulled into the station.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "火车；训练；培训"
   },
   {
     "id": "1e0b8c2c-dd2b-45d1-b351-36811d64945d",
@@ -1237,7 +1360,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The tariff is a barrier to trade.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "贸易；交易；行业"
   },
   {
     "id": "28e91bf6-a0ef-4e1f-95f9-e045fbbfdea7",
@@ -1246,8 +1370,9 @@
     "definition": "to show that you are happy or that you think something is funny by smiling and making a sound from your throat",
     "part_of_speech": "v.",
     "example_sentence": "What are you laughing about?",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "笑；大笑"
   },
   {
     "id": "1a13dfe0-9854-467d-8b0c-c14ef82a31aa",
@@ -1257,7 +1382,8 @@
     "part_of_speech": "v.",
     "example_sentence": "Catch the ball and throw it to first base.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "抓住；接住"
   },
   {
     "id": "840aff16-2d63-4ab2-9a85-4b5a9b75fcac",
@@ -1267,7 +1393,8 @@
     "part_of_speech": "n.",
     "example_sentence": "I have a dollar in coins.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "硬币；铸造"
   },
   {
     "id": "2807e5a3-2000-4c9f-8a5e-a6364ea8d4c5",
@@ -1277,7 +1404,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He spent his youth in the Midwest.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "青年；青春"
   },
   {
     "id": "6a2cc8de-8c6d-42d4-8d51-e99c7915cbeb",
@@ -1286,8 +1414,9 @@
     "definition": "agreeing with the facts",
     "part_of_speech": "adj.",
     "example_sentence": "Indicate whether each of the following statements is true or false.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "真的；真实的；正确的"
   },
   {
     "id": "1e1ba7d0-a94c-4133-a691-3854d48133c5",
@@ -1296,8 +1425,9 @@
     "definition": "having a color like coffee or chocolate",
     "part_of_speech": "adj.",
     "example_sentence": "The door was brown.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "棕色的；褐色"
   },
   {
     "id": "f8134468-f62a-44be-bd82-b77bce14522d",
@@ -1306,8 +1436,9 @@
     "definition": "money received in exchange for work",
     "part_of_speech": "n.",
     "example_sentence": "She spent a week's pay in just one night.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "支付；付款；工资"
   },
   {
     "id": "bf89cb5f-5a19-4ff9-9e35-92bcc0eace55",
@@ -1316,8 +1447,9 @@
     "definition": "having a small distance between the top and bottom or front and back surfaces",
     "part_of_speech": "adj.",
     "example_sentence": "Cut the vegetables into thin strips.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "薄的；瘦的；稀薄的"
   },
   {
     "id": "19374d81-2f5e-4c50-b158-888a7760eab7",
@@ -1326,8 +1458,9 @@
     "definition": "to form letters or numbers on a surface with a pen, pencil, etc.",
     "part_of_speech": "v.",
     "example_sentence": "I don't have anything to write with. Could I borrow a pen?",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "写；书写"
   },
   {
     "id": "0352729c-34ed-4f00-9c84-1722aceb2443",
@@ -1337,7 +1470,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The accident victim has already lost a lot of blood.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "血；血液；血统"
   },
   {
     "id": "d0458c99-1bed-449e-818e-7552568a3afe",
@@ -1347,7 +1481,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Have you bought any film for the camera?",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "电影；胶片；薄膜"
   },
   {
     "id": "a15136a9-65a8-4da8-b49c-cea6315dc68c",
@@ -1356,8 +1491,9 @@
     "definition": "a device that is used for weighing people or things",
     "part_of_speech": "n.",
     "example_sentence": "He stepped onto the bathroom scales.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "规模；比例；秤；鳞片"
   },
   {
     "id": "5d3af82d-d24d-42f6-b96c-d67d37d943c8",
@@ -1366,8 +1502,9 @@
     "definition": "a large animal that is used for riding and for carrying and pulling things",
     "part_of_speech": "n.",
     "example_sentence": "He still likes to bet on the horses.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "马"
   },
   {
     "id": "092f782c-e3ce-4eb6-be17-c10cfb4b5c3d",
@@ -1377,7 +1514,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The show was recorded on tape.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "磁带；胶带；录音"
   },
   {
     "id": "6db98c1c-8755-4c6e-88b3-d5f7d98dbeb7",
@@ -1386,8 +1524,9 @@
     "definition": "to be interested in or concerned about something",
     "part_of_speech": "v.",
     "example_sentence": "He doesn't care if he gets fired.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "关心；照顾；在意"
   },
   {
     "id": "fbb989a3-be89-4021-be61-7a63d2b916cc",
@@ -1396,8 +1535,9 @@
     "definition": "the thing that is measured as seconds, minutes, hours, days, years, etc.",
     "part_of_speech": "n.",
     "example_sentence": "The time passed slowly.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "时间；次数；时代"
   },
   {
     "id": "75565632-f1f7-4b17-9d28-4b9c5955ab03",
@@ -1407,7 +1547,8 @@
     "part_of_speech": "n.",
     "example_sentence": "I wanted to call you, but I never got the chance.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "机会；可能性；偶然"
   },
   {
     "id": "6d1249f3-f5f8-418d-96b0-880454d587d8",
@@ -1417,7 +1558,8 @@
     "part_of_speech": "n.",
     "example_sentence": "They nailed some boards over the broken window.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "木板；董事会；登机"
   },
   {
     "id": "69f591c8-9d77-4666-86c6-e4316ed351de",
@@ -1426,8 +1568,9 @@
     "definition": "an amount of money that is used for a special purpose",
     "part_of_speech": "n.",
     "example_sentence": "The concert will raise funds for research into Aids.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "基金；资金；资助"
   },
   {
     "id": "4d4bad6b-d971-42ab-b175-d36ba75e05cb",
@@ -1436,8 +1579,9 @@
     "definition": "to control the direction in which something (such as a ship, car, or airplane) moves",
     "part_of_speech": "v.",
     "example_sentence": "She steered the ship through the strait.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "驾驶；掌舵；引导"
   },
   {
     "id": "23745d9e-4171-4f79-b2ec-4d2cd55f4c38",
@@ -1447,7 +1591,8 @@
     "part_of_speech": "n.",
     "example_sentence": "I fell down and hurt my knee.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "膝盖"
   },
   {
     "id": "e17eaa4e-daa9-49c5-97d6-1df7b4539d43",
@@ -1456,8 +1601,9 @@
     "definition": "plural of that",
     "part_of_speech": "pron.",
     "example_sentence": "God helps those who help themselves.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "那些"
   },
   {
     "id": "ae4a727c-9c72-485b-b0de-1c997b135c47",
@@ -1466,8 +1612,9 @@
     "definition": "to move with your legs at a speed that is slower than running",
     "part_of_speech": "v.",
     "example_sentence": "Is your grandson walking yet?",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "走路；步行；散步"
   },
   {
     "id": "990d4bcd-68fb-4083-9b93-c1cf3d45e6bf",
@@ -1477,7 +1624,8 @@
     "part_of_speech": "v.",
     "example_sentence": "He is learning to drive.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "驾驶；驱动；推动"
   },
   {
     "id": "958a3ceb-9448-4197-a424-de4e3ed7bad4",
@@ -1486,8 +1634,9 @@
     "definition": "soft, white pieces of frozen water that fall to the ground from the sky in cold weather",
     "part_of_speech": "n.",
     "example_sentence": "Snow fell softly on the town.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "雪；下雪"
   },
   {
     "id": "a1a6d051-d70d-4b5e-809a-af98f5fae021",
@@ -1496,8 +1645,9 @@
     "definition": "an animal that has a long, thin body and no arms or legs",
     "part_of_speech": "n.",
     "example_sentence": "The back of this snake is green.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "蛇"
   },
   {
     "id": "03716f73-4028-49f0-89b9-9ff89e543198",
@@ -1507,7 +1657,8 @@
     "part_of_speech": "v.",
     "example_sentence": "The organization helps build houses for poor families.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "建造；建设；建立"
   },
   {
     "id": "d68a2806-adeb-4b6f-8f39-3dfa5275e9a3",
@@ -1517,7 +1668,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He paid the telephone bill.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "账单；钞票；法案"
   },
   {
     "id": "5554be21-5839-4508-9892-2b97f80c66b6",
@@ -1526,8 +1678,9 @@
     "definition": "an extremely famous and successful performer or athlete",
     "part_of_speech": "n.",
     "example_sentence": "His performance in that film made him a star.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "星星；明星；主演"
   },
   {
     "id": "ed8aa794-7b36-4885-9b18-20eac895bc70",
@@ -1537,7 +1690,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He broke a bone in his left arm.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "骨头；骨骼"
   },
   {
     "id": "62ccaa04-43a2-4345-b9a5-009c6a44db75",
@@ -1546,8 +1700,9 @@
     "definition": "to rest your mind and body by closing your eyes and becoming unconscious",
     "part_of_speech": "v.",
     "example_sentence": "I couldn't sleep last night. I was awake all night long.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "睡觉；睡眠"
   },
   {
     "id": "269db34f-2817-452f-b48e-045ae28f7591",
@@ -1556,8 +1711,9 @@
     "definition": "an eating or cooking tool that has a small shallow bowl attached to a handle",
     "part_of_speech": "n.",
     "example_sentence": "He stirred his coffee with a spoon.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "勺子；汤匙"
   },
   {
     "id": "a6e10286-27e5-4771-bff9-1e777606f5b6",
@@ -1567,7 +1723,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She tied a string around the boxes.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "绳子；线；弦；一串"
   },
   {
     "id": "25a676b7-9d3a-404d-8770-53bf7f6be63a",
@@ -1577,7 +1734,8 @@
     "part_of_speech": "n.",
     "example_sentence": "I can't get that tune out of my head.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "曲调；旋律；调音"
   },
   {
     "id": "67d92183-3c04-418e-abf0-2be94bff26a9",
@@ -1586,8 +1744,9 @@
     "definition": "having a pleasing and usually youthful appearance",
     "part_of_speech": "adj.",
     "example_sentence": "What a cute baby!",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "可爱的；漂亮的"
   },
   {
     "id": "787fa20c-d938-4f6e-bee4-8e995cddc5b0",
@@ -1596,8 +1755,9 @@
     "definition": "one of the flat and typically green parts of a plant that grow from a stem or twig",
     "part_of_speech": "n.",
     "example_sentence": "The trees have not yet come into leaf.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "叶子；树叶"
   },
   {
     "id": "ff727f7e-04d2-44a6-bb8b-9fa526dcf957",
@@ -1607,7 +1767,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She has a globe in her office.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "地球仪；地球；球体"
   },
   {
     "id": "44fd193d-624b-4175-8dbb-0a9233986e6d",
@@ -1617,7 +1778,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Have you ever been convicted of a crime?",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "犯罪；罪行"
   },
   {
     "id": "6fa090c4-87a4-46b1-8324-0b5658e26434",
@@ -1627,7 +1789,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The whale is the largest mammal.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "鲸鱼"
   },
   {
     "id": "9b248752-83d6-4392-bc00-a840fbf7d704",
@@ -1637,7 +1800,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Sharks have no natural enemies.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "鲨鱼"
   },
   {
     "id": "022282c5-ad17-43e2-abe5-05ea3773c987",
@@ -1647,7 +1811,8 @@
     "part_of_speech": "v.",
     "example_sentence": "The door slides open easily.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "滑动；滑梯；幻灯片"
   },
   {
     "id": "f84fc087-c406-4ef0-8808-53a153d3494a",
@@ -1657,7 +1822,8 @@
     "part_of_speech": "v.",
     "example_sentence": "We share a house together.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "分享；共享；股份"
   },
   {
     "id": "2e1a740f-1bb0-4ad5-8823-0c04f9a5f709",
@@ -1667,7 +1833,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She got out the cooking stuff to bake some cookies.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "东西；材料；填充"
   },
   {
     "id": "f0568e49-da6c-46e1-835a-54540ef87b65",
@@ -1677,7 +1844,8 @@
     "part_of_speech": "v.",
     "example_sentence": "Don't forget to pack your toothbrush.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "包装；打包；一包"
   },
   {
     "id": "ef2b4333-44c3-4e76-a608-cff08777eadf",
@@ -1687,7 +1855,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The entire staff has done a great job this year.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "员工；职员；工作人员"
   },
   {
     "id": "1aa2301a-aebb-438f-ae06-8cb76d9e9b00",
@@ -1696,8 +1865,9 @@
     "definition": "to stay in a place until an expected event happens, until someone arrives, until it is your turn to do something, etc.",
     "part_of_speech": "v.",
     "example_sentence": "I hate waiting in long lines.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "等待；等候"
   },
   {
     "id": "8503ca79-bc89-4885-b4c4-2a51e021b745",
@@ -1706,8 +1876,9 @@
     "definition": "to use your nose to sense smells",
     "part_of_speech": "v.",
     "example_sentence": "She leaned over and smelled the flowers.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "气味；闻；嗅觉"
   },
   {
     "id": "2626e9a6-472a-4391-906c-0749e1be8f58",
@@ -1716,8 +1887,9 @@
     "definition": "to say words in order to express your thoughts, feelings, opinions, etc., to someone",
     "part_of_speech": "v.",
     "example_sentence": "They were speaking in Japanese.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "说话；讲话；演讲"
   },
   {
     "id": "d2b602f5-f9fd-46cd-b6c4-ffbd28bc1e13",
@@ -1727,7 +1899,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He was leaning over the gate chewing on a straw.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "稻草；吸管"
   },
   {
     "id": "82b2a11f-5fa2-420d-8e8e-afbf40bbcd3b",
@@ -1737,7 +1910,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The bird built a nest out of small twigs.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "巢；窝；鸟巢"
   },
   {
     "id": "f764a1c2-84a1-41e6-b783-292585af0df6",
@@ -1747,7 +1921,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Drop your sword please.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "剑；刀"
   },
   {
     "id": "b145042d-4c25-4591-a1eb-f20574bf1f10",
@@ -1757,7 +1932,8 @@
     "part_of_speech": "v.",
     "example_sentence": "You lead and we'll follow right behind you.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "领导；引导；铅"
   },
   {
     "id": "259db433-d7e1-46c9-b3ae-3b00eb824fc3",
@@ -1766,8 +1942,9 @@
     "definition": "a hard flat surface for vehicles, people, and animals to travel on",
     "part_of_speech": "n.",
     "example_sentence": "We parked by the side of the road.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "道路；公路"
   },
   {
     "id": "983ea8e9-3005-490d-9983-43417ab3b24e",
@@ -1776,8 +1953,9 @@
     "definition": "new information or a report about something that has happened recently",
     "part_of_speech": "n.",
     "example_sentence": "Do you have any news to report?",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "新闻；消息"
   },
   {
     "id": "02f1165a-d1c2-4c21-8338-beda9d8f3247",
@@ -1786,8 +1964,9 @@
     "definition": "liquid that is forced out of a container in a stream of very small drops",
     "part_of_speech": "n.",
     "example_sentence": "The paint was applied in a fine spray.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "喷雾；喷洒；浪花"
   },
   {
     "id": "f7151082-6da6-4eeb-824d-9b8d069f0c0c",
@@ -1797,7 +1976,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The current system causes a lot of waste.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "浪费；废物；废弃"
   },
   {
     "id": "3cdbff2c-ecd1-420c-b4a7-0722df380db6",
@@ -1806,8 +1986,9 @@
     "definition": "a series of thoughts, visions, or feelings that happen during sleep",
     "part_of_speech": "n.",
     "example_sentence": "He had a dream about climbing a mountain.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "梦；梦想；做梦"
   },
   {
     "id": "53a0f63f-a74a-4515-8fef-ff4b1439a24e",
@@ -1817,7 +1998,8 @@
     "part_of_speech": "n.",
     "example_sentence": "There was a long pause in the conversation.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "暂停；停顿"
   },
   {
     "id": "3e4d4458-6aa7-4fc2-be16-c454b3af1410",
@@ -1826,8 +2008,9 @@
     "definition": "to press together the parts and especially the opposite sides of (something)",
     "part_of_speech": "v.",
     "example_sentence": "Squeeze the bottle.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 3,
+    "category": "grade3",
+    "definition_cn": "挤压；压榨；拥挤"
   },
   {
     "id": "b8746130-200a-479e-99f4-75ed3916033f",
@@ -1836,8 +2019,9 @@
     "definition": "morally or socially correct or acceptable",
     "part_of_speech": "adj.",
     "example_sentence": "Stealing is not right.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "正确的；右边；权利"
   },
   {
     "id": "30d30392-170f-46a1-b9e2-5d84e01741b1",
@@ -1847,7 +2031,8 @@
     "part_of_speech": "v.",
     "example_sentence": "I had been warned about the difficulties of the job.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "警告；提醒"
   },
   {
     "id": "40db3cc2-2f18-4b48-a985-5e194cc338b0",
@@ -1857,7 +2042,8 @@
     "part_of_speech": "n.",
     "example_sentence": "We collected shells at the beach.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "贝壳；壳；炮弹"
   },
   {
     "id": "1fc9e03a-65a1-4371-8527-c2add03d80fc",
@@ -1866,8 +2052,9 @@
     "definition": "the direction that is to your right when you are facing the rising sun",
     "part_of_speech": "n.",
     "example_sentence": "The nearest town is 20 miles to the south (of here).",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "南方；南部"
   },
   {
     "id": "5f5b0b4a-1d0e-4b3c-9087-75226eab8036",
@@ -1877,7 +2064,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Her grades are better this semester.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "年级；等级；成绩"
   },
   {
     "id": "fdf075ff-2a80-4b50-9491-1f4465d92378",
@@ -1887,7 +2075,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He read great literature to develop his mind.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "思想；头脑；介意"
   },
   {
     "id": "9edaf99a-a7da-4d28-a102-e470a54b9934",
@@ -1896,8 +2085,9 @@
     "definition": "the ability to grow, change, etc., that separates plants and animals from things like water or rocks",
     "part_of_speech": "n.",
     "example_sentence": "He believes that God gives life to all creatures.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "生命；生活；人生"
   },
   {
     "id": "a2768e1f-3851-4451-8347-843ad6bc692f",
@@ -1906,8 +2096,9 @@
     "definition": "a flat and usually round dish that is used for eating or serving food",
     "part_of_speech": "n.",
     "example_sentence": "Anita pushed her plate away; she had eaten virtually nothing.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "盘子；碟子；板"
   },
   {
     "id": "36002d9b-2b20-44e3-9b35-b9bd9bc5e69a",
@@ -1917,7 +2108,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He plays the role of the villain.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "角色；作用；职责"
   },
   {
     "id": "1cfa5244-e010-4fbb-a4a6-4d2c2d6bb7cc",
@@ -1926,8 +2118,9 @@
     "definition": "to move your body in a way that goes with the rhythm and style of music that is being played",
     "part_of_speech": "v.",
     "example_sentence": "He never learned how to dance.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "跳舞；舞蹈"
   },
   {
     "id": "c1ad0d7a-5791-4df0-86b0-d44ba0b4f463",
@@ -1987,7 +2180,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Settlers came to this area from the east.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "区域"
   },
   {
     "id": "3702c46e-9492-4e7d-8f4b-8dd124cb62b8",
@@ -2016,8 +2210,9 @@
     "definition": "an adult female human being",
     "part_of_speech": "n.",
     "example_sentence": "She was a shy and awkward girl who grew up to become a confident and beautiful woman.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "女人；妇女"
   },
   {
     "id": "253c7f72-d74c-4b3b-9a43-01ab27820cb6",
@@ -2037,7 +2232,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She is a student at Georgetown University.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "学生"
   },
   {
     "id": "5f77f4d1-d01f-4c62-8684-9072bd3afc7a",
@@ -2057,7 +2253,8 @@
     "part_of_speech": "adv.",
     "example_sentence": "We have to finish today.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "今天"
   },
   {
     "id": "eef88f8a-781e-404d-bed7-a35c06efda48",
@@ -2087,7 +2284,8 @@
     "part_of_speech": "prep.",
     "example_sentence": "The wheel went around and around.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "周围"
   },
   {
     "id": "d7e8f6f4-63e8-48ac-b654-735bf23da372",
@@ -2137,7 +2335,8 @@
     "part_of_speech": "n.",
     "example_sentence": "We are having a party.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "派对"
   },
   {
     "id": "c31e2859-3bce-4af6-8cbd-9c73b74269fb",
@@ -2147,7 +2346,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The two countries have a lot in common.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "国家；乡村"
   },
   {
     "id": "fee20ad5-8d22-4bbd-8231-f7810fb20814",
@@ -2167,7 +2367,8 @@
     "part_of_speech": "n.",
     "example_sentence": "What are your plans for this summer?",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "夏天"
   },
   {
     "id": "36d80b52-5443-41aa-a564-5718123b505d",
@@ -2197,7 +2398,8 @@
     "part_of_speech": "n.",
     "example_sentence": "I asked him a simple question and he gave me a long and confusing answer.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "回答"
   },
   {
     "id": "e4a73274-4147-46f9-91c8-0f66e5970e9b",
@@ -2257,7 +2459,8 @@
     "part_of_speech": "adv.",
     "example_sentence": "Maybe we'll meet again.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "也许"
   },
   {
     "id": "b7cff31d-f539-4636-93a9-462207dfbceb",
@@ -2297,7 +2500,8 @@
     "part_of_speech": "n.",
     "example_sentence": "We had many pleasant dinners together.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "晚餐"
   },
   {
     "id": "7eb1eb38-07d8-4933-a6b0-48f98c946577",
@@ -2327,7 +2531,8 @@
     "part_of_speech": "v.",
     "example_sentence": "The scientists believed the reports.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "相信"
   },
   {
     "id": "73208257-3b9f-498f-932d-fb80d57cd122",
@@ -2346,8 +2551,9 @@
     "definition": "to have the same opinion",
     "part_of_speech": "v.",
     "example_sentence": "We agreed about some things, but we disagreed about others.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "同意；赞成"
   },
   {
     "id": "b75c13d7-aaf5-4cf8-a711-9d8590f726b8",
@@ -2357,7 +2563,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "He told a funny story.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "有趣的"
   },
   {
     "id": "eac9e971-e027-4495-9ae7-626f1996961c",
@@ -2417,7 +2624,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Bake the cake for 25-30 minutes.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "分钟"
   },
   {
     "id": "6e29bce8-b0d9-4f38-9a9e-7b620d8dae79",
@@ -2457,7 +2665,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "They lost by a single point.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "单一的"
   },
   {
     "id": "2c7ada21-9109-47b1-8aec-7f72f464c5cf",
@@ -2487,7 +2696,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She watched the sun set behind the mountains.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "山"
   },
   {
     "id": "115ec6bb-6c87-459e-8837-3445fcb30a96",
@@ -2497,7 +2707,8 @@
     "part_of_speech": "v.",
     "example_sentence": "He presented the queen with a diamond necklace.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "现在；礼物"
   },
   {
     "id": "bcee5307-803b-45aa-ab5c-03fb46da338d",
@@ -2567,7 +2778,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The captain was barking out orders to the crew.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "顺序；命令；订购"
   },
   {
     "id": "b3cd1ff3-6f8e-4916-aa41-09c8bbfc6d75",
@@ -2627,7 +2839,8 @@
     "part_of_speech": "n.",
     "example_sentence": "What a pleasant surprise to see you!",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "惊喜"
   },
   {
     "id": "d6a6e302-e756-4551-88fa-51604b35d72f",
@@ -2637,7 +2850,8 @@
     "part_of_speech": "n.",
     "example_sentence": "We met all sorts of people on the trip.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "人们"
   },
   {
     "id": "0671abab-3784-4258-9a94-33c327549eeb",
@@ -2717,7 +2931,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "Recent events have brought attention to the problem.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "最近的"
   },
   {
     "id": "cdc04158-8531-4c18-9478-96da7c9e8d64",
@@ -2747,7 +2962,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "He spoke in a very quiet voice.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "安静的"
   },
   {
     "id": "d8046d33-57b2-4369-bd66-483d81fc12da",
@@ -2767,7 +2983,8 @@
     "part_of_speech": "adv.",
     "example_sentence": "Always lock your car.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "总是"
   },
   {
     "id": "a20da798-696f-42c5-944c-4a8b743a7cfe",
@@ -2797,7 +3014,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "He is a careful driver.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "小心的"
   },
   {
     "id": "69afe505-775d-4b58-8d76-947aedbf2676",
@@ -2807,7 +3025,8 @@
     "part_of_speech": "conj.",
     "example_sentence": "I ran because I was afraid.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "因为"
   },
   {
     "id": "e41c8375-2df9-4326-abc2-5da5f87af784",
@@ -2817,7 +3036,8 @@
     "part_of_speech": "n.",
     "example_sentence": "We planted a small garden in our backyard.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "花园"
   },
   {
     "id": "17e7224e-ad07-4f0b-87c2-611f827e5ceb",
@@ -2837,7 +3057,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Fires destroyed acres of forest.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "森林"
   },
   {
     "id": "50e254cc-0a1e-4b29-bdcf-518fc8319f58",
@@ -2847,7 +3068,8 @@
     "part_of_speech": "v.",
     "example_sentence": "Please forward my mail to my new address.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "向前"
   },
   {
     "id": "decd2c0d-cea9-4954-95b2-24670c77a74a",
@@ -2907,7 +3129,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "Are you making a local (telephone) call or a long-distance one?",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "当地的；本地的"
   },
   {
     "id": "843893b0-df2b-4aad-9b99-874628dff5c6",
@@ -2917,7 +3140,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "Neither answer is correct.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "两者都不"
   },
   {
     "id": "bb0f0db1-bea9-44d6-a62d-0fabd4f58d67",
@@ -2947,7 +3171,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She works at our Chicago office.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "办公室"
   },
   {
     "id": "8b099957-66db-4717-bf0b-354f197ebf4c",
@@ -2967,7 +3192,8 @@
     "part_of_speech": "n.",
     "example_sentence": "Don't stick your fingers in the cookie batter!",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "手指"
   },
   {
     "id": "9e0759d8-925a-42e1-a674-e5da376b5a9c",
@@ -3057,7 +3283,8 @@
     "part_of_speech": "v.",
     "example_sentence": "She argued against the proposed law.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "争论；辩论"
   },
   {
     "id": "32ba843c-9d4a-4089-84d6-7869492af740",
@@ -3067,7 +3294,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The book is the result of years of hard work and dedication.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "结果"
   },
   {
     "id": "48ed49ac-53e6-4078-8d03-78b1fb05956a",
@@ -3087,7 +3315,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "She has poor social skills.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "社会的"
   },
   {
     "id": "124029a7-5405-4e5b-93e3-4e74341b07e3",
@@ -3107,7 +3336,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "She was silent for a few minutes as she thought about how to answer him.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "沉默的"
   },
   {
     "id": "b3985f74-25d3-4d58-9975-964ba608fea8",
@@ -3117,7 +3347,8 @@
     "part_of_speech": "prep.",
     "example_sentence": "Everyone was against them.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "反对"
   },
   {
     "id": "05ecf073-404f-41f0-9d6c-7bc79a03b917",
@@ -3147,7 +3378,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "He returned to the country on his private jet.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "私人的"
   },
   {
     "id": "c54c9585-8186-4f85-adb8-f8687dd86777",
@@ -3176,8 +3408,9 @@
     "definition": "to go or come into (something)",
     "part_of_speech": "v.",
     "example_sentence": "Knock on the door before you enter the room.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "进入；输入"
   },
   {
     "id": "7a025965-7f1e-4ed0-8968-1e82eaa36865",
@@ -3207,7 +3440,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "They have a common ancestor.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "常见的"
   },
   {
     "id": "e5a8a82b-569c-42b3-9a32-716bdb6c83ff",
@@ -3217,7 +3451,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The pictures were hung on the wall at eye level.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "水平；级别；平坦的"
   },
   {
     "id": "e1946b17-a2c6-46bf-a360-2daaec93863f",
@@ -3227,7 +3462,8 @@
     "part_of_speech": "n.",
     "example_sentence": "The article recounted the events of the past year.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "事件；活动"
   },
   {
     "id": "f39a9a11-8e76-4bdf-8ffa-df42443fa5fc",
@@ -3257,7 +3493,8 @@
     "part_of_speech": "n.",
     "example_sentence": "How's the weather?",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "天气"
   },
   {
     "id": "aac98ec4-2736-4964-975f-655d172bb9e6",
@@ -3267,7 +3504,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "We sat in the second row.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "第二"
   },
   {
     "id": "9e273b12-e40f-4718-aee1-33b9c2110642",
@@ -3276,8 +3514,9 @@
     "definition": "sounds that are sung by voices or played on musical instruments",
     "part_of_speech": "n.",
     "example_sentence": "This is one of my favorite pieces of music.",
-    "difficulty": 2,
-    "category": "grade3"
+    "difficulty": 1,
+    "category": "grade3",
+    "definition_cn": "音乐"
   },
   {
     "id": "ca75b788-72f7-4144-82bd-a7de3c839d69",
@@ -3317,7 +3556,8 @@
     "part_of_speech": "adv.",
     "example_sentence": "She could hardly bear to look at him.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "几乎不"
   },
   {
     "id": "eb4b035d-44bb-4c59-a7f0-700da9b0a456",
@@ -3337,7 +3577,8 @@
     "part_of_speech": "n.",
     "example_sentence": "I hung the picture on the wall.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "图片"
   },
   {
     "id": "c85a4b58-25fc-4ac9-81c9-97d0a63f71bf",
@@ -3347,7 +3588,8 @@
     "part_of_speech": "adv.",
     "example_sentence": "I will never shop at that store again.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "从不"
   },
   {
     "id": "43b9aaaa-e202-4e78-9f1b-1f68812aed9f",
@@ -3367,7 +3609,8 @@
     "part_of_speech": "prep.",
     "example_sentence": "The disease spread quickly among the members of the community.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "在...之中"
   },
   {
     "id": "df61c95a-802e-4fdd-bc98-3c69974e95cc",
@@ -3377,7 +3620,8 @@
     "part_of_speech": "prep.",
     "example_sentence": "The ball rolled between the desk and the wall.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "在...之间"
   },
   {
     "id": "17a21ce5-1c00-476a-a8c1-10953d89a32e",
@@ -3427,7 +3671,8 @@
     "part_of_speech": "n.",
     "example_sentence": "She studied her image in the mirror.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "图像；形象；印象"
   },
   {
     "id": "61cef22c-02fe-4411-9b72-a94b864e0618",
@@ -3477,7 +3722,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "She has a pretty face.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "漂亮的"
   },
   {
     "id": "8461d301-399b-4c4f-b267-73490572f65f",
@@ -3497,7 +3743,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "He will buy a new car as soon as he is able.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "能够"
   },
   {
     "id": "2aea84e5-ba3c-4aca-a593-5eb42c4726c8",
@@ -3617,7 +3864,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "It's impossible to predict the future.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "不可能的"
   },
   {
     "id": "dd75d4b0-3298-41d4-bb90-0ab139bce45e",
@@ -3627,7 +3875,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "She's busy preparing for her test.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "忙碌的"
   },
   {
     "id": "541de5bd-5056-4c33-8429-b2cbc542c9c9",
@@ -3637,7 +3886,8 @@
     "part_of_speech": "n.",
     "example_sentence": "I think you have the wrong number.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "数字"
   },
   {
     "id": "f0085509-5a1b-4245-92df-febc81dfd0d5",
@@ -3647,7 +3897,8 @@
     "part_of_speech": "n.",
     "example_sentence": "He promises to do better in future.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "未来"
   },
   {
     "id": "c86f2068-c5e8-4448-b5fc-9cfdd76ca44f",
@@ -3677,7 +3928,8 @@
     "part_of_speech": "adj.",
     "example_sentence": "The team's mascot is a giant swan.",
     "difficulty": 2,
-    "category": "grade3"
+    "category": "grade3",
+    "definition_cn": "巨人；巨大的"
   },
   {
     "id": "6183333c-ec8d-4663-be0c-cecb403445d4",

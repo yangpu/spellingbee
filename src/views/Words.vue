@@ -227,7 +227,8 @@ const columns = [
   { colKey: 'word', title: '单词', width: 180 },
   { colKey: 'pronunciation', title: '音标', width: 140 },
   { colKey: 'part_of_speech', title: '词性', width: 100 },
-  { colKey: 'definition', title: '释义', ellipsis: true },
+  { colKey: 'definition_cn', title: '中文释义', width: 150, ellipsis: true },
+  { colKey: 'definition', title: '英文释义', ellipsis: true },
   { colKey: 'difficulty', title: '难度', width: 120 },
   { colKey: 'category', title: '分类', width: 100 },
   { colKey: 'operation', title: '操作', width: 120 }

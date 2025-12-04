@@ -38,6 +38,19 @@
         <t-progress :percentage="((currentIndex + 1) / learnWords.length) * 100" theme="plump" />
       </div>
 
+      <!-- Auto Learn Toggle -->
+      <div class="auto-learn-bar">
+        <t-button 
+          :theme="isAutoLearning ? 'danger' : 'default'" 
+          variant="outline"
+          @click="toggleAutoLearn"
+        >
+          <template #icon><t-icon :name="isAutoLearning ? 'pause' : 'play-circle'" /></template>
+          {{ isAutoLearning ? '停止自动学习' : '自动学习' }}
+        </t-button>
+        <span v-if="isAutoLearning" class="auto-status">自动学习中...</span>
+      </div>
+
       <!-- Card -->
       <div class="word-card" :class="{ 'card-flipped': isFlipped }">
         <div class="card-inner">
@@ -45,13 +58,18 @@
           <div class="card-front">
             <div class="card-content">
               <div class="word-display" @click="speakWord">
-                {{ currentWord.word }}
+                <span 
+                  v-for="(char, i) in currentWord.word.split('')" 
+                  :key="i"
+                  class="word-char"
+                  :class="{ 'char-highlighted': i < highlightedLetterIndex }"
+                >{{ char }}</span>
                 <t-button variant="text" size="small" class="speak-btn">
                   <template #icon><t-icon name="sound" size="24px" /></template>
                 </t-button>
               </div>
               <div class="word-pronunciation">{{ currentWord.pronunciation }}</div>
-              <p class="hint-text">点击卡片查看释义</p>
+              <p class="hint-text">点击卡片查看释义，或按空格键翻转</p>
             </div>
           </div>
           
@@ -64,6 +82,9 @@
                 <t-tag theme="primary" variant="light">{{ currentWord.part_of_speech }}</t-tag>
               </div>
               <div class="word-definition">{{ currentWord.definition }}</div>
+              <div class="word-definition-cn" v-if="currentWord.definition_cn">
+                {{ currentWord.definition_cn }}
+              </div>
               <div class="word-example" v-if="currentWord.example_sentence">
                 <t-icon name="chat" />
                 {{ currentWord.example_sentence }}
@@ -78,11 +99,11 @@
 
       <!-- Actions -->
       <div class="card-actions">
-        <t-button variant="outline" size="large" @click="markReview" :disabled="isFlipped === false">
+        <t-button variant="outline" size="large" @click="markReview">
           <template #icon><t-icon name="refresh" /></template>
           需要复习
         </t-button>
-        <t-button theme="primary" size="large" @click="markMastered" :disabled="isFlipped === false">
+        <t-button theme="primary" size="large" @click="markMastered">
           <template #icon><t-icon name="check" /></template>
           已掌握
         </t-button>
@@ -138,7 +159,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useWordsStore } from '@/stores/words'
 
 const wordsStore = useWordsStore()
@@ -158,6 +179,11 @@ const currentIndex = ref(0)
 const masteredWords = ref([])
 const reviewWords = ref([])
 
+// Auto learning state
+const isAutoLearning = ref(false)
+const highlightedLetterIndex = ref(0)
+const autoLearnTimer = ref(null)
+
 // Computed
 const currentWord = computed(() => learnWords.value[currentIndex.value] || null)
 const masteredCount = computed(() => masteredWords.value.length)
@@ -175,39 +201,152 @@ function startLearning() {
   isLearning.value = true
   isCompleted.value = false
   isFlipped.value = false
+  highlightedLetterIndex.value = 0
+  
+  // Auto speak word when card shows
+  setTimeout(() => speakWord(), 300)
 }
 
 function flipCard() {
   isFlipped.value = !isFlipped.value
+  if (isFlipped.value) {
+    // Speak definition when flipping to back (Chinese first, then English)
+    speakDefinition()
+  }
 }
 
 function speakWord() {
   if (!currentWord.value) return
+  speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(currentWord.value.word)
   utterance.lang = 'en-US'
   utterance.rate = 0.8
   speechSynthesis.speak(utterance)
 }
 
+function speakDefinition() {
+  if (!currentWord.value) return
+  speechSynthesis.cancel()
+  
+  // Speak Chinese definition if available, otherwise English
+  if (currentWord.value.definition_cn) {
+    const utterance = new SpeechSynthesisUtterance(currentWord.value.definition_cn)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 0.9
+    speechSynthesis.speak(utterance)
+  } else if (currentWord.value.definition) {
+    const utterance = new SpeechSynthesisUtterance(currentWord.value.definition)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.8
+    speechSynthesis.speak(utterance)
+  }
+}
+
+function speakDefinitionForWord(word) {
+  if (!word) return
+  speechSynthesis.cancel()
+  
+  // Speak Chinese definition if available, otherwise English
+  if (word.definition_cn) {
+    const utterance = new SpeechSynthesisUtterance(word.definition_cn)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 0.9
+    speechSynthesis.speak(utterance)
+  } else if (word.definition) {
+    const utterance = new SpeechSynthesisUtterance(word.definition)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.8
+    speechSynthesis.speak(utterance)
+  }
+}
+
+function speakLetters(word, onComplete) {
+  if (!word || !isAutoLearning.value) {
+    if (onComplete) onComplete()
+    return
+  }
+  
+  const letters = word.split('')
+  let index = 0
+  highlightedLetterIndex.value = 0
+  
+  function speakNextLetter() {
+    if (!isAutoLearning.value) return
+    
+    if (index >= letters.length) {
+      if (onComplete) onComplete()
+      return
+    }
+    
+    // 先高亮当前字母
+    highlightedLetterIndex.value = index + 1
+    
+    // 延迟一小段时间后再朗读，让用户看到高亮
+    autoLearnTimer.value = setTimeout(() => {
+      if (!isAutoLearning.value) return
+      
+      const letter = letters[index]
+      const utterance = new SpeechSynthesisUtterance(letter)
+      utterance.lang = 'en-US'
+      utterance.rate = 0.7
+      
+      utterance.onend = () => {
+        if (!isAutoLearning.value) return
+        index++
+        autoLearnTimer.value = setTimeout(speakNextLetter, 200)
+      }
+      
+      utterance.onerror = () => {
+        // 出错时继续下一个字母
+        if (!isAutoLearning.value) return
+        index++
+        autoLearnTimer.value = setTimeout(speakNextLetter, 200)
+      }
+      
+      speechSynthesis.speak(utterance)
+    }, 150)
+  }
+  
+  speakNextLetter()
+}
+
 function markMastered() {
-  if (!isFlipped.value || !currentWord.value) return
+  if (!currentWord.value) return
+  stopAutoLearn()
   masteredWords.value.push(currentWord.value)
   nextWord()
 }
 
 function markReview() {
-  if (!isFlipped.value || !currentWord.value) return
+  if (!currentWord.value) return
+  stopAutoLearn()
   reviewWords.value.push(currentWord.value)
   nextWord()
 }
 
 function nextWord() {
   if (currentIndex.value < learnWords.value.length - 1) {
+    const wasAutoLearning = isAutoLearning.value
     currentIndex.value++
     isFlipped.value = false
+    highlightedLetterIndex.value = 0
+    
+    // 使用 nextTick 确保 currentWord 已更新
+    if (wasAutoLearning) {
+      // 自动学习模式：延迟启动下一轮循环
+      autoLearnTimer.value = setTimeout(() => {
+        if (isAutoLearning.value && currentWord.value) {
+          startAutoLearnCycle()
+        }
+      }, 500)
+    } else {
+      // 手动模式：自动朗读新单词
+      setTimeout(() => speakWord(), 300)
+    }
   } else {
     isCompleted.value = true
     isLearning.value = false
+    isAutoLearning.value = false
   }
 }
 
@@ -219,11 +358,126 @@ function continueLearning() {
   isLearning.value = true
   isCompleted.value = false
   isFlipped.value = false
+  highlightedLetterIndex.value = 0
+  
+  setTimeout(() => speakWord(), 300)
 }
 
 function startNew() {
   isCompleted.value = false
   startLearning()
+}
+
+// Auto Learning Functions
+function toggleAutoLearn() {
+  if (isAutoLearning.value) {
+    stopAutoLearn()
+  } else {
+    startAutoLearn()
+  }
+}
+
+function startAutoLearn() {
+  isAutoLearning.value = true
+  startAutoLearnCycle()
+}
+
+function stopAutoLearn() {
+  isAutoLearning.value = false
+  if (autoLearnTimer.value) {
+    clearTimeout(autoLearnTimer.value)
+    autoLearnTimer.value = null
+  }
+  speechSynthesis.cancel()
+}
+
+function startAutoLearnCycle() {
+  if (!isAutoLearning.value || !currentWord.value) return
+  
+  // 清除之前的定时器
+  if (autoLearnTimer.value) {
+    clearTimeout(autoLearnTimer.value)
+    autoLearnTimer.value = null
+  }
+  
+  // 保存当前单词引用，防止异步过程中单词变化
+  const wordToLearn = currentWord.value
+  
+  // Step 1: Speak the word
+  speechSynthesis.cancel()
+  
+  // 等待 cancel 生效
+  autoLearnTimer.value = setTimeout(() => {
+    if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+    
+    const wordUtterance = new SpeechSynthesisUtterance(wordToLearn.word)
+    wordUtterance.lang = 'en-US'
+    wordUtterance.rate = 0.7
+    
+    wordUtterance.onend = () => {
+      if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+      
+      // Step 2: Spell out letters with highlighting
+      autoLearnTimer.value = setTimeout(() => {
+        if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+        
+        speakLetters(wordToLearn.word, () => {
+          if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+          
+          // Step 3: Flip card
+          autoLearnTimer.value = setTimeout(() => {
+            if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+            isFlipped.value = true
+            
+            // Step 3.5: Speak definition after flip
+            autoLearnTimer.value = setTimeout(() => {
+              if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+              speakDefinitionForWord(wordToLearn)
+            }, 300)
+            
+            // Step 4: Wait and move to next word
+            autoLearnTimer.value = setTimeout(() => {
+              if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+              masteredWords.value.push(wordToLearn)
+              nextWord()
+            }, 3000)
+          }, 500)
+        })
+      }, 500)
+    }
+    
+    wordUtterance.onerror = () => {
+      // 语音出错时，跳过朗读直接进入拼读
+      if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+      
+      autoLearnTimer.value = setTimeout(() => {
+        if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+        
+        speakLetters(wordToLearn.word, () => {
+          if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+          
+          autoLearnTimer.value = setTimeout(() => {
+            if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+            isFlipped.value = true
+            
+            // Speak definition after flip
+            autoLearnTimer.value = setTimeout(() => {
+              if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+              speakDefinitionForWord(wordToLearn)
+            }, 300)
+            
+            autoLearnTimer.value = setTimeout(() => {
+              if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+              masteredWords.value.push(wordToLearn)
+              nextWord()
+            }, 3000)
+          }, 500)
+        })
+      }, 500)
+    }
+    
+    speechSynthesis.speak(wordUtterance)
+  }, 100)
 }
 
 // Keyboard shortcuts
@@ -236,16 +490,23 @@ function handleKeydown(e) {
       flipCard()
       break
     case 'ArrowLeft':
-      if (isFlipped.value) markReview()
+      markReview()
       break
     case 'ArrowRight':
-      if (isFlipped.value) markMastered()
+      markMastered()
       break
     case 'Enter':
       speakWord()
       break
   }
 }
+
+// Watch for word changes to auto-speak
+watch(currentWord, (newWord) => {
+  if (newWord && isLearning.value && !isAutoLearning.value) {
+    highlightedLetterIndex.value = 0
+  }
+})
 
 onMounted(() => {
   wordsStore.init()
@@ -254,6 +515,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  stopAutoLearn()
+  speechSynthesis.cancel()
 })
 </script>
 
@@ -302,7 +565,7 @@ onUnmounted(() => {
 
   .learning-container {
     .progress-bar {
-      margin-bottom: 2rem;
+      margin-bottom: 1rem;
 
       .progress-info {
         display: flex;
@@ -310,6 +573,20 @@ onUnmounted(() => {
         margin-bottom: 0.5rem;
         font-size: 0.9rem;
         color: var(--text-secondary);
+      }
+    }
+
+    .auto-learn-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      justify-content: center;
+
+      .auto-status {
+        color: var(--honey-600);
+        font-weight: 500;
+        animation: pulse 1.5s ease-in-out infinite;
       }
     }
   }
@@ -374,11 +651,20 @@ onUnmounted(() => {
       position: relative;
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.1rem;
+
+      .word-char {
+        transition: color 0.3s ease;
+        
+        &.char-highlighted {
+          color: var(--success);
+        }
+      }
 
       .speak-btn {
         opacity: 0.5;
         transition: opacity 0.2s;
+        margin-left: 0.5rem;
 
         &:hover {
           opacity: 1;
@@ -408,6 +694,12 @@ onUnmounted(() => {
       font-size: 1.25rem;
       color: var(--charcoal-700);
       line-height: 1.6;
+      margin-bottom: 0.5rem;
+    }
+
+    .word-definition-cn {
+      font-size: 1.1rem;
+      color: var(--charcoal-600);
       margin-bottom: 1rem;
     }
 
@@ -514,6 +806,11 @@ onUnmounted(() => {
   }
 }
 
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 @media (max-width: 768px) {
   .learn-page {
     .word-card {
@@ -542,4 +839,3 @@ onUnmounted(() => {
   }
 }
 </style>
-

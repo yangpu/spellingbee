@@ -31,7 +31,6 @@
         <t-button
           v-if="!authStore.user"
           theme="primary"
-          variant="outline"
           @click="showAuthDialog = true"
         >
           登录
@@ -53,6 +52,10 @@
         </transition>
       </router-view>
     </main>
+
+    <footer class="app-footer">
+      <span>©️版权所有：杨若即 · yangruoji@outlook.com</span>
+    </footer>
 
     <!-- Auth Dialog -->
     <t-dialog
@@ -250,6 +253,15 @@ authStore.init();
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
+}
+
+.app-footer {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-card);
 }
 
 .auth-actions {
