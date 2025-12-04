@@ -224,6 +224,38 @@ function speakWord() {
   speechSynthesis.speak(utterance)
 }
 
+// 获取最佳中文语音
+function getBestChineseVoice() {
+  const voices = speechSynthesis.getVoices()
+  
+  // 优先选择的中文语音（按优先级排序）
+  const preferredVoices = [
+    'Tingting',           // macOS 优质女声
+    'Sinji',              // macOS 粤语
+    'Meijia',             // macOS 台湾女声
+    'Lili',               // macOS 女声
+    'Microsoft Xiaoxiao', // Windows 优质女声
+    'Microsoft Yunxi',    // Windows 男声
+    'Google 普通话',       // Chrome
+    'Google 中文',
+  ]
+  
+  // 按优先级查找
+  for (const preferred of preferredVoices) {
+    const voice = voices.find(v => v.name.includes(preferred))
+    if (voice) return voice
+  }
+  
+  // 回退：查找任何中文语音
+  const chineseVoice = voices.find(v => 
+    v.lang.startsWith('zh') || 
+    v.name.includes('Chinese') || 
+    v.name.includes('中文')
+  )
+  
+  return chineseVoice || null
+}
+
 function speakDefinition() {
   if (!currentWord.value) return
   speechSynthesis.cancel()
@@ -232,7 +264,14 @@ function speakDefinition() {
   if (currentWord.value.definition_cn) {
     const utterance = new SpeechSynthesisUtterance(currentWord.value.definition_cn)
     utterance.lang = 'zh-CN'
-    utterance.rate = 0.9
+    utterance.rate = 1.0
+    
+    // 选择最佳中文语音
+    const chineseVoice = getBestChineseVoice()
+    if (chineseVoice) {
+      utterance.voice = chineseVoice
+    }
+    
     speechSynthesis.speak(utterance)
   } else if (currentWord.value.definition) {
     const utterance = new SpeechSynthesisUtterance(currentWord.value.definition)
@@ -250,7 +289,14 @@ function speakDefinitionForWord(word) {
   if (word.definition_cn) {
     const utterance = new SpeechSynthesisUtterance(word.definition_cn)
     utterance.lang = 'zh-CN'
-    utterance.rate = 0.9
+    utterance.rate = 1.0
+    
+    // 选择最佳中文语音
+    const chineseVoice = getBestChineseVoice()
+    if (chineseVoice) {
+      utterance.voice = chineseVoice
+    }
+    
     speechSynthesis.speak(utterance)
   } else if (word.definition) {
     const utterance = new SpeechSynthesisUtterance(word.definition)
