@@ -2,11 +2,18 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
+import { readFileSync } from 'fs'
 
 const isProduction = process.env.NODE_ENV === 'production'
 const base = isProduction ? '/spellingbee/' : '/'
 
+// 读取 package.json 获取版本号
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version)
+  },
   plugins: [
     vue(),
     VitePWA({

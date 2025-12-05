@@ -55,6 +55,7 @@
 
     <footer class="app-footer">
       <span>©️版权所有：杨若即 · yangruoji@outlook.com</span>
+      <span class="version">v{{ appVersion }}</span>
     </footer>
 
     <!-- Auth Dialog -->
@@ -110,6 +111,7 @@ import { MessagePlugin } from 'tdesign-vue-next';
 import { useAuthStore } from '@/stores/auth';
 
 const baseUrl = import.meta.env.BASE_URL;
+const appVersion = __APP_VERSION__;
 
 const authStore = useAuthStore();
 const showAuthDialog = ref(false);
@@ -256,12 +258,23 @@ authStore.init();
 }
 
 .app-footer {
-  text-align: center;
-  padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
   color: var(--text-muted);
   font-size: 0.85rem;
   border-top: 1px solid var(--border-color);
   background: var(--bg-card);
+  
+  .version {
+    padding: 0.15rem 0.5rem;
+    background: var(--hover-bg);
+    border-radius: 4px;
+    font-family: 'SF Mono', Monaco, monospace;
+    font-size: 0.75rem;
+  }
 }
 
 .auth-actions {

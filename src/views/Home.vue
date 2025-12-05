@@ -149,11 +149,62 @@
         </div>
       </div>
     </section>
+
+        <!-- Install App Section -->
+        <section class="install-app">
+      <div class="install-content">
+        <div class="install-icon">
+          <t-icon name="download" size="48px" />
+        </div>
+        <div class="install-text">
+          <h2>安装到桌面</h2>
+          <p>将 Spelling Bee 安装到您的设备，即可像原生应用一样快速启动，离线使用。</p>
+        </div>
+        <div class="install-actions">
+          <t-button
+            v-if="canInstall"
+            theme="primary"
+            size="large"
+            @click="installApp"
+          >
+            <template #icon><t-icon name="download" /></template>
+            立即安装
+          </t-button>
+          <t-button
+            v-else-if="isInstalled"
+            theme="success"
+            size="large"
+            disabled
+          >
+            <template #icon><t-icon name="check" /></template>
+            已安装
+          </t-button>
+          <div v-else class="install-guide">
+            <p class="guide-title">手动安装方法：</p>
+            <div class="guide-steps">
+              <div class="guide-step">
+                <span class="step-icon">📱</span>
+                <span><strong>iOS Safari：</strong>点击底部分享按钮 → 添加到主屏幕</span>
+              </div>
+              <div class="guide-step">
+                <span class="step-icon">🤖</span>
+                <span><strong>Android Chrome：</strong>点击右上角菜单 → 添加到主屏幕</span>
+              </div>
+              <div class="guide-step">
+                <span class="step-icon">💻</span>
+                <span><strong>桌面浏览器：</strong>点击地址栏右侧安装图标</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
 
@@ -163,9 +214,69 @@ const competitionStore = useCompetitionStore();
 const wordCount = computed(() => wordsStore.wordCount);
 const stats = computed(() => competitionStore.stats);
 
+// PWA 安装相关状态
+const deferredPrompt = ref(null);
+const canInstall = ref(false);
+const isInstalled = ref(false);
+
+// 检测是否已安装为 PWA
+function checkIfInstalled() {
+  // 检测 standalone 模式（已安装的 PWA）
+  if (window.matchMedia('(display-mode: standalone)').matches) {
+    isInstalled.value = true;
+    return true;
+  }
+  // iOS Safari standalone 检测
+  if (window.navigator.standalone === true) {
+    isInstalled.value = true;
+    return true;
+  }
+  return false;
+}
+
+// 处理 beforeinstallprompt 事件
+function handleBeforeInstallPrompt(e) {
+  e.preventDefault();
+  deferredPrompt.value = e;
+  canInstall.value = true;
+}
+
+// 处理 appinstalled 事件
+function handleAppInstalled() {
+  canInstall.value = false;
+  isInstalled.value = true;
+  deferredPrompt.value = null;
+}
+
+// 安装应用
+async function installApp() {
+  if (!deferredPrompt.value) return;
+  
+  deferredPrompt.value.prompt();
+  const { outcome } = await deferredPrompt.value.userChoice;
+  
+  if (outcome === 'accepted') {
+    canInstall.value = false;
+    isInstalled.value = true;
+  }
+  deferredPrompt.value = null;
+}
+
 onMounted(async () => {
   await wordsStore.init();
   await competitionStore.loadRecords();
+  
+  // 检测是否已安装
+  checkIfInstalled();
+  
+  // 监听安装提示事件
+  window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  window.addEventListener('appinstalled', handleAppInstalled);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  window.removeEventListener('appinstalled', handleAppInstalled);
 });
 </script>
 
@@ -383,6 +494,93 @@ onMounted(async () => {
   }
 }
 
+.install-app {
+  padding: 3rem 1rem;
+  margin-bottom: 3rem;
+  background: linear-gradient(
+    135deg,
+    var(--honey-50, #fffbeb) 0%,
+    var(--honey-100) 100%
+  );
+  border-radius: 24px;
+  border: 2px dashed var(--honey-400);
+
+  .install-content {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .install-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(
+      135deg,
+      var(--honey-400) 0%,
+      var(--honey-500) 100%
+    );
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .install-text {
+    flex: 1;
+
+    h2 {
+      font-size: 1.5rem;
+      color: var(--charcoal-900);
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      color: var(--charcoal-600);
+      line-height: 1.6;
+    }
+  }
+
+  .install-actions {
+    flex-shrink: 0;
+  }
+
+  .install-guide {
+    .guide-title {
+      font-weight: 600;
+      color: var(--charcoal-800);
+      margin-bottom: 0.75rem;
+    }
+
+    .guide-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .guide-step {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--charcoal-600);
+      line-height: 1.5;
+
+      .step-icon {
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+
+      strong {
+        color: var(--charcoal-800);
+      }
+    }
+  }
+}
+
 .quick-stats {
   padding: 3rem 1rem;
   background: linear-gradient(
@@ -442,6 +640,25 @@ onMounted(async () => {
 
   .quick-stats .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .install-app {
+    .install-content {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .install-icon {
+      margin-bottom: 1rem;
+    }
+
+    .install-text {
+      margin-bottom: 1.5rem;
+    }
+
+    .guide-steps {
+      text-align: left;
+    }
   }
 }
 </style>
