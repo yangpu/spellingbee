@@ -54,7 +54,7 @@
     </main>
 
     <footer class="app-footer">
-      <span>©️版权所有：杨若即 · yangruoji@outlook.com</span>
+      <span>©️版权所有({{ new Date().getFullYear()}})：杨若即 · yangruoji@outlook.com</span>
       <span class="version">v{{ appVersion }}</span>
     </footer>
 
@@ -262,7 +262,7 @@ authStore.init();
   justify-content: center;
   align-items: center;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1.5rem;
   color: var(--text-muted);
   font-size: 0.85rem;
   border-top: 1px solid var(--border-color);

@@ -35,7 +35,7 @@
           <span>第 {{ currentIndex + 1 }} / {{ learnWords.length }} 个单词</span>
           <span>已掌握: {{ masteredCount }} | 复习: {{ reviewCount }}</span>
         </div>
-        <t-progress :percentage="((currentIndex + 1) / learnWords.length) * 100" theme="plump" />
+        <t-progress :percentage="(((currentIndex + 1) / learnWords.length) * 100).toFixed(0)" theme="plump" />
       </div>
 
       <!-- Auto Learn Toggle -->

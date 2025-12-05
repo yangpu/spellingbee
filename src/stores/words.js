@@ -83,10 +83,16 @@ export const useWordsStore = defineStore('words', () => {
         loadFromLocalStorage()
       }
 
-      // If still no words, load defaults
+      // If still no words, load grade3 word list as default
       if (words.value.length === 0) {
-        words.value = [...defaultWords]
-        saveToLocalStorage()
+        try {
+          await replaceWithWordList('grade3-400')
+        } catch (e) {
+          // Fallback to default words if grade3 list fails to load
+          console.error('Failed to load grade3 word list, using defaults:', e)
+          words.value = [...defaultWords]
+          saveToLocalStorage()
+        }
       }
     } catch (error) {
       console.error('Error initializing words:', error)

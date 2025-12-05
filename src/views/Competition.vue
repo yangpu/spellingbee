@@ -2322,11 +2322,6 @@ function handleGlobalKeydown(event) {
     // 确保索引有效
     if (targetIndex >= 0 && targetIndex < letterSlots.value.length) {
       const value = event.key.toLowerCase();
-      const now = Date.now();
-
-      // 记录输入时间和值
-      lastInputTime.value[targetIndex] = now;
-      lastInputValue.value[targetIndex] = value;
 
       // 更新字母
       letterSlots.value[targetIndex].value = value;
@@ -2595,6 +2590,7 @@ watch(
       img {
         width: 100%;
         height: 100%;
+        animation: float 3s ease-in-out infinite;
       }
     }
 
