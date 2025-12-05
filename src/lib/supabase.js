@@ -1,43 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Supabase configuration
-// Replace with your own Supabase URL and anon key
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co'
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key'
+const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-// Database table schemas (for reference)
-// 
-// words:
-//   id: uuid (primary key)
-//   word: text (unique)
-//   pronunciation: text
-//   definition: text
-//   part_of_speech: text
-//   example_sentence: text
-//   difficulty: int (1-5)
-//   category: text
-//   created_at: timestamp
-//
-// user_words:
-//   id: uuid (primary key)
-//   user_id: uuid (foreign key to auth.users)
-//   word_id: uuid (foreign key to words)
-//   familiarity: int (0-5) - 熟悉程度
-//   correct_count: int
-//   incorrect_count: int
-//   last_reviewed: timestamp
-//   next_review: timestamp
-//   created_at: timestamp
-//
-// competition_records:
-//   id: uuid (primary key)
-//   user_id: uuid (foreign key to auth.users)
-//   score: int
-//   total_words: int
-//   correct_words: int
-//   incorrect_words: text[] (array of incorrect words)
-//   duration: int (seconds)
-//   created_at: timestamp
-

@@ -214,7 +214,7 @@ export const useWordsStore = defineStore('words', () => {
     }))
 
     if (!useLocalStorage.value && authStore.user) {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('words')
         .upsert(newWords)
         .select()

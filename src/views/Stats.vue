@@ -5,8 +5,70 @@
       <p>追踪你的学习进度和比赛成绩</p>
     </div>
 
-    <!-- Overview Stats -->
+    <!-- Learning Stats -->
+    <div class="learning-section" v-if="learningStats.totalPracticed > 0">
+      <h2>学习进度</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon learning">
+            <t-icon name="book-open" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ learningStats.totalPracticed }}</span>
+            <span class="stat-label">总练习次数</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon success">
+            <t-icon name="check-circle" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ learningStats.accuracy }}%</span>
+            <span class="stat-label">学习正确率</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <t-icon name="layers" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ totalLearned }}</span>
+            <span class="stat-label">已学单词</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon highlight">
+            <t-icon name="star" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ masteredCount }}</span>
+            <span class="stat-label">已掌握</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon warning">
+            <t-icon name="time" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ reviewCount }}</span>
+            <span class="stat-label">待复习</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <t-icon name="calendar" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ learningStats.todayPracticed }}</span>
+            <span class="stat-label">今日练习</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Competition Overview Stats -->
     <div class="overview-section">
+      <h2>比赛统计</h2>
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon">
@@ -158,11 +220,19 @@
 import { computed, onMounted } from 'vue'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useCompetitionStore } from '@/stores/competition'
+import { useLearningStore } from '@/stores/learning'
 
 const competitionStore = useCompetitionStore()
+const learningStore = useLearningStore()
 
 const stats = computed(() => competitionStore.stats)
 const records = computed(() => competitionStore.records)
+
+// Learning stats
+const learningStats = computed(() => learningStore.stats)
+const totalLearned = computed(() => learningStore.totalLearned)
+const masteredCount = computed(() => learningStore.masteredWords.length)
+const reviewCount = computed(() => learningStore.wordsToReview.length)
 
 function formatDate(dateStr) {
   const date = new Date(dateStr)
@@ -242,8 +312,28 @@ onMounted(() => {
     }
   }
 
+  .learning-section {
+    margin-bottom: 3rem;
+
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+  }
+
   .overview-section {
     margin-bottom: 3rem;
+
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
 
     .stats-grid {
       display: grid;
@@ -283,6 +373,16 @@ onMounted(() => {
         &.success {
           background: #D1FAE5;
           color: var(--success);
+        }
+
+        &.learning {
+          background: #DBEAFE;
+          color: #3B82F6;
+        }
+
+        &.warning {
+          background: #FEF3C7;
+          color: #F59E0B;
         }
       }
 

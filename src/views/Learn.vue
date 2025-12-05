@@ -161,8 +161,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useWordsStore } from '@/stores/words'
+import { useLearningStore } from '@/stores/learning'
 
 const wordsStore = useWordsStore()
+const learningStore = useLearningStore()
 
 // Settings
 const settings = reactive({
@@ -360,6 +362,8 @@ function markMastered() {
   if (!currentWord.value) return
   stopAutoLearn()
   masteredWords.value.push(currentWord.value)
+  // Record learning progress
+  learningStore.recordLearning(currentWord.value.word, true, '', 'learn')
   nextWord()
 }
 
@@ -367,6 +371,8 @@ function markReview() {
   if (!currentWord.value) return
   stopAutoLearn()
   reviewWords.value.push(currentWord.value)
+  // Record as needs review (not mastered yet)
+  learningStore.recordLearning(currentWord.value.word, false, '', 'learn')
   nextWord()
 }
 

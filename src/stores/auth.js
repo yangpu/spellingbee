@@ -5,8 +5,11 @@ import { supabase } from '@/lib/supabase'
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const loading = ref(true)
+  const initialized = ref(false)
 
   async function init() {
+    if (initialized.value) return
+    
     loading.value = true
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -14,8 +17,18 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Listen for auth changes
       supabase.auth.onAuthStateChange((event, session) => {
+        const previousUser = user.value
         user.value = session?.user || null
+        
+        // Emit custom event for other stores to react
+        if (event === 'SIGNED_IN' && !previousUser) {
+          window.dispatchEvent(new CustomEvent('auth:signed_in', { detail: { user: user.value } }))
+        } else if (event === 'SIGNED_OUT') {
+          window.dispatchEvent(new CustomEvent('auth:signed_out'))
+        }
       })
+      
+      initialized.value = true
     } catch (error) {
       console.error('Auth init error:', error)
     } finally {
@@ -48,13 +61,32 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
+  async function resetPassword(email) {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`
+    })
+    if (error) throw error
+    return data
+  }
+
+  async function updatePassword(newPassword) {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword
+    })
+    if (error) throw error
+    return data
+  }
+
   return {
     user,
     loading,
+    initialized,
     init,
     login,
     register,
-    logout
+    logout,
+    resetPassword,
+    updatePassword
   }
 })
 

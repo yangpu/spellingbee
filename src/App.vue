@@ -61,9 +61,10 @@
     <!-- Auth Dialog -->
     <t-dialog
       v-model:visible="showAuthDialog"
-      :header="authMode === 'login' ? '登录' : '注册'"
+      :header="dialogHeader()"
       :footer="false"
       width="400px"
+      @close="authMode = 'login'"
     >
       <t-form
         ref="authForm"
@@ -74,7 +75,7 @@
         <t-form-item name="email" label="邮箱">
           <t-input v-model="authData.email" placeholder="请输入邮箱" />
         </t-form-item>
-        <t-form-item name="password" label="密码">
+        <t-form-item v-if="authMode !== 'forgot'" name="password" label="密码">
           <t-input
             v-model="authData.password"
             type="password"
@@ -94,11 +95,16 @@
         </t-form-item>
         <div class="auth-actions">
           <t-button theme="primary" type="submit" :loading="authLoading" block>
-            {{ authMode === 'login' ? '登录' : '注册' }}
+            {{ authMode === 'login' ? '登录' : authMode === 'register' ? '注册' : '发送重置邮件' }}
           </t-button>
-          <t-button variant="text" @click="toggleAuthMode" block>
-            {{ authMode === 'login' ? '没有账号？去注册' : '已有账号？去登录' }}
-          </t-button>
+          <div class="auth-links">
+            <t-button variant="text" @click="toggleAuthMode">
+              {{ authMode === 'login' ? '没有账号？去注册' : authMode === 'register' ? '已有账号？去登录' : '返回登录' }}
+            </t-button>
+            <t-button v-if="authMode === 'login'" variant="text" @click="showForgotPassword">
+              忘记密码？
+            </t-button>
+          </div>
         </div>
       </t-form>
     </t-dialog>
@@ -106,16 +112,23 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { useAuthStore } from '@/stores/auth';
+import { useWordsStore } from '@/stores/words';
+import { useCompetitionStore } from '@/stores/competition';
+import { useLearningStore } from '@/stores/learning';
 
 const baseUrl = import.meta.env.BASE_URL;
 const appVersion = __APP_VERSION__;
 
 const authStore = useAuthStore();
+const wordsStore = useWordsStore();
+const competitionStore = useCompetitionStore();
+const learningStore = useLearningStore();
+
 const showAuthDialog = ref(false);
-const authMode = ref('login');
+const authMode = ref('login'); // 'login', 'register', 'forgot'
 const authLoading = ref(false);
 
 const authData = reactive({
@@ -143,10 +156,23 @@ const authRules = {
   ],
 };
 
-const userMenuOptions = [{ content: '退出登录', value: 'logout' }];
+const userMenuOptions = [
+  { content: '同步数据', value: 'sync' },
+  { content: '退出登录', value: 'logout' }
+];
 
 const toggleAuthMode = () => {
-  authMode.value = authMode.value === 'login' ? 'register' : 'login';
+  if (authMode.value === 'login') {
+    authMode.value = 'register';
+  } else if (authMode.value === 'register') {
+    authMode.value = 'login';
+  } else {
+    authMode.value = 'login';
+  }
+};
+
+const showForgotPassword = () => {
+  authMode.value = 'forgot';
 };
 
 const handleAuth = async ({ validateResult }) => {
@@ -157,11 +183,18 @@ const handleAuth = async ({ validateResult }) => {
     if (authMode.value === 'login') {
       await authStore.login(authData.email, authData.password);
       MessagePlugin.success('登录成功');
-    } else {
+      showAuthDialog.value = false;
+      // Sync data after login
+      await syncAllData();
+    } else if (authMode.value === 'register') {
       await authStore.register(authData.email, authData.password);
-      MessagePlugin.success('注册成功，请查收验证邮件');
+      MessagePlugin.success('注册成功，请查收验证邮件后登录');
+      authMode.value = 'login';
+    } else if (authMode.value === 'forgot') {
+      await authStore.resetPassword(authData.email);
+      MessagePlugin.success('重置密码邮件已发送，请查收');
+      authMode.value = 'login';
     }
-    showAuthDialog.value = false;
   } catch (error) {
     MessagePlugin.error(error.message || '操作失败');
   } finally {
@@ -169,15 +202,52 @@ const handleAuth = async ({ validateResult }) => {
   }
 };
 
-const handleUserMenu = (data) => {
+const handleUserMenu = async (data) => {
   if (data.value === 'logout') {
-    authStore.logout();
+    await authStore.logout();
     MessagePlugin.success('已退出登录');
+  } else if (data.value === 'sync') {
+    await syncAllData();
+    MessagePlugin.success('数据同步完成');
   }
 };
 
-// Initialize auth state
-authStore.init();
+// Sync all data from cloud
+const syncAllData = async () => {
+  if (!authStore.user) return;
+  
+  try {
+    await Promise.all([
+      competitionStore.loadRecords(),
+      learningStore.syncFromCloud()
+    ]);
+  } catch (error) {
+    console.error('Sync error:', error);
+  }
+};
+
+// Initialize
+onMounted(async () => {
+  await authStore.init();
+  await wordsStore.init();
+  await learningStore.init();
+  await competitionStore.loadRecords();
+});
+
+// Watch for auth changes
+watch(() => authStore.user, async (newUser, oldUser) => {
+  if (newUser && !oldUser) {
+    // User just logged in
+    await syncAllData();
+  }
+});
+
+// Dialog header computed
+const dialogHeader = () => {
+  if (authMode.value === 'login') return '登录';
+  if (authMode.value === 'register') return '注册';
+  return '忘记密码';
+};
 </script>
 
 <style lang="scss" scoped>
@@ -282,6 +352,12 @@ authStore.init();
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 1rem;
+  
+  .auth-links {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .page-fade-enter-active,
