@@ -16,7 +16,7 @@
 
     <!-- Stats Summary -->
     <div class="stats-cards">
-      <div class="stat-card">
+      <div class="stat-card" :class="{ active: filterStatus === null }" @click="setFilter(null)">
         <div class="stat-icon total">
           <t-icon name="books" />
         </div>
@@ -25,7 +25,7 @@
           <span class="stat-label">词库总数</span>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" :class="{ active: filterStatus === 'mastered' }" @click="setFilter('mastered')">
         <div class="stat-icon mastered">
           <t-icon name="check-circle" />
         </div>
@@ -34,7 +34,7 @@
           <span class="stat-label">已掌握</span>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" :class="{ active: filterStatus === 'learning' }" @click="setFilter('learning')">
         <div class="stat-icon learning">
           <t-icon name="time" />
         </div>
@@ -43,13 +43,13 @@
           <span class="stat-label">学习中</span>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" :class="{ active: filterStatus === 'not_started' }" @click="setFilter('not_started')">
         <div class="stat-icon review">
-          <t-icon name="refresh" />
+          <t-icon name="browse" />
         </div>
         <div class="stat-content">
-          <span class="stat-value text-info">{{ learningStore.wordsToReview.length }}</span>
-          <span class="stat-label">待复习</span>
+          <span class="stat-value text-info">{{ notStartedCount }}</span>
+          <span class="stat-label">未学习</span>
         </div>
       </div>
     </div>
@@ -111,13 +111,23 @@
         :data="filteredWords"
         :columns="columns"
         :pagination="pagination"
-        :sort="sortState"
         row-key="id"
         hover
         stripe
         @page-change="handlePageChange"
-        @sort-change="handleSortChange"
       >
+        <template #index="{ row }">
+          <span class="word-index">{{ row.vocabIndex }}</span>
+        </template>
+        <template #status="{ row }">
+          <div class="status-cell">
+            <t-icon 
+              :name="getStatusIcon(row.word).icon" 
+              :class="getStatusIcon(row.word).class"
+              size="18px"
+            />
+          </div>
+        </template>
         <template #word="{ row }">
           <div class="word-cell">
             <span class="word-text">{{ row.word }}</span>
@@ -151,11 +161,6 @@
             {{ getWordStats(row.word).competitionWrong }}
           </span>
         </template>
-        <template #status="{ row }">
-          <t-tag :theme="getStatusTheme(row.word)" variant="light" size="small">
-            {{ getStatusLabel(row.word) }}
-          </t-tag>
-        </template>
       </t-table>
     </div>
 
@@ -177,16 +182,17 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import { useWordsStore } from '@/stores/words'
 import { useLearningStore } from '@/stores/learning'
 import { useCompetitionStore } from '@/stores/competition'
+import { useSpeechStore } from '@/stores/speech'
 
 const wordsStore = useWordsStore()
 const learningStore = useLearningStore()
 const competitionStore = useCompetitionStore()
+const speechStore = useSpeechStore()
 
 // Filter state
 const searchQuery = ref('')
 const filterStatus = ref(null)
 const filterDifficulty = ref(null)
-const sortState = ref({ sortBy: 'word', descending: false })
 const pagination = reactive({
   current: 1,
   pageSize: 20,
@@ -198,16 +204,28 @@ const pagination = reactive({
 
 // Table columns
 const columns = [
-  { colKey: 'word', title: '单词', width: 150, sortable: true },
+  { colKey: 'index', title: '序号', width: 70 },
+  { colKey: 'status', title: '状态', width: 70 },
+  { colKey: 'word', title: '单词', width: 150 },
   { colKey: 'pronunciation', title: '音标', width: 130 },
   { colKey: 'definition_cn', title: '中文释义', ellipsis: true },
-  { colKey: 'difficulty', title: '难度', width: 120, sortable: true },
-  { colKey: 'learnMastered', title: '掌握次数', width: 100, sortable: true },
-  { colKey: 'learnReview', title: '复习次数', width: 100, sortable: true },
-  { colKey: 'competitionCorrect', title: '比赛正确', width: 100, sortable: true },
-  { colKey: 'competitionWrong', title: '比赛错误', width: 100, sortable: true },
-  { colKey: 'status', title: '状态', width: 90 }
+  { colKey: 'difficulty', title: '难度', width: 120 },
+  { colKey: 'learnMastered', title: '掌握次数', width: 100 },
+  { colKey: 'learnReview', title: '复习次数', width: 100 },
+  { colKey: 'competitionCorrect', title: '比赛正确', width: 100 },
+  { colKey: 'competitionWrong', title: '比赛错误', width: 100 }
 ]
+
+// 未学习单词数量
+const notStartedCount = computed(() => {
+  return wordsStore.words.filter(w => !learningStore.getWordProgress(w.word.toLowerCase())).length
+})
+
+// 设置筛选
+function setFilter(status) {
+  filterStatus.value = status
+  pagination.current = 1
+}
 
 // Progress percentage
 const progressPercentage = computed(() => {
@@ -261,24 +279,31 @@ function getWordStats(word) {
   }
 }
 
-// Get status label
-function getStatusLabel(word) {
+// Get status icon and class
+function getStatusIcon(word) {
   const lowerWord = word.toLowerCase()
   const progress = learningStore.getWordProgress(lowerWord)
+  const stats = getWordStats(word)
   
-  if (!progress) return '未学习'
-  if (progress.mastery_level >= 2) return '已掌握'
-  return '学习中'
-}
-
-// Get status theme
-function getStatusTheme(word) {
-  const lowerWord = word.toLowerCase()
-  const progress = learningStore.getWordProgress(lowerWord)
+  // 检查比赛状态
+  if (stats.competitionWrong > 0 && stats.competitionCorrect === 0) {
+    return { icon: 'close-circle-filled', class: 'status-competition-wrong' }
+  }
+  if (stats.competitionCorrect > 0 && stats.competitionWrong === 0) {
+    return { icon: 'check-circle-filled', class: 'status-competition-correct' }
+  }
+  if (stats.competitionCorrect > 0 && stats.competitionWrong > 0) {
+    return { icon: 'error-circle-filled', class: 'status-competition-mixed' }
+  }
   
-  if (!progress) return 'default'
-  if (progress.mastery_level >= 2) return 'success'
-  return 'warning'
+  // 检查学习状态
+  if (!progress) {
+    return { icon: 'browse', class: 'status-not-started' }
+  }
+  if (progress.mastery_level >= 2) {
+    return { icon: 'check-circle-filled', class: 'status-mastered' }
+  }
+  return { icon: 'time-filled', class: 'status-learning' }
 }
 
 // Get difficulty theme
@@ -289,16 +314,15 @@ function getDifficultyTheme(level) {
 
 // Speak word
 function speakWord(word) {
-  speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(word)
-  utterance.lang = 'en-US'
-  utterance.rate = 0.8
-  speechSynthesis.speak(utterance)
+  speechStore.speakWord(word)
 }
 
-// Filtered words
+// Filtered words - 按词库顺序显示
 const filteredWords = computed(() => {
   let result = [...wordsStore.words]
+  
+  // 添加索引
+  result = result.map((w, idx) => ({ ...w, vocabIndex: idx + 1 }))
   
   // Search filter
   if (searchQuery.value) {
@@ -332,32 +356,7 @@ const filteredWords = computed(() => {
     result = result.filter(w => w.difficulty === filterDifficulty.value)
   }
   
-  // Sort
-  if (sortState.value.sortBy) {
-    const sortKey = sortState.value.sortBy
-    const desc = sortState.value.descending
-    
-    result.sort((a, b) => {
-      let aVal, bVal
-      
-      if (['learnMastered', 'learnReview', 'competitionCorrect', 'competitionWrong'].includes(sortKey)) {
-        const aStats = getWordStats(a.word)
-        const bStats = getWordStats(b.word)
-        aVal = aStats[sortKey]
-        bVal = bStats[sortKey]
-      } else if (sortKey === 'word') {
-        aVal = a.word.toLowerCase()
-        bVal = b.word.toLowerCase()
-      } else {
-        aVal = a[sortKey]
-        bVal = b[sortKey]
-      }
-      
-      if (aVal < bVal) return desc ? 1 : -1
-      if (aVal > bVal) return desc ? -1 : 1
-      return 0
-    })
-  }
+  // 不排序，保持词库原始顺序
   
   pagination.total = result.length
   
@@ -371,12 +370,6 @@ const filteredWords = computed(() => {
 function handlePageChange(pageInfo) {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
-}
-
-// Handle sort change
-function handleSortChange(sort) {
-  sortState.value = sort
-  pagination.current = 1
 }
 
 // Export data
@@ -456,20 +449,27 @@ onMounted(() => {
     gap: 1.5rem;
     margin-bottom: 2rem;
 
-    .stat-card {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1.5rem;
-      background: var(--bg-card);
-      border-radius: 16px;
-      box-shadow: var(--shadow-sm);
-      transition: transform 0.2s, box-shadow 0.2s;
+      .stat-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: var(--bg-card);
+        border-radius: 16px;
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+        border: 2px solid transparent;
 
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-      }
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+        }
+
+        &.active {
+          border-color: var(--honey-500);
+          background: var(--honey-50);
+        }
 
       .stat-icon {
         width: 56px;
@@ -572,6 +572,41 @@ onMounted(() => {
     border-radius: 16px;
     padding: 1rem;
     box-shadow: var(--shadow-sm);
+  }
+
+  .word-index {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+  }
+
+  .status-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .status-mastered {
+      color: var(--success);
+    }
+
+    .status-learning {
+      color: var(--warning);
+    }
+
+    .status-not-started {
+      color: var(--text-muted);
+    }
+
+    .status-competition-correct {
+      color: var(--success);
+    }
+
+    .status-competition-wrong {
+      color: var(--error);
+    }
+
+    .status-competition-mixed {
+      color: var(--warning);
+    }
   }
 
   .word-cell {

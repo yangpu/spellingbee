@@ -75,11 +75,17 @@
 
     <!-- Stats -->
     <div class="stats-row">
-      <div class="stat-item">
+      <div class="stat-item" :class="{ active: filterDifficulty === null }" @click="setDifficultyFilter(null)">
         <span class="stat-value">{{ wordsStore.wordCount }}</span>
         <span class="stat-label">总单词数</span>
       </div>
-      <div class="stat-item" v-for="(count, level) in difficultyCounts" :key="level">
+      <div 
+        class="stat-item" 
+        :class="{ active: filterDifficulty === Number(level) }"
+        v-for="(count, level) in difficultyCounts" 
+        :key="level"
+        @click="setDifficultyFilter(Number(level))"
+      >
         <span class="stat-value">{{ count }}</span>
         <span class="stat-label">{{ getDifficultyLabel(level) }}</span>
       </div>
@@ -97,6 +103,9 @@
         stripe
         @page-change="handlePageChange"
       >
+        <template #index="{ row }">
+          <span class="word-index">{{ row.vocabIndex }}</span>
+        </template>
         <template #word="{ row }">
           <div class="word-cell">
             <span class="word-text">{{ row.word }}</span>
@@ -175,8 +184,10 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useWordsStore } from '@/stores/words'
+import { useSpeechStore } from '@/stores/speech'
 
 const wordsStore = useWordsStore()
+const speechStore = useSpeechStore()
 
 // Search and filter
 const searchQuery = ref('')
@@ -224,6 +235,7 @@ const difficultyMarks = {
 
 // Table columns
 const columns = [
+  { colKey: 'index', title: '序号', width: 70 },
   { colKey: 'word', title: '单词', width: 180 },
   { colKey: 'pronunciation', title: '音标', width: 140 },
   { colKey: 'part_of_speech', title: '词性', width: 100 },
@@ -236,7 +248,7 @@ const columns = [
 
 // Computed
 const filteredWords = computed(() => {
-  let result = wordsStore.words
+  let result = wordsStore.words.map((w, idx) => ({ ...w, vocabIndex: idx + 1 }))
 
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
@@ -255,7 +267,11 @@ const filteredWords = computed(() => {
   }
 
   pagination.total = result.length
-  return result
+  
+  // Paginate
+  const start = (pagination.current - 1) * pagination.pageSize
+  const end = start + pagination.pageSize
+  return result.slice(start, end)
 })
 
 const categories = computed(() => {
@@ -294,16 +310,18 @@ function getDifficultyLabel(level) {
   return labels[level] || ''
 }
 
+function setDifficultyFilter(level) {
+  filterDifficulty.value = filterDifficulty.value === level ? null : level
+  pagination.current = 1
+}
+
 function getDifficultyTheme(level) {
   const themes = { 1: 'success', 2: 'primary', 3: 'warning', 4: 'danger', 5: 'danger' }
   return themes[level] || 'default'
 }
 
 function speakWord(word) {
-  const utterance = new SpeechSynthesisUtterance(word)
-  utterance.lang = 'en-US'
-  utterance.rate = 0.8
-  speechSynthesis.speak(utterance)
+  speechStore.speakWord(word)
 }
 
 function handlePageChange(pageInfo) {
@@ -470,6 +488,18 @@ onMounted(() => {
       background: var(--bg-card);
       border-radius: 8px;
       min-width: 80px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+
+      &:hover {
+        background: var(--hover-bg);
+      }
+
+      &.active {
+        border-color: var(--honey-500);
+        background: var(--accent-bg);
+      }
 
       .stat-value {
         font-size: 1.5rem;
@@ -498,6 +528,11 @@ onMounted(() => {
         font-weight: 600;
         color: var(--charcoal-800);
       }
+    }
+
+    .word-index {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
     }
   }
 }

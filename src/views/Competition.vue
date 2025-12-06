@@ -95,10 +95,16 @@
           </ul>
         </div>
 
-        <t-button theme="primary" size="large" block @click="startCompetition">
-          <template #icon><t-icon name="play-circle" /></template>
-          开始比赛
-        </t-button>
+        <div class="setup-actions">
+          <t-button variant="outline" @click="showSpeechSettings = true">
+            <template #icon><t-icon name="sound" /></template>
+            语音配置
+          </t-button>
+          <t-button theme="primary" size="large" @click="startCompetition">
+            <template #icon><t-icon name="play-circle" /></template>
+            开始比赛
+          </t-button>
+        </div>
       </div>
     </div>
 
@@ -287,10 +293,13 @@
             theme="danger"
             @click="exitCompetition"
           >
+          <template #icon><t-icon name="close" /></template>
+
             退出比赛
           </t-button>
           <t-button variant="outline" size="large" @click="skipWord">
-            跳过
+            <template #icon><t-icon name="next" /></template>
+            跳过单词
           </t-button>
           <t-button
             theme="primary"
@@ -298,6 +307,7 @@
             @click="submitAnswer"
             :disabled="!isAllLettersFilled"
           >
+            <template #icon><t-icon name="check" /></template>
             提交答案
           </t-button>
         </div>
@@ -406,6 +416,9 @@
         </div>
       </div>
     </div>
+
+    <!-- 语音配置弹窗 -->
+    <SpeechSettings v-model="showSpeechSettings" />
   </div>
 </template>
 
@@ -423,11 +436,17 @@ import { MessagePlugin } from 'tdesign-vue-next';
 import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
+import { useSpeechStore } from '@/stores/speech';
+import SpeechSettings from '@/components/SpeechSettings.vue';
 
 const baseUrl = import.meta.env.BASE_URL;
 const wordsStore = useWordsStore();
 const competitionStore = useCompetitionStore();
 const learningStore = useLearningStore();
+const speechStore = useSpeechStore();
+
+// 语音配置弹窗
+const showSpeechSettings = ref(false);
 
 // Settings
 const settings = reactive({
@@ -2251,12 +2270,8 @@ function speakWord(word, callback = null) {
   // 朗读时暂停语音识别
   pauseVoiceRecognition();
 
-  const utterance = new SpeechSynthesisUtterance(word);
-  utterance.lang = 'en-US';
-  utterance.rate = 0.7;
-  utterance.pitch = 1;
-
-  utterance.onend = () => {
+  // 使用 speechStore 朗读单词
+  speechStore.speakWord(word).then(() => {
     isSpeaking.value = false;
     if (callback) {
       callback();
@@ -2264,14 +2279,10 @@ function speakWord(word, callback = null) {
       // 朗读完成后恢复语音识别
       resumeVoiceRecognition();
     }
-  };
-
-  utterance.onerror = () => {
+  }).catch(() => {
     isSpeaking.value = false;
     if (callback) callback();
-  };
-
-  speechSynthesis.speak(utterance);
+  });
 }
 
 function speakWithCallback(text, callback) {
@@ -2281,21 +2292,14 @@ function speakWithCallback(text, callback) {
   // 朗读时暂停语音识别
   pauseVoiceRecognition();
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'en-US';
-  utterance.rate = 1.2;
-
-  utterance.onend = () => {
+  // 使用 speechStore 朗读英文
+  speechStore.speakEnglish(text, { rate: 1.2 }).then(() => {
     isSpeaking.value = false;
     if (callback) callback();
-  };
-
-  utterance.onerror = () => {
+  }).catch(() => {
     isSpeaking.value = false;
     if (callback) callback();
-  };
-
-  speechSynthesis.speak(utterance);
+  });
 }
 
 // 暂停语音识别（用于页面朗读时）
@@ -2907,6 +2911,7 @@ function handleGlobalKeydown(event) {
 // Lifecycle
 onMounted(() => {
   wordsStore.init();
+  speechStore.init(); // 初始化语音配置
   loadSettings(); // 加载保存的设置
   // 添加全局键盘事件监听
   document.addEventListener('keydown', handleGlobalKeydown);
@@ -3042,6 +3047,13 @@ watch(
           line-height: 1.5;
         }
       }
+    }
+
+    .setup-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      align-items: center;
     }
   }
 }

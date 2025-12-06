@@ -55,7 +55,7 @@
 
     <footer class="app-footer">
       <span>©️版权所有({{ new Date().getFullYear()}})：杨若即 · yangruoji@outlook.com</span>
-      <span class="version">v{{ appVersion }}</span>
+      <span class="version" @click="forceRefresh" title="点击刷新应用">v{{ appVersion }}</span>
     </footer>
 
     <!-- Auth Dialog -->
@@ -118,6 +118,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
+import { useSpeechStore } from '@/stores/speech';
 
 const baseUrl = import.meta.env.BASE_URL;
 const appVersion = __APP_VERSION__;
@@ -126,6 +127,7 @@ const authStore = useAuthStore();
 const wordsStore = useWordsStore();
 const competitionStore = useCompetitionStore();
 const learningStore = useLearningStore();
+const speechStore = useSpeechStore();
 
 const showAuthDialog = ref(false);
 const authMode = ref('login'); // 'login', 'register', 'forgot'
@@ -219,7 +221,8 @@ const syncAllData = async () => {
   try {
     await Promise.all([
       competitionStore.loadRecords(),
-      learningStore.syncFromCloud()
+      learningStore.syncFromCloud(),
+      speechStore.loadFromCloud() // 同步语音设置
     ]);
   } catch (error) {
     console.error('Sync error:', error);
@@ -229,6 +232,7 @@ const syncAllData = async () => {
 // Initialize
 onMounted(async () => {
   await authStore.init();
+  await speechStore.init(); // 初始化语音配置
   await wordsStore.init();
   await learningStore.init();
   await competitionStore.loadRecords();
@@ -247,6 +251,30 @@ const dialogHeader = () => {
   if (authMode.value === 'login') return '登录';
   if (authMode.value === 'register') return '注册';
   return '忘记密码';
+};
+
+// 强制刷新页面
+const forceRefresh = () => {
+  // 清除 Service Worker 缓存
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      registrations.forEach(registration => {
+        registration.unregister();
+      });
+    });
+  }
+  // 清除浏览器缓存并强制刷新
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => {
+        caches.delete(name);
+      });
+    });
+  }
+  // 强制刷新页面（绕过缓存）
+  setTimeout(() => {
+    window.location.reload(true);
+  }, 100);
 };
 </script>
 
@@ -344,6 +372,17 @@ const dialogHeader = () => {
     border-radius: 4px;
     font-family: 'SF Mono', Monaco, monospace;
     font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: var(--accent-bg);
+      color: var(--accent-color);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
   }
 }
 

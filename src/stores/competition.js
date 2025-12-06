@@ -195,7 +195,12 @@ export const useCompetitionStore = defineStore('competition', () => {
       score: score.value,
       total_words: words.value.length,
       correct_words: correctWords.value.length,
+      correct_words_list: correctWords.value.map(w => w.word),
       incorrect_words: incorrectWords.value.map(w => w.word),
+      incorrect_words_detail: incorrectWords.value.map(w => ({
+        word: w.word,
+        userAnswer: w.userAnswer || ''
+      })),
       accuracy: accuracy.value,
       duration,
       created_at: new Date().toISOString()

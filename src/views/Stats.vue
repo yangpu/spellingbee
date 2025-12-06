@@ -137,7 +137,7 @@
       </div>
 
       <div class="records-list" v-if="records.length > 0">
-        <div class="record-card" v-for="record in records" :key="record.id">
+        <div class="record-card" v-for="record in records" :key="record.id" @click="viewRecordDetail(record.id)">
           <div class="record-date">
             {{ formatDate(record.created_at) }}
           </div>
@@ -164,6 +164,7 @@
           <div class="record-badge" :class="getBadgeClass(record.accuracy)">
             {{ getBadgeText(record.accuracy) }}
           </div>
+          <t-icon name="chevron-right" class="record-arrow" />
         </div>
       </div>
 
@@ -218,10 +219,12 @@
 
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useCompetitionStore } from '@/stores/competition'
 import { useLearningStore } from '@/stores/learning'
 
+const router = useRouter()
 const competitionStore = useCompetitionStore()
 const learningStore = useLearningStore()
 
@@ -269,6 +272,10 @@ function getBadgeText(accuracy) {
   if (accuracy >= 70) return '良好'
   if (accuracy >= 50) return '及格'
   return '加油'
+}
+
+function viewRecordDetail(recordId) {
+  router.push(`/stats/record/${recordId}`)
 }
 
 function clearRecords() {
@@ -496,9 +503,16 @@ onMounted(() => {
       background: var(--bg-card);
       border-radius: 16px;
       transition: all 0.3s;
+      cursor: pointer;
 
       &:hover {
         box-shadow: var(--shadow-md);
+        transform: translateX(4px);
+      }
+
+      .record-arrow {
+        color: var(--text-muted);
+        flex-shrink: 0;
       }
 
       .record-date {
