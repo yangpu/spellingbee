@@ -5,23 +5,54 @@ import { useAuthStore } from './auth'
 
 const STORAGE_KEY = 'spellingbee_speech_settings'
 
-// 检测操作系统和浏览器
+// 检测操作系统和浏览器（改进版，优先检测移动端）
 function detectPlatform() {
-  const ua = navigator.userAgent.toLowerCase()
-  const platform = navigator.platform?.toLowerCase() || ''
+  const ua = navigator.userAgent
+  const uaLower = ua.toLowerCase()
   
+  // 操作系统检测 - 优先检测移动端
   let os = 'unknown'
-  if (platform.includes('mac') || ua.includes('mac')) os = 'macos'
-  else if (platform.includes('win') || ua.includes('win')) os = 'windows'
-  else if (ua.includes('android')) os = 'android'
-  else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod')) os = 'ios'
-  else if (ua.includes('linux')) os = 'linux'
   
+  // iOS 检测（必须在 mac 之前，因为 iPad 的 UA 可能包含 Mac）
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    os = 'ios'
+  }
+  // Android 检测
+  else if (/Android/i.test(ua)) {
+    os = 'android'
+  }
+  // macOS 检测（排除 iOS 后）
+  else if (/Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) {
+    os = 'macos'
+  }
+  // Windows 检测
+  else if (/Windows/i.test(ua)) {
+    os = 'windows'
+  }
+  // Linux 检测
+  else if (/Linux/i.test(ua) && !/Android/i.test(ua)) {
+    os = 'linux'
+  }
+  
+  // 浏览器检测 - 按优先级检测
   let browser = 'unknown'
-  if (ua.includes('chrome') && !ua.includes('edg')) browser = 'chrome'
-  else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'safari'
-  else if (ua.includes('firefox')) browser = 'firefox'
-  else if (ua.includes('edg')) browser = 'edge'
+  
+  // Edge 检测（必须在 Chrome 之前，因为 Edge 的 UA 包含 Chrome）
+  if (/Edg/i.test(ua)) {
+    browser = 'edge'
+  }
+  // Firefox 检测
+  else if (/Firefox/i.test(ua)) {
+    browser = 'firefox'
+  }
+  // Chrome 检测（排除 Edge 后）
+  else if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) {
+    browser = 'chrome'
+  }
+  // Safari 检测（排除 Chrome 和 Edge 后，因为它们的 UA 也包含 Safari）
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua) && !/Edg/i.test(ua)) {
+    browser = 'safari'
+  }
   
   return { os, browser }
 }

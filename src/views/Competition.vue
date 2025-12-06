@@ -100,6 +100,10 @@
             <template #icon><t-icon name="sound" /></template>
             语音配置
           </t-button>
+          <t-button variant="outline" @click="showAnnouncerSettings = true">
+            <template #icon><t-icon name="user-talk" /></template>
+            播音员
+          </t-button>
           <t-button theme="primary" size="large" @click="startCompetition">
             <template #icon><t-icon name="play-circle" /></template>
             开始比赛
@@ -128,7 +132,7 @@
 
       <!-- Announcer -->
       <div class="announcer-section">
-        <div class="announcer-avatar" :class="{ 'avatar-hidden': showResultAnimal }">
+        <div class="announcer-avatar" :class="{ 'avatar-hidden': showResultAnimal }" @click="showAnnouncerSettings = true" title="点击配置播音员">
           <img :src="`${baseUrl}bee.svg`" alt="Announcer" />
         </div>
         <!-- 成功小猫动画 -->
@@ -419,6 +423,9 @@
 
     <!-- 语音配置弹窗 -->
     <SpeechSettings v-model="showSpeechSettings" />
+    
+    <!-- 播音员配置弹窗 -->
+    <AnnouncerSettings v-model="showAnnouncerSettings" />
   </div>
 </template>
 
@@ -437,16 +444,22 @@ import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
+import { useAnnouncerStore } from '@/stores/announcer';
 import SpeechSettings from '@/components/SpeechSettings.vue';
+import AnnouncerSettings from '@/components/AnnouncerSettings.vue';
 
 const baseUrl = import.meta.env.BASE_URL;
 const wordsStore = useWordsStore();
 const competitionStore = useCompetitionStore();
 const learningStore = useLearningStore();
 const speechStore = useSpeechStore();
+const announcerStore = useAnnouncerStore();
 
 // 语音配置弹窗
 const showSpeechSettings = ref(false);
+
+// 播音员配置弹窗
+const showAnnouncerSettings = ref(false);
 
 // Settings
 const settings = reactive({
@@ -2425,9 +2438,14 @@ function handleTimeout() {
 
   announcerMessage.value = `很遗憾，时间到了。正确答案是 "${currentWord.value?.word}"`;
 
-  // 显示小狗动画和中文释义
-  showResultAnimal.value = 'dog';
+  // 显示中文释义
   showDefinitionHint.value = true;
+  
+  // 如果是动物模式，显示动画（playDogSound 会设置 showResultAnimal）
+  // 如果是人物模式，不显示动画
+  if (announcerStore.settings.type === 'animal') {
+    showResultAnimal.value = announcerStore.settings.animal.failure.type;
+  }
   playDogSound();
 
   // Show correct answer in slots with error styling
@@ -2468,19 +2486,23 @@ async function submitAnswer() {
   if (isCorrect) {
     announcerMessage.value = `太棒了！"${currentWord.value.word}" 拼写正确！`;
     
-    // 显示小猫动画
-    showResultAnimal.value = 'cat';
+    // 如果是动物模式，显示动画
+    if (announcerStore.settings.type === 'animal') {
+      showResultAnimal.value = announcerStore.settings.animal.success.type;
+    }
 
-    // 播放喵声
+    // 播放成功音效
     pauseVoiceRecognition();
     playCatSound();
   } else {
     announcerMessage.value = `很遗憾，正确答案是 "${currentWord.value.word}"`;
     
-    // 显示小狗动画
-    showResultAnimal.value = 'dog';
+    // 如果是动物模式，显示动画
+    if (announcerStore.settings.type === 'animal') {
+      showResultAnimal.value = announcerStore.settings.animal.failure.type;
+    }
 
-    // 播放汪声
+    // 播放失败音效
     playDogSound();
 
     // Show all letters with correct/wrong status
@@ -2503,199 +2525,43 @@ async function submitAnswer() {
   }, 2500);
 }
 
-// 播放小猫喵声 - 可爱版本
-function playCatSound() {
+// 播放成功音效（使用 announcerStore）
+async function playCatSound() {
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const now = audioContext.currentTime;
-    
-    // 创建主振荡器 - 模拟可爱猫叫的高频特性
-    const osc1 = audioContext.createOscillator();
-    const osc2 = audioContext.createOscillator();
-    const osc3 = audioContext.createOscillator();
-    
-    // 创建滤波器 - 模拟猫叫的共振特性
-    const filter = audioContext.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1500, now);
-    filter.Q.setValueAtTime(4, now);
-    
-    // 创建增益节点
-    const gainNode = audioContext.createGain();
-    const masterGain = audioContext.createGain();
-    
-    // 连接节点
-    osc1.connect(gainNode);
-    osc2.connect(gainNode);
-    osc3.connect(gainNode);
-    gainNode.connect(filter);
-    filter.connect(masterGain);
-    masterGain.connect(audioContext.destination);
-    
-    // 设置波形 - 混合多种波形模拟可爱猫叫
-    osc1.type = 'sine';
-    osc2.type = 'triangle';
-    osc3.type = 'sine';
-    
-    // 可爱喵声的频率变化曲线 - 更高音调，更活泼
-    // 基频 (约 500-1000Hz 范围，比原来更高更可爱)
-    osc1.frequency.setValueAtTime(550, now);
-    osc1.frequency.linearRampToValueAtTime(900, now + 0.06);
-    osc1.frequency.linearRampToValueAtTime(1100, now + 0.12);
-    osc1.frequency.linearRampToValueAtTime(950, now + 0.25);
-    osc1.frequency.linearRampToValueAtTime(700, now + 0.4);
-    osc1.frequency.linearRampToValueAtTime(500, now + 0.5);
-    
-    // 泛音1 (2倍频)
-    osc2.frequency.setValueAtTime(1100, now);
-    osc2.frequency.linearRampToValueAtTime(1800, now + 0.06);
-    osc2.frequency.linearRampToValueAtTime(2200, now + 0.12);
-    osc2.frequency.linearRampToValueAtTime(1900, now + 0.25);
-    osc2.frequency.linearRampToValueAtTime(1400, now + 0.4);
-    osc2.frequency.linearRampToValueAtTime(1000, now + 0.5);
-    
-    // 泛音2 - 添加颤音效果让声音更可爱
-    osc3.frequency.setValueAtTime(1650, now);
-    osc3.frequency.linearRampToValueAtTime(2700, now + 0.06);
-    osc3.frequency.linearRampToValueAtTime(3300, now + 0.12);
-    osc3.frequency.linearRampToValueAtTime(2850, now + 0.25);
-    osc3.frequency.linearRampToValueAtTime(2100, now + 0.4);
-    osc3.frequency.linearRampToValueAtTime(1500, now + 0.5);
-    
-    // 滤波器频率随时间变化
-    filter.frequency.setValueAtTime(1000, now);
-    filter.frequency.linearRampToValueAtTime(2500, now + 0.12);
-    filter.frequency.linearRampToValueAtTime(1500, now + 0.5);
-    
-    // 音量包络 - 更响亮，更有活力
-    gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(0.5, now + 0.02);
-    gainNode.gain.linearRampToValueAtTime(0.6, now + 0.08);
-    gainNode.gain.linearRampToValueAtTime(0.5, now + 0.2);
-    gainNode.gain.linearRampToValueAtTime(0.3, now + 0.35);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
-    
-    // 主音量更大
-    masterGain.gain.setValueAtTime(1.0, now);
-    
-    // 启动和停止
-    osc1.start(now);
-    osc2.start(now);
-    osc3.start(now);
-    osc1.stop(now + 0.6);
-    osc2.stop(now + 0.6);
-    osc3.stop(now + 0.6);
-    
+    const animalType = await announcerStore.playSuccess()
+    // 如果是动物模式，显示对应动画
+    if (animalType !== 'human') {
+      showResultAnimal.value = animalType // 'cat' 或自定义
+    }
   } catch (e) {
-    console.log('Audio not supported:', e);
+    console.log('Audio not supported:', e)
+    // 回退到静态音频文件
+    try {
+      const audio = new Audio('/sounds/meow.wav')
+      audio.play()
+    } catch (e2) {
+      console.log('Fallback audio failed:', e2)
+    }
   }
 }
 
-// 播放小狗汪声 - 可爱版本
-function playDogSound() {
+// 播放失败音效（使用 announcerStore）
+async function playDogSound() {
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    
-    function playBark(startTime, pitch = 1) {
-      const now = startTime;
-      
-      // 创建多个振荡器模拟可爱狗叫
-      const osc1 = audioContext.createOscillator();
-      const osc2 = audioContext.createOscillator();
-      const osc3 = audioContext.createOscillator();
-      const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.3, audioContext.sampleRate);
-      const noiseData = noiseBuffer.getChannelData(0);
-      
-      // 生成柔和噪声
-      for (let i = 0; i < noiseBuffer.length; i++) {
-        noiseData[i] = (Math.random() * 2 - 1) * 0.2;
-      }
-      const noiseSource = audioContext.createBufferSource();
-      noiseSource.buffer = noiseBuffer;
-      
-      // 创建滤波器
-      const lowpass = audioContext.createBiquadFilter();
-      lowpass.type = 'lowpass';
-      lowpass.frequency.setValueAtTime(2000 * pitch, now);
-      
-      const bandpass = audioContext.createBiquadFilter();
-      bandpass.type = 'bandpass';
-      bandpass.frequency.setValueAtTime(600 * pitch, now);
-      bandpass.Q.setValueAtTime(2, now);
-      
-      // 增益节点
-      const oscGain = audioContext.createGain();
-      const noiseGain = audioContext.createGain();
-      const masterGain = audioContext.createGain();
-      
-      // 连接
-      osc1.connect(oscGain);
-      osc2.connect(oscGain);
-      osc3.connect(oscGain);
-      oscGain.connect(bandpass);
-      bandpass.connect(masterGain);
-      
-      noiseSource.connect(noiseGain);
-      noiseGain.connect(lowpass);
-      lowpass.connect(masterGain);
-      
-      masterGain.connect(audioContext.destination);
-      
-      // 波形设置 - 更柔和的波形组合
-      osc1.type = 'triangle';
-      osc2.type = 'sine';
-      osc3.type = 'triangle';
-      
-      // 可爱狗叫频率 - 更高音调，更活泼
-      const baseFreq = 380 * pitch;
-      osc1.frequency.setValueAtTime(baseFreq * 1.3, now);
-      osc1.frequency.linearRampToValueAtTime(baseFreq * 1.8, now + 0.02);
-      osc1.frequency.linearRampToValueAtTime(baseFreq * 1.5, now + 0.06);
-      osc1.frequency.linearRampToValueAtTime(baseFreq * 1.0, now + 0.12);
-      
-      osc2.frequency.setValueAtTime(baseFreq * 0.6, now);
-      osc2.frequency.linearRampToValueAtTime(baseFreq * 0.9, now + 0.02);
-      osc2.frequency.linearRampToValueAtTime(baseFreq * 0.7, now + 0.06);
-      osc2.frequency.linearRampToValueAtTime(baseFreq * 0.5, now + 0.12);
-      
-      // 添加高频泛音让声音更可爱
-      osc3.frequency.setValueAtTime(baseFreq * 2.0, now);
-      osc3.frequency.linearRampToValueAtTime(baseFreq * 2.8, now + 0.02);
-      osc3.frequency.linearRampToValueAtTime(baseFreq * 2.2, now + 0.06);
-      osc3.frequency.linearRampToValueAtTime(baseFreq * 1.5, now + 0.12);
-      
-      // 音量包络 - 更响亮，更有活力
-      oscGain.gain.setValueAtTime(0, now);
-      oscGain.gain.linearRampToValueAtTime(0.6, now + 0.01);
-      oscGain.gain.linearRampToValueAtTime(0.5, now + 0.03);
-      oscGain.gain.linearRampToValueAtTime(0.3, now + 0.08);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-      
-      noiseGain.gain.setValueAtTime(0, now);
-      noiseGain.gain.linearRampToValueAtTime(0.1, now + 0.01);
-      noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-      
-      // 主音量更大
-      masterGain.gain.setValueAtTime(1.2, now);
-      
-      // 启动和停止
-      osc1.start(now);
-      osc2.start(now);
-      osc3.start(now);
-      noiseSource.start(now);
-      osc1.stop(now + 0.18);
-      osc2.stop(now + 0.18);
-      osc3.stop(now + 0.18);
-      noiseSource.stop(now + 0.18);
+    const animalType = await announcerStore.playFailure()
+    // 如果是动物模式，显示对应动画
+    if (animalType !== 'human') {
+      showResultAnimal.value = animalType // 'dog' 或自定义
     }
-    
-    // 播放两声可爱的汪汪
-    const now = audioContext.currentTime;
-    playBark(now, 1.1);        // 第一声稍高
-    playBark(now + 0.22, 1.0); // 第二声正常
-    
   } catch (e) {
-    console.log('Audio not supported:', e);
+    console.log('Audio not supported:', e)
+    // 回退到静态音频文件
+    try {
+      const audio = new Audio('/sounds/bark.wav')
+      audio.play()
+    } catch (e2) {
+      console.log('Fallback audio failed:', e2)
+    }
   }
 }
 
@@ -2912,6 +2778,7 @@ function handleGlobalKeydown(event) {
 onMounted(() => {
   wordsStore.init();
   speechStore.init(); // 初始化语音配置
+  announcerStore.init(); // 初始化播音员配置
   loadSettings(); // 加载保存的设置
   // 添加全局键盘事件监听
   document.addEventListener('keydown', handleGlobalKeydown);
@@ -3122,11 +2989,21 @@ watch(
       height: 60px;
       flex-shrink: 0;
       transition: opacity 0.3s, transform 0.3s;
+      cursor: pointer;
+
+      &:hover {
+        transform: scale(1.1);
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
 
       &.avatar-hidden {
         opacity: 0;
         transform: scale(0);
         position: absolute;
+        pointer-events: none;
       }
 
       img {
