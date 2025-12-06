@@ -210,7 +210,7 @@ const isSaving = ref(false)
 
 // 本地设置副本
 const localSettings = reactive({
-  type: 'human',
+  type: 'animal', // 默认动物播音员
   human: {
     correctPhrase: 'Correct!',
     incorrectPhrase: 'Incorrect.'
@@ -218,11 +218,11 @@ const localSettings = reactive({
   animal: {
     success: {
       type: 'cat',
-      soundFile: '/sounds/meow.wav'
+      soundFile: 'meow.wav'
     },
     failure: {
       type: 'dog',
-      soundFile: '/sounds/bark.wav'
+      soundFile: 'bark.wav'
     }
   }
 })
@@ -252,7 +252,7 @@ watch(visible, async (val) => {
 function selectSuccessAnimal(type) {
   localSettings.animal.success.type = type
   if (type === 'cat') {
-    localSettings.animal.success.soundFile = '/sounds/meow.wav'
+    localSettings.animal.success.soundFile = 'meow.wav'
   }
 }
 
@@ -260,7 +260,7 @@ function selectSuccessAnimal(type) {
 function selectFailureAnimal(type) {
   localSettings.animal.failure.type = type
   if (type === 'dog') {
-    localSettings.animal.failure.soundFile = '/sounds/bark.wav'
+    localSettings.animal.failure.soundFile = 'bark.wav'
   }
 }
 
@@ -275,6 +275,18 @@ async function previewHuman(type) {
   }
 }
 
+// 获取完整音频 URL（用于试听）
+function getFullSoundUrl(soundFile) {
+  if (soundFile.startsWith('data:') || soundFile.startsWith('http')) {
+    return soundFile
+  }
+  if (soundFile.startsWith('/sounds/')) {
+    soundFile = soundFile.replace('/sounds/', '')
+  }
+  const baseUrl = import.meta.env.BASE_URL || '/'
+  return `${baseUrl}sounds/${soundFile}`
+}
+
 // 试听动物音效
 async function previewSound(type) {
   const soundFile = type === 'success'
@@ -282,7 +294,7 @@ async function previewSound(type) {
     : localSettings.animal.failure.soundFile
   
   try {
-    await announcerStore.playSound(soundFile)
+    await announcerStore.playSound(getFullSoundUrl(soundFile))
   } catch (e) {
     MessagePlugin.error('播放失败')
   }
@@ -320,14 +332,14 @@ async function handleUpload(file, type) {
 
 // 恢复默认
 function resetToDefaults() {
-  localSettings.type = 'human'
+  localSettings.type = 'animal' // 默认动物播音员
   localSettings.human = {
     correctPhrase: 'Correct!',
     incorrectPhrase: 'Incorrect.'
   }
   localSettings.animal = {
-    success: { type: 'cat', soundFile: '/sounds/meow.wav' },
-    failure: { type: 'dog', soundFile: '/sounds/bark.wav' }
+    success: { type: 'cat', soundFile: 'meow.wav' },
+    failure: { type: 'dog', soundFile: 'bark.wav' }
   }
   MessagePlugin.success('已恢复默认设置')
 }

@@ -93,6 +93,15 @@
             <li>直接在字母框中输入，正确显示绿色，错误显示红色</li>
             <li>开启语音输入后，先朗读单词，再逐个拼读字母</li>
           </ul>
+          
+          <h3>计分规则</h3>
+          <ul>
+            <li><strong>基础分</strong>：正确拼写一个单词得 10 分</li>
+            <li><strong>难度加成</strong>：根据单词难度额外加分（难度1-5对应+0/+2/+5/+8/+12分）</li>
+            <li><strong>速度奖励</strong>：剩余时间越多，奖励越高（每秒+1分）</li>
+            <li><strong>连击奖励</strong>：连续答对可获得连击加成（2连+5分，3连+10分，4连+15分...）</li>
+            <li><strong>完美奖励</strong>：全部答对额外奖励 50 分</li>
+          </ul>
         </div>
 
         <div class="setup-actions">
@@ -2537,7 +2546,7 @@ async function playCatSound() {
     console.log('Audio not supported:', e)
     // 回退到静态音频文件
     try {
-      const audio = new Audio('/sounds/meow.wav')
+      const audio = new Audio(`${baseUrl}sounds/meow.wav`)
       audio.play()
     } catch (e2) {
       console.log('Fallback audio failed:', e2)
@@ -2557,7 +2566,7 @@ async function playDogSound() {
     console.log('Audio not supported:', e)
     // 回退到静态音频文件
     try {
-      const audio = new Audio('/sounds/bark.wav')
+      const audio = new Audio(`${baseUrl}sounds/bark.wav`)
       audio.play()
     } catch (e2) {
       console.log('Fallback audio failed:', e2)

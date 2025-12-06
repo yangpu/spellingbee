@@ -6,13 +6,21 @@ import { supabase } from '@/lib/supabase'
 
 const STORAGE_KEY = 'spellingbee_announcer_settings'
 
+// 获取基础路径（支持子路径部署）
+const BASE_URL = import.meta.env.BASE_URL || '/'
+
+// 获取完整的音频文件路径
+function getSoundPath(filename) {
+  return `${BASE_URL}sounds/${filename}`
+}
+
 export const useAnnouncerStore = defineStore('announcer', () => {
   const authStore = useAuthStore()
   const speechStore = useSpeechStore()
   
-  // 默认设置
+  // 默认设置（使用相对文件名，运行时拼接完整路径）
   const defaultSettings = {
-    type: 'human', // 'human' | 'animal'
+    type: 'animal', // 'human' | 'animal' - 默认动物播音员
     human: {
       correctPhrase: 'Correct!',
       incorrectPhrase: 'Incorrect.'
@@ -20,11 +28,11 @@ export const useAnnouncerStore = defineStore('announcer', () => {
     animal: {
       success: {
         type: 'cat',
-        soundFile: '/sounds/meow.wav'
+        soundFile: 'meow.wav' // 只存文件名
       },
       failure: {
         type: 'dog',
-        soundFile: '/sounds/bark.wav'
+        soundFile: 'bark.wav' // 只存文件名
       }
     }
   }
@@ -76,13 +84,27 @@ export const useAnnouncerStore = defineStore('announcer', () => {
     
     // 预加载动物音效
     try {
-      await preloadAudio(settings.value.animal.success.soundFile)
-      await preloadAudio(settings.value.animal.failure.soundFile)
+      await preloadAudio(getFullSoundUrl(settings.value.animal.success.soundFile))
+      await preloadAudio(getFullSoundUrl(settings.value.animal.failure.soundFile))
     } catch (e) {
       console.warn('Failed to preload audio:', e)
     }
     
     initialized.value = true
+  }
+  
+  // 获取完整的音频 URL
+  function getFullSoundUrl(soundFile) {
+    // 如果是 data URL 或完整 URL，直接返回
+    if (soundFile.startsWith('data:') || soundFile.startsWith('http')) {
+      return soundFile
+    }
+    // 如果是旧格式的绝对路径，提取文件名
+    if (soundFile.startsWith('/sounds/')) {
+      soundFile = soundFile.replace('/sounds/', '')
+    }
+    // 拼接完整路径
+    return getSoundPath(soundFile)
   }
   
   // 从本地加载
@@ -168,7 +190,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
       return 'human'
     } else {
       // 动物模式：播放音效
-      const soundUrl = settings.value.animal.success.soundFile
+      const soundUrl = getFullSoundUrl(settings.value.animal.success.soundFile)
       await playSound(soundUrl)
       return settings.value.animal.success.type // 'cat'
     }
@@ -182,7 +204,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
       return 'human'
     } else {
       // 动物模式：播放音效
-      const soundUrl = settings.value.animal.failure.soundFile
+      const soundUrl = getFullSoundUrl(settings.value.animal.failure.soundFile)
       await playSound(soundUrl)
       return settings.value.animal.failure.type // 'dog'
     }
