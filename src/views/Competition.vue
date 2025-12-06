@@ -48,6 +48,19 @@
             </t-radio-group>
           </div>
           <div class="form-group">
+            <label>出题模式</label>
+            <t-radio-group
+              v-model="settings.wordMode"
+              variant="default-filled"
+            >
+              <t-radio-button value="natural">自然</t-radio-button>
+              <t-radio-button value="new">新题</t-radio-button>
+              <t-radio-button value="random">随机</t-radio-button>
+              <t-radio-button value="sequential">顺序</t-radio-button>
+            </t-radio-group>
+            <span class="setting-hint mode-hint">{{ wordModeHint }}</span>
+          </div>
+          <div class="form-group">
             <label>语音输入</label>
             <t-switch v-model="settings.voiceInput" />
             <span class="setting-hint">开启后可通过语音拼读单词</span>
@@ -377,10 +390,12 @@ import {
 import { MessagePlugin } from 'tdesign-vue-next';
 import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
+import { useLearningStore } from '@/stores/learning';
 
 const baseUrl = import.meta.env.BASE_URL;
 const wordsStore = useWordsStore();
 const competitionStore = useCompetitionStore();
+const learningStore = useLearningStore();
 
 // Settings
 const settings = reactive({
@@ -388,6 +403,23 @@ const settings = reactive({
   timeLimit: 60,
   difficulty: null,
   voiceInput: false,
+  wordMode: 'natural', // natural, new, random, sequential
+});
+
+// Word mode hint text
+const wordModeHint = computed(() => {
+  switch (settings.wordMode) {
+    case 'natural':
+      return '模拟真实比赛，按难度递进出题';
+    case 'new':
+      return '优先出现未考过的单词';
+    case 'random':
+      return '完全随机打乱顺序';
+    case 'sequential':
+      return '按词库顺序依次出题';
+    default:
+      return '';
+  }
 });
 
 const wordCountMarks = {
@@ -496,10 +528,30 @@ watch(
 // Methods
 async function startCompetition() {
   await wordsStore.init();
-  const words = wordsStore.getRandomWords(
-    settings.wordCount,
-    settings.difficulty
-  );
+  
+  let words = [];
+  
+  // Get words based on selected mode
+  switch (settings.wordMode) {
+    case 'natural':
+      // Natural mode: simulate real competition, progressive difficulty
+      words = getWordsNaturalMode(settings.wordCount, settings.difficulty);
+      break;
+    case 'new':
+      // New mode: prioritize words not tested before
+      words = getWordsNewMode(settings.wordCount, settings.difficulty);
+      break;
+    case 'random':
+      // Random mode: completely random
+      words = wordsStore.getRandomWords(settings.wordCount, settings.difficulty);
+      break;
+    case 'sequential':
+      // Sequential mode: in order from word list
+      words = getWordsSequentialMode(settings.wordCount, settings.difficulty);
+      break;
+    default:
+      words = wordsStore.getRandomWords(settings.wordCount, settings.difficulty);
+  }
 
   if (words.length === 0) {
     MessagePlugin.warning('词库中没有符合条件的单词');
@@ -523,6 +575,129 @@ async function startCompetition() {
   if (settings.voiceInput) {
     initVoiceRecognition();
   }
+}
+
+// Get words in natural mode (progressive difficulty, like real competition)
+function getWordsNaturalMode(count, difficulty) {
+  let filtered = [...wordsStore.words];
+  
+  if (difficulty !== null) {
+    filtered = filtered.filter(w => w.difficulty === difficulty);
+  }
+  
+  if (filtered.length === 0) return [];
+  
+  // Sort by difficulty
+  filtered.sort((a, b) => a.difficulty - b.difficulty);
+  
+  // Take words with progressive difficulty
+  // Start easy, gradually increase difficulty
+  const result = [];
+  const easyCount = Math.ceil(count * 0.3); // 30% easy
+  const mediumCount = Math.ceil(count * 0.4); // 40% medium
+  const hardCount = count - easyCount - mediumCount; // 30% hard
+  
+  const easyWords = filtered.filter(w => w.difficulty <= 2);
+  const mediumWords = filtered.filter(w => w.difficulty === 3);
+  const hardWords = filtered.filter(w => w.difficulty >= 4);
+  
+  // Shuffle each group
+  const shuffle = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+  
+  result.push(...shuffle(easyWords).slice(0, easyCount));
+  result.push(...shuffle(mediumWords).slice(0, mediumCount));
+  result.push(...shuffle(hardWords).slice(0, hardCount));
+  
+  // If not enough words in categories, fill with random
+  if (result.length < count) {
+    const remaining = shuffle(filtered.filter(w => !result.includes(w)));
+    result.push(...remaining.slice(0, count - result.length));
+  }
+  
+  return result.slice(0, count);
+}
+
+// Get words in new mode (prioritize untested words)
+function getWordsNewMode(count, difficulty) {
+  let filtered = [...wordsStore.words];
+  
+  if (difficulty !== null) {
+    filtered = filtered.filter(w => w.difficulty === difficulty);
+  }
+  
+  if (filtered.length === 0) return [];
+  
+  // Get tested words from competition records
+  const testedWords = new Set();
+  competitionStore.records.forEach(record => {
+    if (record.incorrect_words) {
+      record.incorrect_words.forEach(w => testedWords.add(w.toLowerCase()));
+    }
+  });
+  // Also add correct words from learning records
+  Object.keys(learningStore.wordProgress).forEach(word => {
+    testedWords.add(word.toLowerCase());
+  });
+  
+  // Separate into new and tested words
+  const newWords = filtered.filter(w => !testedWords.has(w.word.toLowerCase()));
+  const testedWordsList = filtered.filter(w => testedWords.has(w.word.toLowerCase()));
+  
+  // Shuffle
+  const shuffle = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+  
+  // Prioritize new words, then fill with tested words
+  const result = [...shuffle(newWords)];
+  if (result.length < count) {
+    result.push(...shuffle(testedWordsList).slice(0, count - result.length));
+  }
+  
+  return result.slice(0, count);
+}
+
+// Get words in sequential mode (in order from word list)
+function getWordsSequentialMode(count, difficulty) {
+  let filtered = [...wordsStore.words];
+  
+  if (difficulty !== null) {
+    filtered = filtered.filter(w => w.difficulty === difficulty);
+  }
+  
+  if (filtered.length === 0) return [];
+  
+  // Get last position from localStorage
+  const storageKey = `spellingbee_sequential_pos_${difficulty || 'all'}`;
+  let startPos = parseInt(localStorage.getItem(storageKey) || '0', 10);
+  
+  // Wrap around if needed
+  if (startPos >= filtered.length) {
+    startPos = 0;
+  }
+  
+  // Get words starting from position
+  const result = [];
+  for (let i = 0; i < count && i < filtered.length; i++) {
+    const idx = (startPos + i) % filtered.length;
+    result.push(filtered[idx]);
+  }
+  
+  // Save next position
+  const nextPos = (startPos + count) % filtered.length;
+  localStorage.setItem(storageKey, nextPos.toString());
+  
+  return result;
 }
 
 function initLetterSlots() {
@@ -2493,6 +2668,12 @@ watch(
           margin-left: 1rem;
           color: var(--text-secondary);
           font-size: 0.9rem;
+        }
+
+        .mode-hint {
+          display: block;
+          margin-left: 0;
+          margin-top: 0.5rem;
         }
       }
     }

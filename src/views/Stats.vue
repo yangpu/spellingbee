@@ -325,6 +325,69 @@ onMounted(() => {
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 1rem;
     }
+
+    .stat-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem;
+      background: var(--bg-card);
+      border-radius: 16px;
+      transition: all 0.3s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: var(--honey-100);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--honey-600);
+
+        &.highlight {
+          background: linear-gradient(135deg, var(--honey-400) 0%, var(--honey-500) 100%);
+          color: white;
+        }
+
+        &.success {
+          background: #D1FAE5;
+          color: var(--success);
+        }
+
+        &.learning {
+          background: #DBEAFE;
+          color: #3B82F6;
+        }
+
+        &.warning {
+          background: #FEF3C7;
+          color: #F59E0B;
+        }
+      }
+
+      .stat-info {
+        display: flex;
+        flex-direction: column;
+
+        .stat-value {
+          font-size: 1.75rem;
+          font-weight: 700;
+          font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+          color: var(--charcoal-900);
+        }
+
+        .stat-label {
+          font-size: 0.85rem;
+          color: var(--text-secondary);
+        }
+      }
+    }
   }
 
   .overview-section {

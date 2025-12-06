@@ -186,6 +186,9 @@ const isAutoLearning = ref(false)
 const highlightedLetterIndex = ref(0)
 const autoLearnTimer = ref(null)
 
+// Card flip state - track definition reading alternation
+const flipCount = ref(0) // 0: first flip (Chinese), 1: second flip (English), etc.
+
 // Computed
 const currentWord = computed(() => learnWords.value[currentIndex.value] || null)
 const masteredCount = computed(() => masteredWords.value.length)
@@ -204,6 +207,7 @@ function startLearning() {
   isCompleted.value = false
   isFlipped.value = false
   highlightedLetterIndex.value = 0
+  flipCount.value = 0 // Reset flip count
   
   // Auto speak word when card shows
   setTimeout(() => speakWord(), 300)
@@ -212,8 +216,19 @@ function startLearning() {
 function flipCard() {
   isFlipped.value = !isFlipped.value
   if (isFlipped.value) {
-    // Speak definition when flipping to back (Chinese first, then English)
-    speakDefinition()
+    // Flipping to back (definition side)
+    // Alternate between Chinese and English definition
+    if (flipCount.value % 2 === 0) {
+      // Even flip count: speak Chinese definition
+      speakChineseDefinition()
+    } else {
+      // Odd flip count: speak English definition
+      speakEnglishDefinition()
+    }
+    flipCount.value++
+  } else {
+    // Flipping to front (word side) - always speak the word
+    speakWord()
   }
 }
 
@@ -222,7 +237,20 @@ function speakWord() {
   speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(currentWord.value.word)
   utterance.lang = 'en-US'
-  utterance.rate = 0.8
+  utterance.rate = 0.7 // Slower for clearer pronunciation
+  utterance.pitch = 1
+  
+  // Try to get a high-quality English voice for education
+  const voices = speechSynthesis.getVoices()
+  const preferredVoices = ['Samantha', 'Alex', 'Daniel', 'Karen', 'Microsoft Zira', 'Google US English']
+  for (const preferred of preferredVoices) {
+    const voice = voices.find(v => v.name.includes(preferred))
+    if (voice) {
+      utterance.voice = voice
+      break
+    }
+  }
+  
   speechSynthesis.speak(utterance)
 }
 
@@ -258,27 +286,72 @@ function getBestChineseVoice() {
   return chineseVoice || null
 }
 
-function speakDefinition() {
+// 获取最佳英文语音（用于教育场景）
+function getBestEnglishVoice() {
+  const voices = speechSynthesis.getVoices()
+  
+  // 优先选择的英文语音（清晰、标准的发音）
+  const preferredVoices = [
+    'Samantha',           // macOS 优质女声
+    'Alex',               // macOS 男声
+    'Daniel',             // macOS 英式男声
+    'Karen',              // macOS 澳洲女声
+    'Microsoft Zira',     // Windows 女声
+    'Microsoft David',    // Windows 男声
+    'Google US English',  // Chrome
+  ]
+  
+  for (const preferred of preferredVoices) {
+    const voice = voices.find(v => v.name.includes(preferred))
+    if (voice) return voice
+  }
+  
+  // 回退：查找任何英文语音
+  const englishVoice = voices.find(v => 
+    v.lang.startsWith('en') || 
+    v.name.includes('English')
+  )
+  
+  return englishVoice || null
+}
+
+// 朗读中文释义
+function speakChineseDefinition() {
   if (!currentWord.value) return
   speechSynthesis.cancel()
   
-  // Speak Chinese definition if available, otherwise English
   if (currentWord.value.definition_cn) {
     const utterance = new SpeechSynthesisUtterance(currentWord.value.definition_cn)
     utterance.lang = 'zh-CN'
     utterance.rate = 1.0
     
-    // 选择最佳中文语音
     const chineseVoice = getBestChineseVoice()
     if (chineseVoice) {
       utterance.voice = chineseVoice
     }
     
     speechSynthesis.speak(utterance)
-  } else if (currentWord.value.definition) {
+  } else {
+    // 没有中文释义时朗读英文
+    speakEnglishDefinition()
+  }
+}
+
+// 朗读英文释义
+function speakEnglishDefinition() {
+  if (!currentWord.value) return
+  speechSynthesis.cancel()
+  
+  if (currentWord.value.definition) {
     const utterance = new SpeechSynthesisUtterance(currentWord.value.definition)
     utterance.lang = 'en-US'
-    utterance.rate = 0.8
+    utterance.rate = 0.85
+    
+    const englishVoice = getBestEnglishVoice()
+    if (englishVoice) {
+      utterance.voice = englishVoice
+    }
+    
     speechSynthesis.speak(utterance)
   }
 }
@@ -336,23 +409,30 @@ function speakLetters(word, onComplete) {
       const letter = letters[index]
       const utterance = new SpeechSynthesisUtterance(letter)
       utterance.lang = 'en-US'
-      utterance.rate = 0.7
+      utterance.rate = 0.9 // 加快字母朗读语速（原来是0.7）
+      utterance.pitch = 1.1 // 稍微提高音调，更清晰
+      
+      // 选择高质量英文语音
+      const englishVoice = getBestEnglishVoice()
+      if (englishVoice) {
+        utterance.voice = englishVoice
+      }
       
       utterance.onend = () => {
         if (!isAutoLearning.value) return
         index++
-        autoLearnTimer.value = setTimeout(speakNextLetter, 200)
+        autoLearnTimer.value = setTimeout(speakNextLetter, 120) // 缩短字母间隔（原来是200）
       }
       
       utterance.onerror = () => {
         // 出错时继续下一个字母
         if (!isAutoLearning.value) return
         index++
-        autoLearnTimer.value = setTimeout(speakNextLetter, 200)
+        autoLearnTimer.value = setTimeout(speakNextLetter, 120)
       }
       
       speechSynthesis.speak(utterance)
-    }, 150)
+    }, 100) // 缩短高亮延迟（原来是150）
   }
   
   speakNextLetter()
@@ -382,6 +462,7 @@ function nextWord() {
     currentIndex.value++
     isFlipped.value = false
     highlightedLetterIndex.value = 0
+    flipCount.value = 0 // Reset flip count for new word
     
     // 使用 nextTick 确保 currentWord 已更新
     if (wasAutoLearning) {
@@ -411,6 +492,7 @@ function continueLearning() {
   isCompleted.value = false
   isFlipped.value = false
   highlightedLetterIndex.value = 0
+  flipCount.value = 0 // Reset flip count
   
   setTimeout(() => speakWord(), 300)
 }
@@ -455,7 +537,7 @@ function startAutoLearnCycle() {
   // 保存当前单词引用，防止异步过程中单词变化
   const wordToLearn = currentWord.value
   
-  // Step 1: Speak the word
+  // Step 1: Speak the word with high-quality voice
   speechSynthesis.cancel()
   
   // 等待 cancel 生效
@@ -464,12 +546,19 @@ function startAutoLearnCycle() {
     
     const wordUtterance = new SpeechSynthesisUtterance(wordToLearn.word)
     wordUtterance.lang = 'en-US'
-    wordUtterance.rate = 0.7
+    wordUtterance.rate = 0.65 // 单词朗读稍慢，确保清晰
+    wordUtterance.pitch = 1
+    
+    // 选择高质量英文语音
+    const englishVoice = getBestEnglishVoice()
+    if (englishVoice) {
+      wordUtterance.voice = englishVoice
+    }
     
     wordUtterance.onend = () => {
       if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
       
-      // Step 2: Spell out letters with highlighting
+      // Step 2: Spell out letters with highlighting (faster)
       autoLearnTimer.value = setTimeout(() => {
         if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
         
@@ -481,7 +570,7 @@ function startAutoLearnCycle() {
             if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
             isFlipped.value = true
             
-            // Step 3.5: Speak definition after flip
+            // Step 3.5: Speak definition after flip (Chinese)
             autoLearnTimer.value = setTimeout(() => {
               if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
               speakDefinitionForWord(wordToLearn)
@@ -493,9 +582,9 @@ function startAutoLearnCycle() {
               masteredWords.value.push(wordToLearn)
               nextWord()
             }, 3000)
-          }, 500)
+          }, 400) // 缩短等待时间
         })
-      }, 500)
+      }, 400) // 缩短等待时间
     }
     
     wordUtterance.onerror = () => {
@@ -523,9 +612,9 @@ function startAutoLearnCycle() {
               masteredWords.value.push(wordToLearn)
               nextWord()
             }, 3000)
-          }, 500)
+          }, 400)
         })
-      }, 500)
+      }, 400)
     }
     
     speechSynthesis.speak(wordUtterance)

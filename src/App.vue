@@ -19,7 +19,7 @@
           <span>比赛</span>
         </router-link>
         <router-link to="/words" class="nav-link">
-          <t-icon name="view-list" />
+          <t-icon name="book" />
           <span>词库</span>
         </router-link>
         <router-link to="/stats" class="nav-link">

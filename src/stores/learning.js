@@ -13,23 +13,35 @@ export const useLearningStore = defineStore('learning', () => {
   const syncing = ref(false)
 
   // Computed
+  // 已掌握的单词：mastery_level >= 2（至少连续正确2次）
   const masteredWords = computed(() => {
     return Object.entries(wordProgress.value)
-      .filter(([_, progress]) => progress.mastery_level >= 3)
+      .filter(([_, progress]) => progress.mastery_level >= 2)
       .map(([word]) => word)
   })
 
+  // 待复习的单词：mastery_level < 2 或者复习时间已到
   const wordsToReview = computed(() => {
     const now = new Date()
     return Object.entries(wordProgress.value)
       .filter(([_, progress]) => {
-        if (!progress.next_review_at) return false
-        return new Date(progress.next_review_at) <= now
+        // 还未掌握的单词（mastery_level < 2）需要复习
+        if (progress.mastery_level < 2) return true
+        // 复习时间已到的单词也需要复习
+        if (progress.next_review_at && new Date(progress.next_review_at) <= now) return true
+        return false
       })
       .map(([word]) => word)
   })
 
   const totalLearned = computed(() => Object.keys(wordProgress.value).length)
+  
+  // 学习中的单词（已学但未掌握）
+  const learningWords = computed(() => {
+    return Object.entries(wordProgress.value)
+      .filter(([_, progress]) => progress.mastery_level < 2)
+      .map(([word]) => word)
+  })
 
   const stats = computed(() => {
     const records = learningRecords.value
@@ -284,6 +296,7 @@ export const useLearningStore = defineStore('learning', () => {
     // Computed
     masteredWords,
     wordsToReview,
+    learningWords,
     totalLearned,
     stats,
     // Actions
