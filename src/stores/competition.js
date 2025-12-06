@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 
+const SESSION_KEY = 'spellingbee_competition_session'
+
 export const useCompetitionStore = defineStore('competition', () => {
   // State
   const isActive = ref(false)
@@ -30,6 +32,69 @@ export const useCompetitionStore = defineStore('competition', () => {
     const total = correctWords.value.length + incorrectWords.value.length
     return total > 0 ? Math.round((correctWords.value.length / total) * 100) : 0
   })
+  
+  // 是否有未完成的比赛
+  const hasUnfinishedSession = computed(() => {
+    const saved = localStorage.getItem(SESSION_KEY)
+    return !!saved
+  })
+
+  // 保存当前比赛状态
+  function saveSession() {
+    if (!isActive.value || words.value.length === 0) return
+    
+    const session = {
+      words: words.value,
+      currentWordIndex: currentWordIndex.value,
+      score: score.value,
+      correctWords: correctWords.value,
+      incorrectWords: incorrectWords.value,
+      timeRemaining: timeRemaining.value,
+      totalTime: totalTime.value,
+      startTime: startTime.value,
+      savedAt: Date.now()
+    }
+    
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  }
+
+  // 恢复未完成的比赛
+  function restoreSession() {
+    try {
+      const saved = localStorage.getItem(SESSION_KEY)
+      if (!saved) return null
+      
+      const session = JSON.parse(saved)
+      
+      // 检查会话是否过期（超过24小时）
+      if (Date.now() - session.savedAt > 24 * 60 * 60 * 1000) {
+        clearSession()
+        return null
+      }
+      
+      // 恢复状态
+      words.value = session.words
+      currentWordIndex.value = session.currentWordIndex
+      score.value = session.score
+      correctWords.value = session.correctWords || []
+      incorrectWords.value = session.incorrectWords || []
+      timeRemaining.value = session.totalTime // 重置时间，给用户完整时间
+      totalTime.value = session.totalTime
+      startTime.value = Date.now()
+      isActive.value = true
+      
+      return session
+    } catch (e) {
+      console.error('Error restoring competition session:', e)
+      clearSession()
+      return null
+    }
+  }
+
+  // 清除保存的会话
+  function clearSession() {
+    localStorage.removeItem(SESSION_KEY)
+  }
 
   // Start competition
   function startCompetition(wordList, timeLimit = 60) {
@@ -42,6 +107,9 @@ export const useCompetitionStore = defineStore('competition', () => {
     totalTime.value = timeLimit
     startTime.value = Date.now()
     isActive.value = true
+    
+    // 保存会话
+    saveSession()
   }
 
   // Check answer
@@ -62,6 +130,9 @@ export const useCompetitionStore = defineStore('competition', () => {
         userAnswer: userInput
       })
     }
+    
+    // 保存会话
+    saveSession()
 
     return isCorrect
   }
@@ -71,6 +142,8 @@ export const useCompetitionStore = defineStore('competition', () => {
     if (currentWordIndex.value < words.value.length - 1) {
       currentWordIndex.value++
       timeRemaining.value = totalTime.value
+      // 保存会话
+      saveSession()
       return true
     }
     return false
@@ -84,7 +157,10 @@ export const useCompetitionStore = defineStore('competition', () => {
         userAnswer: '[跳过]'
       })
     }
-    return nextWord()
+    const result = nextWord()
+    // 保存会话
+    saveSession()
+    return result
   }
 
   // Update timer
@@ -109,6 +185,9 @@ export const useCompetitionStore = defineStore('competition', () => {
   // End competition
   async function endCompetition() {
     isActive.value = false
+    // 清除保存的会话
+    clearSession()
+    
     const duration = Math.floor((Date.now() - startTime.value) / 1000)
 
     const record = {
@@ -151,6 +230,8 @@ export const useCompetitionStore = defineStore('competition', () => {
     incorrectWords.value = []
     timeRemaining.value = 60
     startTime.value = null
+    // 清除保存的会话
+    clearSession()
   }
 
   // Load records
@@ -248,6 +329,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     isFinished,
     accuracy,
     stats,
+    hasUnfinishedSession,
     // Actions
     startCompetition,
     checkAnswer,
@@ -257,7 +339,10 @@ export const useCompetitionStore = defineStore('competition', () => {
     timeOut,
     endCompetition,
     resetCompetition,
-    loadRecords
+    loadRecords,
+    saveSession,
+    restoreSession,
+    clearSession
   }
 })
 

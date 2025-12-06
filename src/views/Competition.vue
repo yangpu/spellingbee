@@ -6,6 +6,22 @@
       v-if="!competitionStore.isActive && !showResults"
     >
       <div class="setup-card">
+        <!-- 恢复未完成比赛提示 -->
+        <div class="resume-banner" v-if="competitionStore.hasUnfinishedSession">
+          <div class="resume-info">
+            <t-icon name="history" />
+            <span>您有一场未完成的比赛</span>
+          </div>
+          <div class="resume-actions">
+            <t-button size="small" variant="outline" @click="competitionStore.clearSession()">
+              放弃
+            </t-button>
+            <t-button size="small" theme="primary" @click="resumeCompetition">
+              继续比赛
+            </t-button>
+          </div>
+        </div>
+        
         <div class="setup-header">
           <img :src="`${baseUrl}bee.svg`" alt="Bee" class="setup-icon" />
           <h1>Spelling Bee 比赛</h1>
@@ -57,6 +73,7 @@
               <t-radio-button value="new">新题</t-radio-button>
               <t-radio-button value="random">随机</t-radio-button>
               <t-radio-button value="sequential">顺序</t-radio-button>
+              <t-radio-button value="reverse">倒序</t-radio-button>
             </t-radio-group>
             <span class="setting-hint mode-hint">{{ wordModeHint }}</span>
           </div>
@@ -105,11 +122,26 @@
 
       <!-- Announcer -->
       <div class="announcer-section">
-        <div class="announcer-avatar">
+        <div class="announcer-avatar" :class="{ 'avatar-hidden': showResultAnimal }">
           <img :src="`${baseUrl}bee.svg`" alt="Announcer" />
+        </div>
+        <!-- 成功小猫动画 -->
+        <div class="result-animal cat-animation" v-if="showResultAnimal === 'cat'">
+          <div class="animal-emoji">🐱</div>
+          <div class="animal-sparkles">✨</div>
+        </div>
+        <!-- 失败小狗动画 -->
+        <div class="result-animal dog-animation" v-if="showResultAnimal === 'dog'">
+          <div class="animal-emoji">🐶</div>
+          <div class="animal-tears">💧</div>
         </div>
         <div class="announcer-bubble">
           <p class="announcer-text">{{ announcerMessage }}</p>
+          <!-- 中文释义区域 - 始终存在，通过透明度控制显示 -->
+          <div class="definition-hint" :class="{ 'hint-visible': showDefinitionHint && currentWord }">
+            <span class="definition-cn" v-if="currentWord">{{ currentWord.definition_cn || currentWord.definition }}</span>
+            <span class="definition-cn" v-else>&nbsp;</span>
+          </div>
         </div>
       </div>
 
@@ -406,6 +438,37 @@ const settings = reactive({
   wordMode: 'natural', // natural, new, random, sequential
 });
 
+// 设置存储键
+const SETTINGS_KEY = 'spellingbee_competition_settings';
+
+// 加载保存的设置
+function loadSettings() {
+  try {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      Object.assign(settings, parsed);
+    }
+  } catch (e) {
+    console.error('Error loading competition settings:', e);
+  }
+}
+
+// 保存设置
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      wordCount: settings.wordCount,
+      timeLimit: settings.timeLimit,
+      difficulty: settings.difficulty,
+      voiceInput: settings.voiceInput,
+      wordMode: settings.wordMode,
+    }));
+  } catch (e) {
+    console.error('Error saving competition settings:', e);
+  }
+}
+
 // Word mode hint text
 const wordModeHint = computed(() => {
   switch (settings.wordMode) {
@@ -417,6 +480,8 @@ const wordModeHint = computed(() => {
       return '完全随机打乱顺序';
     case 'sequential':
       return '按词库顺序依次出题';
+    case 'reverse':
+      return '按词库倒序依次出题';
     default:
       return '';
   }
@@ -443,6 +508,8 @@ const showResults = ref(false);
 const lastResult = ref(null);
 const timerInterval = ref(null);
 const announcerMessage = ref('准备好了吗？让我们开始吧！');
+const showResultAnimal = ref(null); // 'cat' for success, 'dog' for failure
+const showDefinitionHint = ref(false); // 显示中文释义
 
 // Letter input state
 const letterSlots = ref([]);
@@ -465,15 +532,15 @@ const isComposing = ref(false); // 是否正在进行IME组合输入
 // 防抖相关状态
 const pendingMoveToNext = ref(null); // 待执行的移动到下一个框的操作
 const isProcessingInput = ref(false); // 是否正在处理输入（防止多重触发）
-const lastProcessedIndex = ref(-1); // 上次处理的输入框索引
-const lastProcessedTime = ref(0); // 上次处理的时间戳
-const inputThrottleTimer = ref({}); // 每个输入框的节流定时器
 // 移动端需要更长的锁定时间，因为虚拟键盘事件触发可能有延迟
 const isMobile =
   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
   );
-const inputLockDuration = isMobile ? 300 : 150; // 输入锁定时间（毫秒）- 防止跨框重复
+
+// 新的防抖机制：记录每个框的最后输入值和时间，只对相同值进行防抖
+const lastInputRecord = ref({}); // { index: { value, time } }
+const duplicateThreshold = 100; // 相同值重复输入的防抖时间（毫秒）
 
 const askedQuestions = reactive({
   pronunciation: false,
@@ -525,9 +592,41 @@ watch(
   { immediate: true }
 );
 
+// 恢复未完成的比赛
+async function resumeCompetition() {
+  const session = competitionStore.restoreSession();
+  if (!session) {
+    MessagePlugin.warning('无法恢复比赛，请开始新比赛');
+    return;
+  }
+  
+  showResults.value = false;
+  lastResult.value = null;
+  
+  // Reset state
+  resetAskedQuestions();
+  initLetterSlots();
+  
+  // Start with word announcement
+  announceWord();
+  
+  // Start timer
+  startTimer();
+  
+  // Initialize voice recognition if enabled
+  if (settings.voiceInput) {
+    initVoiceRecognition();
+  }
+  
+  MessagePlugin.success(`已恢复比赛，当前第 ${competitionStore.progress.current} / ${competitionStore.progress.total} 题`);
+}
+
 // Methods
 async function startCompetition() {
   await wordsStore.init();
+  
+  // 保存设置
+  saveSettings();
   
   let words = [];
   
@@ -548,6 +647,10 @@ async function startCompetition() {
     case 'sequential':
       // Sequential mode: in order from word list
       words = getWordsSequentialMode(settings.wordCount, settings.difficulty);
+      break;
+    case 'reverse':
+      // Reverse mode: reverse order from word list
+      words = getWordsReverseMode(settings.wordCount, settings.difficulty);
       break;
     default:
       words = wordsStore.getRandomWords(settings.wordCount, settings.difficulty);
@@ -700,6 +803,39 @@ function getWordsSequentialMode(count, difficulty) {
   return result;
 }
 
+// Get words in reverse mode (reverse order from word list)
+function getWordsReverseMode(count, difficulty) {
+  let filtered = [...wordsStore.words].reverse();
+  
+  if (difficulty !== null) {
+    filtered = filtered.filter(w => w.difficulty === difficulty);
+  }
+  
+  if (filtered.length === 0) return [];
+  
+  // Get last position from localStorage
+  const storageKey = `spellingbee_reverse_pos_${difficulty || 'all'}`;
+  let startPos = parseInt(localStorage.getItem(storageKey) || '0', 10);
+  
+  // Wrap around if needed
+  if (startPos >= filtered.length) {
+    startPos = 0;
+  }
+  
+  // Get words starting from position
+  const result = [];
+  for (let i = 0; i < count && i < filtered.length; i++) {
+    const idx = (startPos + i) % filtered.length;
+    result.push(filtered[idx]);
+  }
+  
+  // Save next position
+  const nextPos = (startPos + count) % filtered.length;
+  localStorage.setItem(storageKey, nextPos.toString());
+  
+  return result;
+}
+
 function initLetterSlots() {
   if (!currentWord.value) return;
   letterSlots.value = currentWord.value.word.split('').map(() => ({
@@ -710,15 +846,7 @@ function initLetterSlots() {
   // 重置处理标记
   isProcessingInput.value = false;
   handledByKeydown.value = false;
-  lastProcessedIndex.value = -1;
-  lastProcessedTime.value = 0;
-  // 清除所有节流定时器
-  Object.keys(inputThrottleTimer.value).forEach(key => {
-    if (inputThrottleTimer.value[key]) {
-      clearTimeout(inputThrottleTimer.value[key]);
-    }
-  });
-  inputThrottleTimer.value = {};
+  lastInputRecord.value = {}; // 重置输入记录
   // 取消待执行的移动操作
   if (pendingMoveToNext.value) {
     clearTimeout(pendingMoveToNext.value);
@@ -729,13 +857,34 @@ function initLetterSlots() {
 // 记录是否由 keydown 处理了输入（防止 input 事件重复处理）
 const handledByKeydown = ref(false);
 
+// 检查是否是重复输入（中文输入法会触发两次相同字母）
+function isDuplicateInput(index, value) {
+  const now = Date.now();
+  const record = lastInputRecord.value[index];
+  
+  // 如果同一个框在短时间内输入相同的值，视为重复
+  if (record && record.value === value && now - record.time < duplicateThreshold) {
+    return true;
+  }
+  
+  return false;
+}
+
+// 记录输入
+function recordInput(index, value) {
+  lastInputRecord.value[index] = {
+    value,
+    time: Date.now()
+  };
+}
+
 function handleLetterInput(event, index) {
   // 如果正在进行IME组合输入，不处理（等待compositionend）
   if (isComposing.value) {
     return;
   }
 
-  // 如果已经由 keydown 或 beforeinput 处理过，跳过
+  // 如果已经由 keydown 处理过，跳过
   if (handledByKeydown.value) {
     handledByKeydown.value = false;
     // 立即恢复正确的值
@@ -751,25 +900,7 @@ function handleLetterInput(event, index) {
   }
 
   // 以下是 PC 端的处理逻辑
-  const now = Date.now();
   const inputValue = event.target.value || '';
-
-  // 全局输入锁检查
-  if (isProcessingInput.value) {
-    event.target.value = letterSlots.value[index].value || '';
-    return;
-  }
-
-  // 检查是否在锁定时间内
-  if (
-    lastProcessedTime.value &&
-    now - lastProcessedTime.value < inputLockDuration
-  ) {
-    if (index === lastProcessedIndex.value || index === lastProcessedIndex.value + 1) {
-      event.target.value = letterSlots.value[index].value || '';
-      return;
-    }
-  }
 
   // 提取所有英文字母
   const letters = inputValue.replace(/[^a-zA-Z]/g, '').toLowerCase();
@@ -783,9 +914,15 @@ function handleLetterInput(event, index) {
   // 只取第一个有效字母
   const value = letters.charAt(0);
 
-  // 如果当前格已经有值且值相同，说明是重复触发
+  // 如果当前格已经有值且值相同，检查是否是重复触发
   if (letterSlots.value[index].value === value) {
     event.target.value = value;
+    return;
+  }
+
+  // 检查是否是中文输入法导致的重复输入
+  if (isDuplicateInput(index, value)) {
+    event.target.value = letterSlots.value[index].value || value;
     return;
   }
 
@@ -795,12 +932,8 @@ function handleLetterInput(event, index) {
 
 // 统一的字母输入处理函数（用于 keydown 和 compositionend）
 function processLetterInput(value, index, inputElement) {
-  const now = Date.now();
-
-  // 标记正在处理
-  isProcessingInput.value = true;
-  lastProcessedIndex.value = index;
-  lastProcessedTime.value = now;
+  // 记录本次输入（用于检测重复）
+  recordInput(index, value);
 
   // 更新当前框的字母
   letterSlots.value[index].value = value;
@@ -824,6 +957,7 @@ function processLetterInput(value, index, inputElement) {
 
   // 移动到下一个框或自动提交
   if (index < letterSlots.value.length - 1) {
+    // 快速移动到下一个框，不需要长时间延迟
     pendingMoveToNext.value = setTimeout(() => {
       currentLetterIndex.value = index + 1;
       const nextInput = letterInputRefs.value[index + 1];
@@ -832,11 +966,7 @@ function processLetterInput(value, index, inputElement) {
         nextInput.focus();
       }
       pendingMoveToNext.value = null;
-      // 延迟重置处理标记
-      setTimeout(() => {
-        isProcessingInput.value = false;
-      }, 100);
-    }, isMobile ? 150 : 50);
+    }, isMobile ? 80 : 20); // 缩短延迟，提升快速输入体验
   } else {
     // 输入最后一个字母后自动提交
     pendingMoveToNext.value = setTimeout(() => {
@@ -844,8 +974,7 @@ function processLetterInput(value, index, inputElement) {
         submitAnswer();
       }
       pendingMoveToNext.value = null;
-      isProcessingInput.value = false;
-    }, isMobile ? 150 : 50);
+    }, isMobile ? 100 : 30);
   }
 }
 
@@ -878,9 +1007,9 @@ function handleCompositionEnd(event, index) {
     return;
   }
 
-  // 如果正在处理中，跳过
-  if (isProcessingInput.value) {
-    event.target.value = letterSlots.value[index].value || '';
+  // 检查是否是重复输入
+  if (isDuplicateInput(index, value)) {
+    event.target.value = letterSlots.value[index].value || value;
     return;
   }
 
@@ -891,15 +1020,8 @@ function handleCompositionEnd(event, index) {
 // 处理输入框获得焦点
 function handleInputFocus(event, index) {
   currentLetterIndex.value = index;
-  const now = Date.now();
-  // 如果距离上次处理时间超过锁定时间，重置状态
-  if (
-    !lastProcessedTime.value ||
-    now - lastProcessedTime.value > inputLockDuration
-  ) {
-    isProcessingInput.value = false;
-    handledByKeydown.value = false;
-  }
+  // 重置处理标记
+  handledByKeydown.value = false;
   // 确保输入框显示正确的值，防止残留
   const correctValue = letterSlots.value[index].value || '';
   // 强制只显示单个字符
@@ -935,12 +1057,6 @@ function handleBeforeInput(event) {
     return;
   }
 
-  // 如果正在处理中，阻止
-  if (isProcessingInput.value) {
-    event.preventDefault();
-    return;
-  }
-
   // 获取当前输入框索引
   const inputElement = event.target;
   const currentIndex = letterInputRefs.value.findIndex(
@@ -948,17 +1064,19 @@ function handleBeforeInput(event) {
   );
   if (currentIndex === -1) return;
 
-  // 检查是否在锁定时间内
-  const now = Date.now();
-  if (
-    lastProcessedTime.value &&
-    now - lastProcessedTime.value < inputLockDuration
-  ) {
-    if (currentIndex === lastProcessedIndex.value || 
-        currentIndex === lastProcessedIndex.value + 1) {
-      event.preventDefault();
-      return;
-    }
+  // 提取第一个有效字母
+  const letters = data.replace(/[^a-zA-Z]/g, '').toLowerCase();
+  if (!letters) {
+    event.preventDefault();
+    return;
+  }
+  
+  const value = letters.charAt(0);
+  
+  // 检查是否是重复输入（中文输入法问题）
+  if (isDuplicateInput(currentIndex, value)) {
+    event.preventDefault();
+    return;
   }
 
   // 核心修复：在移动端，完全阻止浏览器默认输入行为，由我们手动控制
@@ -966,25 +1084,8 @@ function handleBeforeInput(event) {
   if (isMobile) {
     event.preventDefault();
     
-    // 提取第一个有效字母
-    const letters = data.replace(/[^a-zA-Z]/g, '').toLowerCase();
-    if (!letters) return;
-    
-    const value = letters.charAt(0);
-    
     // 如果当前格已经有相同的值，不重复处理
     if (letterSlots.value[currentIndex].value === value) {
-      return;
-    }
-    
-    // 检查是否与上一个框刚输入的值相同（移动端重复问题）
-    if (
-      !letterSlots.value[currentIndex].value &&
-      currentIndex > 0 &&
-      letterSlots.value[currentIndex - 1].value === value &&
-      lastProcessedIndex.value === currentIndex - 1 &&
-      now - lastProcessedTime.value < inputLockDuration * 2
-    ) {
       return;
     }
     
@@ -995,8 +1096,8 @@ function handleBeforeInput(event) {
 
   // PC端：如果输入的不是单个字母，阻止
   if (data.length > 1) {
-    const letters = data.replace(/[^a-zA-Z]/g, '').toLowerCase();
-    if (letters.length > 1) {
+    const multiLetters = data.replace(/[^a-zA-Z]/g, '').toLowerCase();
+    if (multiLetters.length > 1) {
       event.preventDefault();
       return;
     }
@@ -1006,7 +1107,6 @@ function handleBeforeInput(event) {
 function handleLetterKeydown(event, index) {
   if (event.key === 'Backspace') {
     event.preventDefault();
-    isProcessingInput.value = true;
     handledByKeydown.value = true;
 
     if (letterSlots.value[index].value) {
@@ -1026,17 +1126,15 @@ function handleLetterKeydown(event, index) {
           prevInput.focus();
         }
         setTimeout(() => {
-          isProcessingInput.value = false;
           handledByKeydown.value = false;
-        }, 100);
+        }, 50);
       });
       return;
     }
 
     setTimeout(() => {
-      isProcessingInput.value = false;
       handledByKeydown.value = false;
-    }, 100);
+    }, 50);
   } else if (event.key === 'Enter') {
     if (isAllLettersFilled.value) {
       submitAnswer();
@@ -1067,6 +1165,11 @@ function handleLetterKeydown(event, index) {
 
     // 使用统一的处理函数
     processLetterInput(value, index, letterInputRefs.value[index]);
+    
+    // 快速重置标记，允许下一个按键
+    setTimeout(() => {
+      handledByKeydown.value = false;
+    }, 30);
   }
 }
 
@@ -2318,6 +2421,11 @@ function handleTimeout() {
 
   announcerMessage.value = `很遗憾，时间到了。正确答案是 "${currentWord.value?.word}"`;
 
+  // 显示小狗动画和中文释义
+  showResultAnimal.value = 'dog';
+  showDefinitionHint.value = true;
+  playDogSound();
+
   // Show correct answer in slots with error styling
   if (currentWord.value) {
     currentWord.value.word.split('').forEach((char, i) => {
@@ -2335,8 +2443,10 @@ function handleTimeout() {
   }
 
   setTimeout(() => {
+    showResultAnimal.value = null;
+    showDefinitionHint.value = false;
     moveToNextOrEnd();
-  }, 2000);
+  }, 2500);
 }
 
 async function submitAnswer() {
@@ -2348,17 +2458,26 @@ async function submitAnswer() {
   stopTimer();
   stopVoiceInput();
 
+  // 显示中文释义
+  showDefinitionHint.value = true;
+
   if (isCorrect) {
     announcerMessage.value = `太棒了！"${currentWord.value.word}" 拼写正确！`;
+    
+    // 显示小猫动画
+    showResultAnimal.value = 'cat';
 
-    // 暂停识别后播放
+    // 播放喵声
     pauseVoiceRecognition();
-    const congrats = new SpeechSynthesisUtterance('Correct!');
-    congrats.lang = 'en-US';
-    congrats.rate = 1;
-    speechSynthesis.speak(congrats);
+    playCatSound();
   } else {
     announcerMessage.value = `很遗憾，正确答案是 "${currentWord.value.word}"`;
+    
+    // 显示小狗动画
+    showResultAnimal.value = 'dog';
+
+    // 播放汪声
+    playDogSound();
 
     // Show all letters with correct/wrong status
     currentWord.value.word.split('').forEach((char, i) => {
@@ -2373,8 +2492,207 @@ async function submitAnswer() {
   }
 
   setTimeout(() => {
+    // 隐藏动画和释义
+    showResultAnimal.value = null;
+    showDefinitionHint.value = false;
     moveToNextOrEnd();
-  }, 2000);
+  }, 2500);
+}
+
+// 播放小猫喵声 - 可爱版本
+function playCatSound() {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioContext.currentTime;
+    
+    // 创建主振荡器 - 模拟可爱猫叫的高频特性
+    const osc1 = audioContext.createOscillator();
+    const osc2 = audioContext.createOscillator();
+    const osc3 = audioContext.createOscillator();
+    
+    // 创建滤波器 - 模拟猫叫的共振特性
+    const filter = audioContext.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1500, now);
+    filter.Q.setValueAtTime(4, now);
+    
+    // 创建增益节点
+    const gainNode = audioContext.createGain();
+    const masterGain = audioContext.createGain();
+    
+    // 连接节点
+    osc1.connect(gainNode);
+    osc2.connect(gainNode);
+    osc3.connect(gainNode);
+    gainNode.connect(filter);
+    filter.connect(masterGain);
+    masterGain.connect(audioContext.destination);
+    
+    // 设置波形 - 混合多种波形模拟可爱猫叫
+    osc1.type = 'sine';
+    osc2.type = 'triangle';
+    osc3.type = 'sine';
+    
+    // 可爱喵声的频率变化曲线 - 更高音调，更活泼
+    // 基频 (约 500-1000Hz 范围，比原来更高更可爱)
+    osc1.frequency.setValueAtTime(550, now);
+    osc1.frequency.linearRampToValueAtTime(900, now + 0.06);
+    osc1.frequency.linearRampToValueAtTime(1100, now + 0.12);
+    osc1.frequency.linearRampToValueAtTime(950, now + 0.25);
+    osc1.frequency.linearRampToValueAtTime(700, now + 0.4);
+    osc1.frequency.linearRampToValueAtTime(500, now + 0.5);
+    
+    // 泛音1 (2倍频)
+    osc2.frequency.setValueAtTime(1100, now);
+    osc2.frequency.linearRampToValueAtTime(1800, now + 0.06);
+    osc2.frequency.linearRampToValueAtTime(2200, now + 0.12);
+    osc2.frequency.linearRampToValueAtTime(1900, now + 0.25);
+    osc2.frequency.linearRampToValueAtTime(1400, now + 0.4);
+    osc2.frequency.linearRampToValueAtTime(1000, now + 0.5);
+    
+    // 泛音2 - 添加颤音效果让声音更可爱
+    osc3.frequency.setValueAtTime(1650, now);
+    osc3.frequency.linearRampToValueAtTime(2700, now + 0.06);
+    osc3.frequency.linearRampToValueAtTime(3300, now + 0.12);
+    osc3.frequency.linearRampToValueAtTime(2850, now + 0.25);
+    osc3.frequency.linearRampToValueAtTime(2100, now + 0.4);
+    osc3.frequency.linearRampToValueAtTime(1500, now + 0.5);
+    
+    // 滤波器频率随时间变化
+    filter.frequency.setValueAtTime(1000, now);
+    filter.frequency.linearRampToValueAtTime(2500, now + 0.12);
+    filter.frequency.linearRampToValueAtTime(1500, now + 0.5);
+    
+    // 音量包络 - 更响亮，更有活力
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(0.5, now + 0.02);
+    gainNode.gain.linearRampToValueAtTime(0.6, now + 0.08);
+    gainNode.gain.linearRampToValueAtTime(0.5, now + 0.2);
+    gainNode.gain.linearRampToValueAtTime(0.3, now + 0.35);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+    
+    // 主音量更大
+    masterGain.gain.setValueAtTime(1.0, now);
+    
+    // 启动和停止
+    osc1.start(now);
+    osc2.start(now);
+    osc3.start(now);
+    osc1.stop(now + 0.6);
+    osc2.stop(now + 0.6);
+    osc3.stop(now + 0.6);
+    
+  } catch (e) {
+    console.log('Audio not supported:', e);
+  }
+}
+
+// 播放小狗汪声 - 可爱版本
+function playDogSound() {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playBark(startTime, pitch = 1) {
+      const now = startTime;
+      
+      // 创建多个振荡器模拟可爱狗叫
+      const osc1 = audioContext.createOscillator();
+      const osc2 = audioContext.createOscillator();
+      const osc3 = audioContext.createOscillator();
+      const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.3, audioContext.sampleRate);
+      const noiseData = noiseBuffer.getChannelData(0);
+      
+      // 生成柔和噪声
+      for (let i = 0; i < noiseBuffer.length; i++) {
+        noiseData[i] = (Math.random() * 2 - 1) * 0.2;
+      }
+      const noiseSource = audioContext.createBufferSource();
+      noiseSource.buffer = noiseBuffer;
+      
+      // 创建滤波器
+      const lowpass = audioContext.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.setValueAtTime(2000 * pitch, now);
+      
+      const bandpass = audioContext.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.setValueAtTime(600 * pitch, now);
+      bandpass.Q.setValueAtTime(2, now);
+      
+      // 增益节点
+      const oscGain = audioContext.createGain();
+      const noiseGain = audioContext.createGain();
+      const masterGain = audioContext.createGain();
+      
+      // 连接
+      osc1.connect(oscGain);
+      osc2.connect(oscGain);
+      osc3.connect(oscGain);
+      oscGain.connect(bandpass);
+      bandpass.connect(masterGain);
+      
+      noiseSource.connect(noiseGain);
+      noiseGain.connect(lowpass);
+      lowpass.connect(masterGain);
+      
+      masterGain.connect(audioContext.destination);
+      
+      // 波形设置 - 更柔和的波形组合
+      osc1.type = 'triangle';
+      osc2.type = 'sine';
+      osc3.type = 'triangle';
+      
+      // 可爱狗叫频率 - 更高音调，更活泼
+      const baseFreq = 380 * pitch;
+      osc1.frequency.setValueAtTime(baseFreq * 1.3, now);
+      osc1.frequency.linearRampToValueAtTime(baseFreq * 1.8, now + 0.02);
+      osc1.frequency.linearRampToValueAtTime(baseFreq * 1.5, now + 0.06);
+      osc1.frequency.linearRampToValueAtTime(baseFreq * 1.0, now + 0.12);
+      
+      osc2.frequency.setValueAtTime(baseFreq * 0.6, now);
+      osc2.frequency.linearRampToValueAtTime(baseFreq * 0.9, now + 0.02);
+      osc2.frequency.linearRampToValueAtTime(baseFreq * 0.7, now + 0.06);
+      osc2.frequency.linearRampToValueAtTime(baseFreq * 0.5, now + 0.12);
+      
+      // 添加高频泛音让声音更可爱
+      osc3.frequency.setValueAtTime(baseFreq * 2.0, now);
+      osc3.frequency.linearRampToValueAtTime(baseFreq * 2.8, now + 0.02);
+      osc3.frequency.linearRampToValueAtTime(baseFreq * 2.2, now + 0.06);
+      osc3.frequency.linearRampToValueAtTime(baseFreq * 1.5, now + 0.12);
+      
+      // 音量包络 - 更响亮，更有活力
+      oscGain.gain.setValueAtTime(0, now);
+      oscGain.gain.linearRampToValueAtTime(0.6, now + 0.01);
+      oscGain.gain.linearRampToValueAtTime(0.5, now + 0.03);
+      oscGain.gain.linearRampToValueAtTime(0.3, now + 0.08);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+      
+      noiseGain.gain.setValueAtTime(0, now);
+      noiseGain.gain.linearRampToValueAtTime(0.1, now + 0.01);
+      noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      
+      // 主音量更大
+      masterGain.gain.setValueAtTime(1.2, now);
+      
+      // 启动和停止
+      osc1.start(now);
+      osc2.start(now);
+      osc3.start(now);
+      noiseSource.start(now);
+      osc1.stop(now + 0.18);
+      osc2.stop(now + 0.18);
+      osc3.stop(now + 0.18);
+      noiseSource.stop(now + 0.18);
+    }
+    
+    // 播放两声可爱的汪汪
+    const now = audioContext.currentTime;
+    playBark(now, 1.1);        // 第一声稍高
+    playBark(now + 0.22, 1.0); // 第二声正常
+    
+  } catch (e) {
+    console.log('Audio not supported:', e);
+  }
 }
 
 function skipWord() {
@@ -2383,6 +2701,11 @@ function skipWord() {
 
   // 先保存当前单词信息用于显示
   const skippedWord = currentWord.value?.word;
+
+  // 显示小狗动画和中文释义
+  showResultAnimal.value = 'dog';
+  showDefinitionHint.value = true;
+  playDogSound();
 
   // 显示正确答案，标记为红色错误
   if (currentWord.value) {
@@ -2400,6 +2723,10 @@ function skipWord() {
   announcerMessage.value = `跳过了这个单词。正确答案是 "${skippedWord}"`;
 
   setTimeout(() => {
+    // 隐藏动画和释义
+    showResultAnimal.value = null;
+    showDefinitionHint.value = false;
+    
     // skipWord 已经移动了索引，直接检查是否还有下一个单词
     if (competitionStore.currentWord) {
       resetAskedQuestions();
@@ -2420,7 +2747,7 @@ function skipWord() {
     } else {
       endCompetition();
     }
-  }, 1500);
+  }, 2000);
 }
 
 async function moveToNextOrEnd() {
@@ -2464,9 +2791,6 @@ function handleGlobalKeydown(event) {
   // 只在比赛进行中处理
   if (!competitionStore.isActive) return;
 
-  // 如果正在处理输入，跳过
-  if (isProcessingInput.value) return;
-
   // 检查当前焦点是否在字母输入框内
   const activeElement = document.activeElement;
   const isInputFocused = letterInputRefs.value.some(
@@ -2479,9 +2803,6 @@ function handleGlobalKeydown(event) {
   // 检查是否按下了字母键
   if (/^[a-zA-Z]$/.test(event.key)) {
     event.preventDefault();
-
-    // 标记正在处理
-    isProcessingInput.value = true;
 
     // 找到当前应该聚焦的输入框索引
     let targetIndex = currentLetterIndex.value;
@@ -2497,6 +2818,9 @@ function handleGlobalKeydown(event) {
     // 确保索引有效
     if (targetIndex >= 0 && targetIndex < letterSlots.value.length) {
       const value = event.key.toLowerCase();
+      
+      // 记录输入并处理
+      recordInput(targetIndex, value);
 
       // 更新字母
       letterSlots.value[targetIndex].value = value;
@@ -2523,9 +2847,6 @@ function handleGlobalKeydown(event) {
             nextInput.value = letterSlots.value[targetIndex + 1].value || '';
             nextInput.focus();
           }
-          setTimeout(() => {
-            isProcessingInput.value = false;
-          }, 50);
         });
       } else {
         // 最后一个字母，检查是否自动提交
@@ -2540,16 +2861,12 @@ function handleGlobalKeydown(event) {
               input.focus();
             }
           }
-          isProcessingInput.value = false;
         });
       }
-    } else {
-      isProcessingInput.value = false;
     }
   } else if (event.key === 'Backspace') {
     // 处理退格键
     event.preventDefault();
-    isProcessingInput.value = true;
 
     let targetIndex = currentLetterIndex.value;
 
@@ -2563,7 +2880,6 @@ function handleGlobalKeydown(event) {
           input.value = '';
           input.focus();
         }
-        isProcessingInput.value = false;
       });
     } else if (targetIndex > 0) {
       // 如果当前框为空，移动到上一个框并清空
@@ -2577,10 +2893,7 @@ function handleGlobalKeydown(event) {
           input.value = '';
           input.focus();
         }
-        isProcessingInput.value = false;
       });
-    } else {
-      isProcessingInput.value = false;
     }
   } else if (event.key === 'Enter') {
     // 处理回车键提交
@@ -2594,6 +2907,7 @@ function handleGlobalKeydown(event) {
 // Lifecycle
 onMounted(() => {
   wordsStore.init();
+  loadSettings(); // 加载保存的设置
   // 添加全局键盘事件监听
   document.addEventListener('keydown', handleGlobalKeydown);
 });
@@ -2630,6 +2944,34 @@ watch(
     border-radius: 24px;
     padding: 3rem;
     box-shadow: var(--shadow-lg);
+
+    .resume-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: linear-gradient(135deg, var(--honey-50) 0%, var(--honey-100) 100%);
+      border: 1px solid var(--honey-300);
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+
+      .resume-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--honey-700);
+        font-weight: 500;
+
+        .t-icon {
+          font-size: 1.25rem;
+        }
+      }
+
+      .resume-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+    }
 
     .setup-header {
       text-align: center;
@@ -2767,11 +3109,64 @@ watch(
       width: 60px;
       height: 60px;
       flex-shrink: 0;
+      transition: opacity 0.3s, transform 0.3s;
+
+      &.avatar-hidden {
+        opacity: 0;
+        transform: scale(0);
+        position: absolute;
+      }
 
       img {
         width: 100%;
         height: 100%;
         animation: float 3s ease-in-out infinite;
+      }
+    }
+
+    // 结果动物动画容器
+    .result-animal {
+      width: 60px;
+      height: 60px;
+      flex-shrink: 0;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .animal-emoji {
+        font-size: 2.5rem;
+        animation: bounce 0.5s ease-in-out infinite;
+      }
+
+      .animal-sparkles {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        font-size: 1rem;
+        animation: sparkle 0.6s ease-in-out infinite;
+      }
+
+      .animal-tears {
+        position: absolute;
+        bottom: 5px;
+        right: 0;
+        font-size: 0.8rem;
+        animation: tear-drop 0.8s ease-in-out infinite;
+      }
+    }
+
+    // 小猫成功动画
+    .cat-animation {
+      .animal-emoji {
+        animation: cat-happy 0.6s ease-in-out infinite;
+      }
+    }
+
+    // 小狗失败动画
+    .dog-animation {
+      .animal-emoji {
+        animation: dog-sad 1s ease-in-out infinite;
       }
     }
 
@@ -2788,6 +3183,85 @@ watch(
         color: var(--text-primary);
         margin: 0;
       }
+
+      .definition-hint {
+        min-height: 2rem; // 预留固定高度，避免显示/隐藏时界面跳动
+        margin: 0.5rem 0 0 0;
+        padding-top: 0.5rem;
+        border-top: 1px dashed transparent;
+        opacity: 0;
+        transition: opacity 0.3s ease, border-color 0.3s ease;
+
+        &.hint-visible {
+          opacity: 1;
+          border-top-color: var(--honey-300);
+        }
+
+        .definition-cn {
+          font-size: 1rem;
+          color: var(--honey-600);
+          font-weight: 500;
+        }
+      }
+    }
+  }
+
+  // 动画关键帧
+  @keyframes cat-happy {
+    0%, 100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    25% {
+      transform: translateY(-8px) rotate(-5deg);
+    }
+    50% {
+      transform: translateY(0) rotate(0deg);
+    }
+    75% {
+      transform: translateY(-8px) rotate(5deg);
+    }
+  }
+
+  @keyframes dog-sad {
+    0%, 100% {
+      transform: translateY(0) rotate(0deg);
+    }
+    25% {
+      transform: translateY(2px) rotate(-3deg);
+    }
+    75% {
+      transform: translateY(2px) rotate(3deg);
+    }
+  }
+
+  @keyframes sparkle {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.3) rotate(180deg);
+    }
+  }
+
+  @keyframes tear-drop {
+    0% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+
+  @keyframes bounce {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
     }
   }
 

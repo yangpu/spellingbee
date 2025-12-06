@@ -3,6 +3,8 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 
+const SESSION_KEY = 'spellingbee_learning_session'
+
 export const useLearningStore = defineStore('learning', () => {
   const authStore = useAuthStore()
   
@@ -41,6 +43,12 @@ export const useLearningStore = defineStore('learning', () => {
     return Object.entries(wordProgress.value)
       .filter(([_, progress]) => progress.mastery_level < 2)
       .map(([word]) => word)
+  })
+  
+  // 是否有未完成的学习会话
+  const hasUnfinishedSession = computed(() => {
+    const saved = localStorage.getItem(SESSION_KEY)
+    return !!saved
   })
 
   const stats = computed(() => {
@@ -249,6 +257,46 @@ export const useLearningStore = defineStore('learning', () => {
     return reviewWords
   }
 
+  // 保存学习会话
+  function saveSession(sessionData) {
+    try {
+      const session = {
+        ...sessionData,
+        savedAt: Date.now()
+      }
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+    } catch (e) {
+      console.error('Error saving learning session:', e)
+    }
+  }
+
+  // 恢复学习会话
+  function restoreSession() {
+    try {
+      const saved = localStorage.getItem(SESSION_KEY)
+      if (!saved) return null
+      
+      const session = JSON.parse(saved)
+      
+      // 检查会话是否过期（超过24小时）
+      if (Date.now() - session.savedAt > 24 * 60 * 60 * 1000) {
+        clearSession()
+        return null
+      }
+      
+      return session
+    } catch (e) {
+      console.error('Error restoring learning session:', e)
+      clearSession()
+      return null
+    }
+  }
+
+  // 清除学习会话
+  function clearSession() {
+    localStorage.removeItem(SESSION_KEY)
+  }
+
   // Local storage
   function loadFromLocalStorage() {
     try {
@@ -299,12 +347,16 @@ export const useLearningStore = defineStore('learning', () => {
     learningWords,
     totalLearned,
     stats,
+    hasUnfinishedSession,
     // Actions
     init,
     recordLearning,
     getWordProgress,
     getWordsForReview,
     syncFromCloud,
-    clearAllData
+    clearAllData,
+    saveSession,
+    restoreSession,
+    clearSession
   }
 })

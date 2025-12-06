@@ -3,10 +3,30 @@
     <div class="page-header">
       <h1>单词学习</h1>
       <p>通过卡片学习单词，掌握拼写、发音和释义</p>
+      <t-button variant="outline" @click="$router.push('/learn/manager')" class="manager-btn">
+        <template #icon><t-icon name="chart-bar" /></template>
+        学习管理
+      </t-button>
     </div>
 
     <!-- Settings -->
     <div class="settings-bar" v-if="!isLearning">
+      <!-- 恢复未完成学习提示 -->
+      <div class="resume-banner" v-if="learningStore.hasUnfinishedSession">
+        <div class="resume-info">
+          <t-icon name="history" />
+          <span>您有一次未完成的学习</span>
+        </div>
+        <div class="resume-actions">
+          <t-button size="small" variant="outline" @click="learningStore.clearSession()">
+            放弃
+          </t-button>
+          <t-button size="small" theme="primary" @click="resumeLearning">
+            继续学习
+          </t-button>
+        </div>
+      </div>
+      
       <div class="setting-item">
         <label>学习数量</label>
         <t-input-number v-model="settings.count" :min="5" :max="50" :step="5" />
@@ -21,6 +41,17 @@
           <t-option :value="5" label="⭐⭐⭐⭐⭐ 困难" />
         </t-select>
       </div>
+      <div class="setting-item">
+        <label>学习模式</label>
+        <t-select v-model="settings.mode" style="width: 150px">
+          <t-option value="natural" label="自然" />
+          <t-option value="sequential" label="顺序" />
+          <t-option value="reverse" label="倒序" />
+          <t-option value="random" label="随机" />
+          <t-option value="review" label="备考" />
+        </t-select>
+      </div>
+      <div class="setting-hint mode-hint">{{ learningModeHint }}</div>
       <t-button theme="primary" size="large" @click="startLearning">
         <template #icon><t-icon name="play" /></template>
         开始学习
@@ -35,7 +66,7 @@
           <span>第 {{ currentIndex + 1 }} / {{ learnWords.length }} 个单词</span>
           <span>已掌握: {{ masteredCount }} | 复习: {{ reviewCount }}</span>
         </div>
-        <t-progress :percentage="(((currentIndex + 1) / learnWords.length) * 100).toFixed(0)" theme="plump" />
+        <t-progress :percentage="Math.round(((currentIndex + 1) / learnWords.length) * 100)" theme="plump" />
       </div>
 
       <!-- Auto Learn Toggle -->
@@ -169,8 +200,38 @@ const learningStore = useLearningStore()
 // Settings
 const settings = reactive({
   count: 10,
-  difficulty: null
+  difficulty: null,
+  mode: 'natural' // natural, sequential, reverse, random, review
 })
+
+// 设置存储键
+const SETTINGS_KEY = 'spellingbee_learn_settings'
+
+// 加载保存的设置
+function loadSettings() {
+  try {
+    const saved = localStorage.getItem(SETTINGS_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      Object.assign(settings, parsed)
+    }
+  } catch (e) {
+    console.error('Error loading learn settings:', e)
+  }
+}
+
+// 保存设置
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      count: settings.count,
+      difficulty: settings.difficulty,
+      mode: settings.mode
+    }))
+  } catch (e) {
+    console.error('Error saving learn settings:', e)
+  }
+}
 
 // State
 const isLearning = ref(false)
@@ -194,9 +255,52 @@ const currentWord = computed(() => learnWords.value[currentIndex.value] || null)
 const masteredCount = computed(() => masteredWords.value.length)
 const reviewCount = computed(() => reviewWords.value.length)
 
+// 学习模式提示
+const learningModeHint = computed(() => {
+  switch (settings.mode) {
+    case 'natural':
+      return '按最佳记忆曲线设置学习单词列表'
+    case 'sequential':
+      return '按当前词库顺序进行学习'
+    case 'reverse':
+      return '按当前词库倒序进行学习'
+    case 'random':
+      return '随机选取单词进行学习'
+    case 'review':
+      return '结合比赛记录，重点复习容易出错的单词'
+    default:
+      return ''
+  }
+})
+
 // Methods
 function startLearning() {
-  const words = wordsStore.getRandomWords(settings.count, settings.difficulty)
+  // 保存设置
+  saveSettings()
+  
+  let words = []
+  
+  // 根据学习模式获取单词
+  switch (settings.mode) {
+    case 'natural':
+      words = getWordsNaturalMode(settings.count, settings.difficulty)
+      break
+    case 'sequential':
+      words = getWordsSequentialMode(settings.count, settings.difficulty)
+      break
+    case 'reverse':
+      words = getWordsReverseMode(settings.count, settings.difficulty)
+      break
+    case 'random':
+      words = wordsStore.getRandomWords(settings.count, settings.difficulty)
+      break
+    case 'review':
+      words = getWordsReviewMode(settings.count, settings.difficulty)
+      break
+    default:
+      words = wordsStore.getRandomWords(settings.count, settings.difficulty)
+  }
+  
   if (words.length === 0) return
   
   learnWords.value = words
@@ -209,7 +313,202 @@ function startLearning() {
   highlightedLetterIndex.value = 0
   flipCount.value = 0 // Reset flip count
   
+  // 保存学习会话
+  saveCurrentSession()
+  
   // Auto speak word when card shows
+  setTimeout(() => speakWord(), 300)
+}
+
+// 自然模式：按最佳记忆曲线
+function getWordsNaturalMode(count, difficulty) {
+  let filtered = [...wordsStore.words]
+  
+  if (difficulty !== null) {
+    filtered = filtered.filter(w => w.difficulty === difficulty)
+  }
+  
+  if (filtered.length === 0) return []
+  
+  // 优先选择：1. 需要复习的单词 2. 未学过的单词 3. 已掌握但需巩固的单词
+  const needReview = []
+  const notLearned = []
+  const mastered = []
+  
+  filtered.forEach(word => {
+    const progress = learningStore.getWordProgress(word.word)
+    if (!progress) {
+      notLearned.push(word)
+    } else if (progress.mastery_level < 2) {
+      needReview.push(word)
+    } else {
+      mastered.push(word)
+    }
+  })
+  
+  // 按优先级组合
+  const result = []
+  
+  // 先添加需要复习的
+  const shuffledReview = shuffleArray([...needReview])
+  result.push(...shuffledReview.slice(0, Math.ceil(count * 0.4)))
+  
+  // 再添加未学过的
+  const shuffledNew = shuffleArray([...notLearned])
+  result.push(...shuffledNew.slice(0, Math.ceil(count * 0.4)))
+  
+  // 最后补充已掌握的
+  if (result.length < count) {
+    const shuffledMastered = shuffleArray([...mastered])
+    result.push(...shuffledMastered.slice(0, count - result.length))
+  }
+  
+  return result.slice(0, count)
+}
+
+// 顺序模式
+function getWordsSequentialMode(count, difficulty) {
+  let filtered = [...wordsStore.words]
+  
+  if (difficulty !== null) {
+    filtered = filtered.filter(w => w.difficulty === difficulty)
+  }
+  
+  if (filtered.length === 0) return []
+  
+  // 获取上次位置
+  const storageKey = `spellingbee_learn_sequential_pos_${difficulty || 'all'}`
+  let startPos = parseInt(localStorage.getItem(storageKey) || '0', 10)
+  
+  if (startPos >= filtered.length) {
+    startPos = 0
+  }
+  
+  const result = []
+  for (let i = 0; i < count && i < filtered.length; i++) {
+    const idx = (startPos + i) % filtered.length
+    result.push(filtered[idx])
+  }
+  
+  // 保存下次位置
+  const nextPos = (startPos + count) % filtered.length
+  localStorage.setItem(storageKey, nextPos.toString())
+  
+  return result
+}
+
+// 倒序模式
+function getWordsReverseMode(count, difficulty) {
+  let filtered = [...wordsStore.words].reverse()
+  
+  if (difficulty !== null) {
+    filtered = filtered.filter(w => w.difficulty === difficulty)
+  }
+  
+  if (filtered.length === 0) return []
+  
+  // 获取上次位置
+  const storageKey = `spellingbee_learn_reverse_pos_${difficulty || 'all'}`
+  let startPos = parseInt(localStorage.getItem(storageKey) || '0', 10)
+  
+  if (startPos >= filtered.length) {
+    startPos = 0
+  }
+  
+  const result = []
+  for (let i = 0; i < count && i < filtered.length; i++) {
+    const idx = (startPos + i) % filtered.length
+    result.push(filtered[idx])
+  }
+  
+  // 保存下次位置
+  const nextPos = (startPos + count) % filtered.length
+  localStorage.setItem(storageKey, nextPos.toString())
+  
+  return result
+}
+
+// 备考模式：重点复习容易出错的单词
+function getWordsReviewMode(count, difficulty) {
+  let filtered = [...wordsStore.words]
+  
+  if (difficulty !== null) {
+    filtered = filtered.filter(w => w.difficulty === difficulty)
+  }
+  
+  if (filtered.length === 0) return []
+  
+  // 获取比赛中出错的单词
+  const competitionStore = useCompetitionStore()
+  const errorWords = new Map() // word -> error count
+  
+  competitionStore.records.forEach(record => {
+    if (record.incorrect_words) {
+      record.incorrect_words.forEach(word => {
+        const lower = word.toLowerCase()
+        errorWords.set(lower, (errorWords.get(lower) || 0) + 1)
+      })
+    }
+  })
+  
+  // 按错误次数排序
+  const sortedWords = filtered.sort((a, b) => {
+    const aErrors = errorWords.get(a.word.toLowerCase()) || 0
+    const bErrors = errorWords.get(b.word.toLowerCase()) || 0
+    return bErrors - aErrors // 错误多的排前面
+  })
+  
+  // 优先选择出错过的单词
+  const result = []
+  const errorWordsList = sortedWords.filter(w => errorWords.has(w.word.toLowerCase()))
+  const otherWords = sortedWords.filter(w => !errorWords.has(w.word.toLowerCase()))
+  
+  result.push(...errorWordsList.slice(0, Math.ceil(count * 0.7)))
+  
+  if (result.length < count) {
+    const shuffledOther = shuffleArray([...otherWords])
+    result.push(...shuffledOther.slice(0, count - result.length))
+  }
+  
+  return result.slice(0, count)
+}
+
+// 辅助函数：打乱数组
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+// 保存当前学习会话
+function saveCurrentSession() {
+  learningStore.saveSession({
+    learnWords: learnWords.value,
+    currentIndex: currentIndex.value,
+    masteredWords: masteredWords.value,
+    reviewWords: reviewWords.value,
+    isFlipped: isFlipped.value,
+    flipCount: flipCount.value
+  })
+}
+
+// 恢复学习
+function resumeLearning() {
+  const session = learningStore.restoreSession()
+  if (!session) return
+  
+  learnWords.value = session.learnWords
+  currentIndex.value = session.currentIndex
+  masteredWords.value = session.masteredWords || []
+  reviewWords.value = session.reviewWords || []
+  isFlipped.value = session.isFlipped || false
+  flipCount.value = session.flipCount || 0
+  isLearning.value = true
+  isCompleted.value = false
+  highlightedLetterIndex.value = 0
+  
   setTimeout(() => speakWord(), 300)
 }
 
@@ -444,6 +743,8 @@ function markMastered() {
   masteredWords.value.push(currentWord.value)
   // Record learning progress
   learningStore.recordLearning(currentWord.value.word, true, '', 'learn')
+  // 保存会话
+  saveCurrentSession()
   nextWord()
 }
 
@@ -453,6 +754,8 @@ function markReview() {
   reviewWords.value.push(currentWord.value)
   // Record as needs review (not mastered yet)
   learningStore.recordLearning(currentWord.value.word, false, '', 'learn')
+  // 保存会话
+  saveCurrentSession()
   nextWord()
 }
 
@@ -463,6 +766,9 @@ function nextWord() {
     isFlipped.value = false
     highlightedLetterIndex.value = 0
     flipCount.value = 0 // Reset flip count for new word
+    
+    // 保存会话
+    saveCurrentSession()
     
     // 使用 nextTick 确保 currentWord 已更新
     if (wasAutoLearning) {
@@ -480,6 +786,8 @@ function nextWord() {
     isCompleted.value = true
     isLearning.value = false
     isAutoLearning.value = false
+    // 学习完成，清除会话
+    learningStore.clearSession()
   }
 }
 
@@ -651,6 +959,8 @@ watch(currentWord, (newWord) => {
 
 onMounted(() => {
   wordsStore.init()
+  learningStore.init()
+  loadSettings() // 加载保存的设置
   window.addEventListener('keydown', handleKeydown)
 })
 
@@ -669,6 +979,7 @@ onUnmounted(() => {
   .page-header {
     text-align: center;
     margin-bottom: 2rem;
+    position: relative;
 
     h1 {
       font-size: 2rem;
@@ -677,6 +988,12 @@ onUnmounted(() => {
 
     p {
       color: var(--text-secondary);
+    }
+
+    .manager-btn {
+      position: absolute;
+      right: 0;
+      top: 0;
     }
   }
 
@@ -691,6 +1008,35 @@ onUnmounted(() => {
     border-radius: 16px;
     margin-bottom: 2rem;
 
+    .resume-banner {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: linear-gradient(135deg, var(--honey-50) 0%, var(--honey-100) 100%);
+      border: 1px solid var(--honey-300);
+      border-radius: 12px;
+      margin-bottom: 0.5rem;
+
+      .resume-info {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--honey-700);
+        font-weight: 500;
+
+        .t-icon {
+          font-size: 1.25rem;
+        }
+      }
+
+      .resume-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+    }
+
     .setting-item {
       display: flex;
       flex-direction: column;
@@ -701,6 +1047,20 @@ onUnmounted(() => {
         color: var(--text-secondary);
         font-size: 0.9rem;
       }
+    }
+
+    .setting-hint {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+
+    .mode-hint {
+      width: 100%;
+      text-align: center;
+      padding: 0.5rem;
+      background: var(--hover-bg);
+      border-radius: 8px;
+      margin-top: -0.5rem;
     }
   }
 
@@ -954,6 +1314,13 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .learn-page {
+    .page-header {
+      .manager-btn {
+        position: static;
+        margin-top: 1rem;
+      }
+    }
+
     .word-card {
       height: 350px;
 

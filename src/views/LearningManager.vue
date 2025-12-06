@@ -1,0 +1,717 @@
+<template>
+  <div class="learning-manager-page">
+    <div class="page-header">
+      <div class="header-left">
+        <t-button variant="text" @click="$router.push('/learn')">
+          <template #icon><t-icon name="chevron-left" /></template>
+          返回学习
+        </t-button>
+      </div>
+      <div class="header-center">
+        <h1>学习管理</h1>
+        <p>查看词库学习进度和统计数据</p>
+      </div>
+      <div class="header-right"></div>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="stats-cards">
+      <div class="stat-card">
+        <div class="stat-icon total">
+          <t-icon name="books" />
+        </div>
+        <div class="stat-content">
+          <span class="stat-value">{{ wordsStore.wordCount }}</span>
+          <span class="stat-label">词库总数</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon mastered">
+          <t-icon name="check-circle" />
+        </div>
+        <div class="stat-content">
+          <span class="stat-value text-success">{{ learningStore.masteredWords.length }}</span>
+          <span class="stat-label">已掌握</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon learning">
+          <t-icon name="time" />
+        </div>
+        <div class="stat-content">
+          <span class="stat-value text-warning">{{ learningStore.learningWords.length }}</span>
+          <span class="stat-label">学习中</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon review">
+          <t-icon name="refresh" />
+        </div>
+        <div class="stat-content">
+          <span class="stat-value text-info">{{ learningStore.wordsToReview.length }}</span>
+          <span class="stat-label">待复习</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-section">
+      <div class="progress-header">
+        <span>学习进度</span>
+        <span>{{ progressPercentage }}%</span>
+      </div>
+      <t-progress :percentage="progressPercentage" theme="plump" />
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <t-input
+          v-model="searchQuery"
+          placeholder="搜索单词..."
+          clearable
+          class="search-input"
+        >
+          <template #prefix-icon><t-icon name="search" /></template>
+        </t-input>
+        <t-select
+          v-model="filterStatus"
+          placeholder="学习状态"
+          clearable
+          class="filter-select"
+        >
+          <t-option value="mastered" label="已掌握" />
+          <t-option value="learning" label="学习中" />
+          <t-option value="not_started" label="未学习" />
+        </t-select>
+        <t-select
+          v-model="filterDifficulty"
+          placeholder="难度筛选"
+          clearable
+          class="filter-select"
+        >
+          <t-option :value="1" label="⭐ 简单" />
+          <t-option :value="2" label="⭐⭐ 较易" />
+          <t-option :value="3" label="⭐⭐⭐ 中等" />
+          <t-option :value="4" label="⭐⭐⭐⭐ 较难" />
+          <t-option :value="5" label="⭐⭐⭐⭐⭐ 困难" />
+        </t-select>
+      </div>
+      <div class="toolbar-right">
+        <t-button variant="outline" @click="exportData">
+          <template #icon><t-icon name="download" /></template>
+          导出数据
+        </t-button>
+      </div>
+    </div>
+
+    <!-- Words Table -->
+    <div class="table-container">
+      <t-table
+        :data="filteredWords"
+        :columns="columns"
+        :pagination="pagination"
+        :sort="sortState"
+        row-key="id"
+        hover
+        stripe
+        @page-change="handlePageChange"
+        @sort-change="handleSortChange"
+      >
+        <template #word="{ row }">
+          <div class="word-cell">
+            <span class="word-text">{{ row.word }}</span>
+            <t-button size="small" variant="text" @click="speakWord(row.word)">
+              <template #icon><t-icon name="sound" /></template>
+            </t-button>
+          </div>
+        </template>
+        <template #difficulty="{ row }">
+          <t-tag :theme="getDifficultyTheme(row.difficulty)" variant="light" size="small">
+            {{ '⭐'.repeat(row.difficulty) }}
+          </t-tag>
+        </template>
+        <template #learnMastered="{ row }">
+          <span :class="{ 'text-success': getWordStats(row.word).learnMastered > 0 }">
+            {{ getWordStats(row.word).learnMastered }}
+          </span>
+        </template>
+        <template #learnReview="{ row }">
+          <span :class="{ 'text-warning': getWordStats(row.word).learnReview > 0 }">
+            {{ getWordStats(row.word).learnReview }}
+          </span>
+        </template>
+        <template #competitionCorrect="{ row }">
+          <span :class="{ 'text-success': getWordStats(row.word).competitionCorrect > 0 }">
+            {{ getWordStats(row.word).competitionCorrect }}
+          </span>
+        </template>
+        <template #competitionWrong="{ row }">
+          <span :class="{ 'text-error': getWordStats(row.word).competitionWrong > 0 }">
+            {{ getWordStats(row.word).competitionWrong }}
+          </span>
+        </template>
+        <template #status="{ row }">
+          <t-tag :theme="getStatusTheme(row.word)" variant="light" size="small">
+            {{ getStatusLabel(row.word) }}
+          </t-tag>
+        </template>
+      </t-table>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" v-if="wordsStore.wordCount === 0">
+      <t-icon name="folder-open" size="64px" />
+      <h3>词库为空</h3>
+      <p>请先添加一些单词到词库</p>
+      <t-button theme="primary" @click="$router.push('/words')">
+        前往词库
+      </t-button>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue'
+import { MessagePlugin } from 'tdesign-vue-next'
+import { useWordsStore } from '@/stores/words'
+import { useLearningStore } from '@/stores/learning'
+import { useCompetitionStore } from '@/stores/competition'
+
+const wordsStore = useWordsStore()
+const learningStore = useLearningStore()
+const competitionStore = useCompetitionStore()
+
+// Filter state
+const searchQuery = ref('')
+const filterStatus = ref(null)
+const filterDifficulty = ref(null)
+const sortState = ref({ sortBy: 'word', descending: false })
+const pagination = reactive({
+  current: 1,
+  pageSize: 20,
+  total: 0,
+  showJumper: true,
+  showPageSize: true,
+  pageSizeOptions: [10, 20, 50, 100]
+})
+
+// Table columns
+const columns = [
+  { colKey: 'word', title: '单词', width: 150, sortable: true },
+  { colKey: 'pronunciation', title: '音标', width: 130 },
+  { colKey: 'definition_cn', title: '中文释义', ellipsis: true },
+  { colKey: 'difficulty', title: '难度', width: 120, sortable: true },
+  { colKey: 'learnMastered', title: '掌握次数', width: 100, sortable: true },
+  { colKey: 'learnReview', title: '复习次数', width: 100, sortable: true },
+  { colKey: 'competitionCorrect', title: '比赛正确', width: 100, sortable: true },
+  { colKey: 'competitionWrong', title: '比赛错误', width: 100, sortable: true },
+  { colKey: 'status', title: '状态', width: 90 }
+]
+
+// Progress percentage
+const progressPercentage = computed(() => {
+  if (wordsStore.wordCount === 0) return 0
+  return Math.round((learningStore.masteredWords.length / wordsStore.wordCount) * 100)
+})
+
+// Get word learning stats
+function getWordStats(word) {
+  const lowerWord = word.toLowerCase()
+  
+  let learnMastered = 0
+  let learnReview = 0
+  learningStore.learningRecords.forEach(record => {
+    if (record.word.toLowerCase() === lowerWord && record.study_mode === 'learn') {
+      if (record.is_correct) {
+        learnMastered++
+      } else {
+        learnReview++
+      }
+    }
+  })
+  
+  let competitionCorrect = 0
+  let competitionWrong = 0
+  
+  learningStore.learningRecords.forEach(record => {
+    if (record.word.toLowerCase() === lowerWord && record.study_mode === 'competition') {
+      if (record.is_correct) {
+        competitionCorrect++
+      } else {
+        competitionWrong++
+      }
+    }
+  })
+  
+  if (competitionCorrect === 0 && competitionWrong === 0) {
+    competitionStore.records.forEach(record => {
+      const incorrectWords = (record.incorrect_words || []).map(w => w.toLowerCase())
+      if (incorrectWords.includes(lowerWord)) {
+        competitionWrong++
+      }
+    })
+  }
+  
+  return {
+    learnMastered,
+    learnReview,
+    competitionCorrect,
+    competitionWrong
+  }
+}
+
+// Get status label
+function getStatusLabel(word) {
+  const lowerWord = word.toLowerCase()
+  const progress = learningStore.getWordProgress(lowerWord)
+  
+  if (!progress) return '未学习'
+  if (progress.mastery_level >= 2) return '已掌握'
+  return '学习中'
+}
+
+// Get status theme
+function getStatusTheme(word) {
+  const lowerWord = word.toLowerCase()
+  const progress = learningStore.getWordProgress(lowerWord)
+  
+  if (!progress) return 'default'
+  if (progress.mastery_level >= 2) return 'success'
+  return 'warning'
+}
+
+// Get difficulty theme
+function getDifficultyTheme(level) {
+  const themes = { 1: 'success', 2: 'primary', 3: 'warning', 4: 'danger', 5: 'danger' }
+  return themes[level] || 'default'
+}
+
+// Speak word
+function speakWord(word) {
+  speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(word)
+  utterance.lang = 'en-US'
+  utterance.rate = 0.8
+  speechSynthesis.speak(utterance)
+}
+
+// Filtered words
+const filteredWords = computed(() => {
+  let result = [...wordsStore.words]
+  
+  // Search filter
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter(w =>
+      w.word.toLowerCase().includes(q) ||
+      (w.definition_cn && w.definition_cn.includes(q)) ||
+      w.definition.toLowerCase().includes(q)
+    )
+  }
+  
+  // Status filter
+  if (filterStatus.value) {
+    result = result.filter(w => {
+      const progress = learningStore.getWordProgress(w.word.toLowerCase())
+      switch (filterStatus.value) {
+        case 'mastered':
+          return progress && progress.mastery_level >= 2
+        case 'learning':
+          return progress && progress.mastery_level < 2
+        case 'not_started':
+          return !progress
+        default:
+          return true
+      }
+    })
+  }
+  
+  // Difficulty filter
+  if (filterDifficulty.value) {
+    result = result.filter(w => w.difficulty === filterDifficulty.value)
+  }
+  
+  // Sort
+  if (sortState.value.sortBy) {
+    const sortKey = sortState.value.sortBy
+    const desc = sortState.value.descending
+    
+    result.sort((a, b) => {
+      let aVal, bVal
+      
+      if (['learnMastered', 'learnReview', 'competitionCorrect', 'competitionWrong'].includes(sortKey)) {
+        const aStats = getWordStats(a.word)
+        const bStats = getWordStats(b.word)
+        aVal = aStats[sortKey]
+        bVal = bStats[sortKey]
+      } else if (sortKey === 'word') {
+        aVal = a.word.toLowerCase()
+        bVal = b.word.toLowerCase()
+      } else {
+        aVal = a[sortKey]
+        bVal = b[sortKey]
+      }
+      
+      if (aVal < bVal) return desc ? 1 : -1
+      if (aVal > bVal) return desc ? -1 : 1
+      return 0
+    })
+  }
+  
+  pagination.total = result.length
+  
+  // Paginate
+  const start = (pagination.current - 1) * pagination.pageSize
+  const end = start + pagination.pageSize
+  return result.slice(start, end)
+})
+
+// Handle page change
+function handlePageChange(pageInfo) {
+  pagination.current = pageInfo.current
+  pagination.pageSize = pageInfo.pageSize
+}
+
+// Handle sort change
+function handleSortChange(sort) {
+  sortState.value = sort
+  pagination.current = 1
+}
+
+// Export data
+function exportData() {
+  const data = wordsStore.words.map(w => {
+    const stats = getWordStats(w.word)
+    return {
+      单词: w.word,
+      音标: w.pronunciation,
+      中文释义: w.definition_cn,
+      英文释义: w.definition,
+      难度: w.difficulty,
+      掌握次数: stats.learnMastered,
+      复习次数: stats.learnReview,
+      比赛正确: stats.competitionCorrect,
+      比赛错误: stats.competitionWrong,
+      状态: getStatusLabel(w.word)
+    }
+  })
+  
+  const csv = [
+    Object.keys(data[0]).join(','),
+    ...data.map(row => Object.values(row).map(v => `"${v || ''}"`).join(','))
+  ].join('\n')
+  
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `学习记录_${new Date().toISOString().split('T')[0]}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+  
+  MessagePlugin.success('导出成功')
+}
+
+onMounted(() => {
+  wordsStore.init()
+  learningStore.init()
+  competitionStore.loadRecords()
+})
+</script>
+
+<style lang="scss" scoped>
+.learning-manager-page {
+  max-width: 1400px;
+  margin: 0 auto;
+
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+
+    .header-left, .header-right {
+      flex: 0 0 150px;
+    }
+
+    .header-center {
+      text-align: center;
+      flex: 1;
+
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      p {
+        color: var(--text-secondary);
+      }
+    }
+  }
+
+  .stats-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+
+    .stat-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: var(--bg-card);
+      border-radius: 16px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s, box-shadow 0.2s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+
+        &.total {
+          background: var(--honey-100);
+          color: var(--honey-600);
+        }
+
+        &.mastered {
+          background: rgba(34, 197, 94, 0.1);
+          color: var(--success);
+        }
+
+        &.learning {
+          background: rgba(245, 158, 11, 0.1);
+          color: var(--warning);
+        }
+
+        &.review {
+          background: rgba(59, 130, 246, 0.1);
+          color: var(--primary);
+        }
+      }
+
+      .stat-content {
+        display: flex;
+        flex-direction: column;
+
+        .stat-value {
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: var(--charcoal-800);
+
+          &.text-success { color: var(--success); }
+          &.text-warning { color: var(--warning); }
+          &.text-info { color: var(--primary); }
+        }
+
+        .stat-label {
+          font-size: 0.9rem;
+          color: var(--text-secondary);
+        }
+      }
+    }
+  }
+
+  .progress-section {
+    padding: 1.5rem;
+    background: var(--bg-card);
+    border-radius: 16px;
+    margin-bottom: 2rem;
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      font-weight: 500;
+      color: var(--charcoal-700);
+    }
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+
+    .toolbar-left {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      flex: 1;
+
+      .search-input {
+        width: 250px;
+      }
+
+      .filter-select {
+        width: 150px;
+      }
+    }
+
+    .toolbar-right {
+      display: flex;
+      gap: 0.5rem;
+    }
+  }
+
+  .table-container {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .word-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .word-text {
+      font-weight: 600;
+      color: var(--charcoal-800);
+    }
+  }
+
+  .text-success { color: var(--success); font-weight: 600; }
+  .text-warning { color: var(--warning); font-weight: 600; }
+  .text-error { color: var(--error); font-weight: 600; }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+
+    h3 {
+      margin: 1rem 0 0.5rem;
+    }
+
+    p {
+      margin-bottom: 1.5rem;
+    }
+  }
+}
+
+// Tablet
+@media (max-width: 1024px) {
+  .learning-manager-page {
+    .stats-cards {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .toolbar {
+      .toolbar-left {
+        .search-input {
+          width: 200px;
+        }
+
+        .filter-select {
+          width: 130px;
+        }
+      }
+    }
+  }
+}
+
+// Mobile
+@media (max-width: 768px) {
+  .learning-manager-page {
+    .page-header {
+      flex-direction: column;
+      gap: 1rem;
+
+      .header-left, .header-right {
+        flex: none;
+      }
+
+      .header-left {
+        align-self: flex-start;
+      }
+    }
+
+    .stats-cards {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+
+      .stat-card {
+        padding: 1rem;
+        flex-direction: column;
+        text-align: center;
+
+        .stat-icon {
+          width: 48px;
+          height: 48px;
+          font-size: 1.25rem;
+        }
+
+        .stat-content {
+          align-items: center;
+
+          .stat-value {
+            font-size: 1.5rem;
+          }
+        }
+      }
+    }
+
+    .toolbar {
+      flex-direction: column;
+      align-items: stretch;
+
+      .toolbar-left {
+        flex-direction: column;
+
+        .search-input,
+        .filter-select {
+          width: 100%;
+        }
+      }
+
+      .toolbar-right {
+        justify-content: flex-end;
+      }
+    }
+
+    .table-container {
+      padding: 0.5rem;
+      overflow-x: auto;
+    }
+  }
+}
+
+// Small mobile
+@media (max-width: 480px) {
+  .learning-manager-page {
+    .stats-cards {
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+
+      .stat-card {
+        padding: 0.75rem;
+
+        .stat-icon {
+          width: 40px;
+          height: 40px;
+          font-size: 1rem;
+        }
+
+        .stat-content .stat-value {
+          font-size: 1.25rem;
+        }
+      }
+    }
+  }
+}
+</style>
