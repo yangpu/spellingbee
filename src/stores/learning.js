@@ -13,6 +13,36 @@ export const useLearningStore = defineStore('learning', () => {
   const wordProgress = ref({}) // { word: { correct_count, incorrect_count, mastery_level, ... } }
   const loading = ref(false)
   const syncing = ref(false)
+  
+  // 响应式的会话状态
+  const _hasUnfinishedSession = ref(false)
+  
+  // 检查并更新会话状态
+  function checkUnfinishedSession() {
+    try {
+      const saved = localStorage.getItem(SESSION_KEY)
+      if (!saved) {
+        _hasUnfinishedSession.value = false
+        return
+      }
+      const session = JSON.parse(saved)
+      // 检查会话是否过期（超过24小时）
+      if (Date.now() - session.savedAt > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(SESSION_KEY)
+        _hasUnfinishedSession.value = false
+        return
+      }
+      // 检查是否真的未完成（当前索引小于总数）
+      if (session.currentIndex >= session.learnWords?.length) {
+        localStorage.removeItem(SESSION_KEY)
+        _hasUnfinishedSession.value = false
+        return
+      }
+      _hasUnfinishedSession.value = true
+    } catch (e) {
+      _hasUnfinishedSession.value = false
+    }
+  }
 
   // Computed
   // 已掌握的单词：mastery_level >= 2（至少连续正确2次）
@@ -45,11 +75,8 @@ export const useLearningStore = defineStore('learning', () => {
       .map(([word]) => word)
   })
   
-  // 是否有未完成的学习会话
-  const hasUnfinishedSession = computed(() => {
-    const saved = localStorage.getItem(SESSION_KEY)
-    return !!saved
-  })
+  // 是否有未完成的学习会话（响应式）
+  const hasUnfinishedSession = computed(() => _hasUnfinishedSession.value)
 
   const stats = computed(() => {
     const records = learningRecords.value
@@ -80,6 +107,7 @@ export const useLearningStore = defineStore('learning', () => {
   // Initialize
   async function init() {
     loadFromLocalStorage()
+    checkUnfinishedSession() // 初始化时检查会话状态
     if (authStore.user) {
       await syncFromCloud()
     }
@@ -100,7 +128,7 @@ export const useLearningStore = defineStore('learning', () => {
     learningRecords.value.unshift(record)
     
     // Update word progress
-    updateWordProgress(word, isCorrect)
+    updateWordProgress(word, isCorrect, studyMode)
 
     // Save to local storage
     saveToLocalStorage()
@@ -121,7 +149,7 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   // Update word progress with spaced repetition logic
-  function updateWordProgress(word, isCorrect) {
+  function updateWordProgress(word, isCorrect, studyMode = 'learn') {
     const existing = wordProgress.value[word] || {
       correct_count: 0,
       incorrect_count: 0,
@@ -134,15 +162,26 @@ export const useLearningStore = defineStore('learning', () => {
     
     if (isCorrect) {
       existing.correct_count++
-      // Increase mastery level (max 5)
-      existing.mastery_level = Math.min(5, existing.mastery_level + 1)
+      // 在学习模式下点击"已经掌握"，直接设为已掌握状态（mastery_level >= 2）
+      if (studyMode === 'learn') {
+        existing.mastery_level = Math.max(2, Math.min(5, existing.mastery_level + 1))
+      } else {
+        // 其他模式正常增加
+        existing.mastery_level = Math.min(5, existing.mastery_level + 1)
+      }
     } else {
       existing.incorrect_count++
-      // Decrease mastery level (min 0)
-      existing.mastery_level = Math.max(0, existing.mastery_level - 1)
+      // 在学习模式下点击"需要复习"，设为学习中状态（mastery_level = 1）
+      if (studyMode === 'learn') {
+        existing.mastery_level = 1
+      } else {
+        // 其他模式正常减少
+        existing.mastery_level = Math.max(0, existing.mastery_level - 1)
+      }
     }
 
     existing.last_practiced_at = now.toISOString()
+    existing.updated_at = now.toISOString()
     
     // Calculate next review time based on mastery level (spaced repetition)
     const intervals = [1, 2, 4, 7, 14, 30] // days
@@ -265,6 +304,7 @@ export const useLearningStore = defineStore('learning', () => {
         savedAt: Date.now()
       }
       localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+      checkUnfinishedSession() // 更新会话状态
     } catch (e) {
       console.error('Error saving learning session:', e)
     }
@@ -284,6 +324,12 @@ export const useLearningStore = defineStore('learning', () => {
         return null
       }
       
+      // 检查是否真的未完成
+      if (session.currentIndex >= session.learnWords?.length) {
+        clearSession()
+        return null
+      }
+      
       return session
     } catch (e) {
       console.error('Error restoring learning session:', e)
@@ -295,6 +341,7 @@ export const useLearningStore = defineStore('learning', () => {
   // 清除学习会话
   function clearSession() {
     localStorage.removeItem(SESSION_KEY)
+    _hasUnfinishedSession.value = false // 立即更新响应式状态
   }
 
   // Local storage

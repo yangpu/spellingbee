@@ -88,7 +88,7 @@
         <span v-if="isAutoLearning" class="auto-status">自动学习中...</span>
         <t-button variant="outline" theme="default" @click="exitLearning" class="exit-btn">
           <template #icon><t-icon name="close" /></template>
-          退出学习
+          退出
         </t-button>
       </div>
 
@@ -516,7 +516,11 @@ function saveCurrentSession() {
 // 恢复学习
 function resumeLearning() {
   const session = learningStore.restoreSession()
-  if (!session) return
+  if (!session || !session.learnWords || session.learnWords.length === 0) {
+    // 会话无效，清除
+    learningStore.clearSession()
+    return
+  }
   
   learnWords.value = session.learnWords
   currentIndex.value = session.currentIndex

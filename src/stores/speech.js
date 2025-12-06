@@ -383,7 +383,14 @@ export const useSpeechStore = defineStore('speech', () => {
       }
       
       utterance.onend = () => resolve()
-      utterance.onerror = (e) => reject(e)
+      utterance.onerror = (e) => {
+        // 忽略取消错误（用户快速操作时会触发）
+        if (e.error === 'canceled' || e.error === 'interrupted') {
+          resolve()
+        } else {
+          reject(e)
+        }
+      }
       
       speechSynthesis.speak(utterance)
     })
@@ -410,7 +417,14 @@ export const useSpeechStore = defineStore('speech', () => {
       }
       
       utterance.onend = () => resolve()
-      utterance.onerror = (e) => reject(e)
+      utterance.onerror = (e) => {
+        // 忽略取消错误（用户快速操作时会触发）
+        if (e.error === 'canceled' || e.error === 'interrupted') {
+          resolve()
+        } else {
+          reject(e)
+        }
+      }
       
       speechSynthesis.speak(utterance)
     })
