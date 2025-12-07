@@ -656,6 +656,9 @@ function speakLetters(word, onComplete) {
   let index = 0
   highlightedLetterIndex.value = 0
   
+  // 获取字母拼读间隔配置
+  const spellingInterval = speechStore.getSpellingInterval()
+  
   function speakNextLetter() {
     if (!isAutoLearning.value) return
     
@@ -677,14 +680,14 @@ function speakLetters(word, onComplete) {
       speechStore.speakLetter(letter).then(() => {
         if (!isAutoLearning.value) return
         index++
-        autoLearnTimer.value = setTimeout(speakNextLetter, 120)
+        autoLearnTimer.value = setTimeout(speakNextLetter, spellingInterval)
       }).catch(() => {
         // 出错时继续下一个字母
         if (!isAutoLearning.value) return
         index++
-        autoLearnTimer.value = setTimeout(speakNextLetter, 120)
+        autoLearnTimer.value = setTimeout(speakNextLetter, spellingInterval)
       })
-    }, 100)
+    }, 80)
   }
   
   speakNextLetter()

@@ -19,6 +19,19 @@ export interface User {
   [key: string]: unknown
 }
 
+// User profile
+export interface UserProfile {
+  id?: string
+  user_id: string
+  nickname?: string
+  avatar_url?: string
+  city?: string
+  school?: string
+  bio?: string
+  created_at?: string
+  updated_at?: string
+}
+
 // Competition types
 export interface CompetitionRecord {
   id: string
@@ -83,6 +96,7 @@ export interface CompetitionSession {
 export interface SpeechSettings {
   english: VoiceSettings
   chinese: VoiceSettings
+  spelling: SpellingSettings  // 字母拼读配置
   platform: { os: string; browser: string }
 }
 
@@ -91,6 +105,13 @@ export interface VoiceSettings {
   rate: number
   pitch: number
   volume: number
+}
+
+// 字母拼读配置
+export interface SpellingSettings {
+  rate: number      // 字母朗读语速 (0.5-2.0)
+  pitch: number     // 字母音高 (0.5-1.5)
+  interval: number  // 字母之间间隔时间 (毫秒, 50-500)
 }
 
 // Announcer types

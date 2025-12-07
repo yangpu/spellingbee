@@ -174,6 +174,66 @@
             </div>
           </div>
         </t-tab-panel>
+
+        <t-tab-panel value="spelling" label="字母拼读">
+          <div class="voice-config">
+            <div class="spelling-intro">
+              <t-icon name="info-circle" />
+              <span>自动学习模式下逐个字母拼读的语音配置</span>
+            </div>
+
+            <!-- 字母语速 -->
+            <div class="config-item slider-item">
+              <label>字母语速: {{ spellingSettings.rate.toFixed(2) }}</label>
+              <t-slider
+                v-model="spellingSettings.rate"
+                :min="0.8"
+                :max="2.0"
+                :step="0.05"
+                :marks="spellingRateMarks"
+              />
+              <span class="config-hint">Windows 建议 1.3-1.6，macOS/iOS 建议 1.0-1.2</span>
+            </div>
+
+            <!-- 字母音高 -->
+            <div class="config-item slider-item">
+              <label>字母音高: {{ spellingSettings.pitch.toFixed(2) }}</label>
+              <t-slider
+                v-model="spellingSettings.pitch"
+                :min="0.8"
+                :max="1.5"
+                :step="0.05"
+                :marks="spellingPitchMarks"
+              />
+              <span class="config-hint">稍高的音高让字母发音更清晰</span>
+            </div>
+
+            <!-- 字母间隔 -->
+            <div class="config-item slider-item">
+              <label>字母间隔: {{ spellingSettings.interval }}ms</label>
+              <t-slider
+                v-model="spellingSettings.interval"
+                :min="50"
+                :max="400"
+                :step="10"
+                :marks="intervalMarks"
+              />
+              <span class="config-hint">字母之间的停顿时间，Windows 建议 60-100ms</span>
+            </div>
+
+            <!-- 试听按钮 -->
+            <div class="preview-section">
+              <t-button
+                variant="outline"
+                @click="previewSpelling"
+                :loading="isPreviewing"
+              >
+                <template #icon><t-icon name="sound" /></template>
+                试听拼读 "APPLE"
+              </t-button>
+            </div>
+          </div>
+        </t-tab-panel>
       </t-tabs>
 
       <!-- 底部操作 -->
@@ -237,6 +297,12 @@ const chineseSettings = reactive({
   volume: 1.0
 })
 
+const spellingSettings = reactive({
+  rate: 1.1,
+  pitch: 1.1,
+  interval: 120
+})
+
 // 状态
 const isPreviewing = ref(false)
 const isSaving = ref(false)
@@ -262,6 +328,29 @@ const volumeMarks = {
   1: '100%'
 }
 
+// 字母拼读专用滑块标记
+const spellingRateMarks = {
+  0.8: '0.8',
+  1.0: '1.0',
+  1.2: '1.2',
+  1.5: '1.5',
+  2.0: '2.0'
+}
+
+const spellingPitchMarks = {
+  0.8: '低',
+  1.0: '标准',
+  1.2: '高',
+  1.5: '更高'
+}
+
+const intervalMarks = {
+  50: '50',
+  100: '100',
+  200: '200',
+  400: '400'
+}
+
 // 平台标签
 const platformLabel = computed(() => {
   const p = speechStore.settings.platform
@@ -285,6 +374,7 @@ const platformLabel = computed(() => {
 function initLocalSettings() {
   Object.assign(englishSettings, speechStore.settings.english)
   Object.assign(chineseSettings, speechStore.settings.chinese)
+  Object.assign(spellingSettings, speechStore.settings.spelling)
 }
 
 // 监听对话框打开
@@ -360,6 +450,28 @@ async function previewChinese() {
   }
 }
 
+// 试听字母拼读
+async function previewSpelling() {
+  isPreviewing.value = true
+  try {
+    const letters = 'APPLE'.split('')
+    for (let i = 0; i < letters.length; i++) {
+      await speechStore.speakEnglish(letters[i], {
+        rate: spellingSettings.rate,
+        pitch: spellingSettings.pitch
+      })
+      // 等待间隔时间
+      if (i < letters.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, spellingSettings.interval))
+      }
+    }
+  } catch (e) {
+    console.error('Preview error:', e)
+  } finally {
+    isPreviewing.value = false
+  }
+}
+
 // 恢复默认
 function resetToDefaults() {
   speechStore.resetToDefaults()
@@ -373,6 +485,7 @@ async function handleSave() {
   try {
     speechStore.updateEnglishSettings(englishSettings)
     speechStore.updateChineseSettings(chineseSettings)
+    speechStore.updateSpellingSettings(spellingSettings)
     await speechStore.saveSettings()
     MessagePlugin.success('语音设置已保存')
     emit('saved')
@@ -458,6 +571,22 @@ onMounted(async () => {
       margin-top: 1.5rem;
       padding-top: 1rem;
       border-top: 1px dashed var(--border-color);
+    }
+  }
+
+  .spelling-intro {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--hover-bg);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+
+    .t-icon {
+      color: var(--brand-color);
     }
   }
 

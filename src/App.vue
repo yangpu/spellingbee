@@ -35,13 +35,12 @@
         >
           登录
         </t-button>
-        <t-dropdown v-else :options="userMenuOptions" @click="handleUserMenu">
-          <t-button variant="text">
-            <t-avatar size="small">{{
-              authStore.user.email?.charAt(0).toUpperCase()
-            }}</t-avatar>
-          </t-button>
-        </t-dropdown>
+        <t-button v-else variant="text" class="user-avatar-btn" @click="showProfileDialog = true">
+          <t-avatar size="small" :image="authStore.profile?.avatar_url">
+            {{ avatarText }}
+          </t-avatar>
+          <span class="user-name">{{ displayName }}</span>
+        </t-button>
       </div>
     </nav>
 
@@ -108,17 +107,24 @@
         </div>
       </t-form>
     </t-dialog>
+
+    <!-- User Profile Dialog -->
+    <UserProfile 
+      v-model:visible="showProfileDialog" 
+      @logout="handleLogout"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
+import UserProfile from '@/components/UserProfile.vue';
 
 const baseUrl = import.meta.env.BASE_URL;
 const appVersion = __APP_VERSION__;
@@ -130,6 +136,7 @@ const learningStore = useLearningStore();
 const speechStore = useSpeechStore();
 
 const showAuthDialog = ref(false);
+const showProfileDialog = ref(false);
 const authMode = ref('login'); // 'login', 'register', 'forgot'
 const authLoading = ref(false);
 
@@ -158,10 +165,21 @@ const authRules = {
   ],
 };
 
-const userMenuOptions = [
-  { content: '同步数据', value: 'sync' },
-  { content: '退出登录', value: 'logout' }
-];
+// 显示名称
+const displayName = computed(() => {
+  if (authStore.profile?.nickname) {
+    return authStore.profile.nickname;
+  }
+  return authStore.user?.email?.split('@')[0] || '';
+});
+
+// 头像文字
+const avatarText = computed(() => {
+  if (authStore.profile?.nickname) {
+    return authStore.profile.nickname.charAt(0).toUpperCase();
+  }
+  return authStore.user?.email?.charAt(0).toUpperCase() || '';
+});
 
 const toggleAuthMode = () => {
   if (authMode.value === 'login') {
@@ -204,14 +222,9 @@ const handleAuth = async ({ validateResult }) => {
   }
 };
 
-const handleUserMenu = async (data) => {
-  if (data.value === 'logout') {
-    await authStore.logout();
-    MessagePlugin.success('已退出登录');
-  } else if (data.value === 'sync') {
-    await syncAllData();
-    MessagePlugin.success('数据同步完成');
-  }
+// 处理退出登录
+const handleLogout = () => {
+  MessagePlugin.success('已退出登录');
 };
 
 // Sync all data from cloud
@@ -222,7 +235,7 @@ const syncAllData = async () => {
     await Promise.all([
       competitionStore.loadRecords(),
       learningStore.syncFromCloud(),
-      speechStore.loadFromCloud() // 同步语音设置
+      speechStore.loadFromCloud()
     ]);
   } catch (error) {
     console.error('Sync error:', error);
@@ -232,7 +245,7 @@ const syncAllData = async () => {
 // Initialize
 onMounted(async () => {
   await authStore.init();
-  await speechStore.init(); // 初始化语音配置
+  await speechStore.init();
   await wordsStore.init();
   await learningStore.init();
   await competitionStore.loadRecords();
@@ -255,7 +268,6 @@ const dialogHeader = () => {
 
 // 强制刷新页面
 const forceRefresh = () => {
-  // 清除 Service Worker 缓存
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
       registrations.forEach(registration => {
@@ -263,7 +275,6 @@ const forceRefresh = () => {
       });
     });
   }
-  // 清除浏览器缓存并强制刷新
   if ('caches' in window) {
     caches.keys().then(names => {
       names.forEach(name => {
@@ -271,7 +282,6 @@ const forceRefresh = () => {
       });
     });
   }
-  // 强制刷新页面（绕过缓存）
   setTimeout(() => {
     window.location.reload(true);
   }, 100);
@@ -342,6 +352,24 @@ const forceRefresh = () => {
       &.router-link-active {
         background: var(--accent-bg);
         color: var(--accent-color);
+      }
+    }
+  }
+
+  .nav-user {
+    .user-avatar-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      
+      .user-name {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.9rem;
+        color: var(--text-primary);
       }
     }
   }
@@ -429,6 +457,10 @@ const forceRefresh = () => {
     }
 
     .nav-links .nav-link span {
+      display: none;
+    }
+
+    .nav-user .user-avatar-btn .user-name {
       display: none;
     }
   }

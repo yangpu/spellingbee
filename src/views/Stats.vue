@@ -578,12 +578,15 @@ function viewRecordDetail(recordId) {
 function clearRecords() {
   const dialog = DialogPlugin.confirm({
     header: '确认清空',
-    body: '确定要清空所有比赛记录吗？此操作不可恢复。',
+    body: '确定要清空所有比赛记录吗？此操作将同时清除本地和云端数据，且不可恢复。',
     confirmBtn: { content: '确认清空', theme: 'danger' },
-    onConfirm: () => {
-      localStorage.removeItem('spellingbee_records')
-      competitionStore.records.splice(0)
-      MessagePlugin.success('记录已清空')
+    onConfirm: async () => {
+      try {
+        await competitionStore.clearAllRecords()
+        MessagePlugin.success('比赛记录已清空')
+      } catch (error) {
+        MessagePlugin.error('清空失败，请重试')
+      }
       dialog.destroy()
     },
     onClose: () => {

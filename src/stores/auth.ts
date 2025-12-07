@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
-import type { User } from '@/types'
+import type { User, UserProfile } from '@/types'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 // Helper to convert Supabase User to our User type
@@ -16,6 +16,7 @@ function toUser(supabaseUser: SupabaseUser | undefined | null): User | null {
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
+  const profile = ref<UserProfile | null>(null)
   const loading = ref(true)
   const initialized = ref(false)
 
@@ -27,10 +28,22 @@ export const useAuthStore = defineStore('auth', () => {
       const { data: { session } } = await supabase.auth.getSession()
       user.value = toUser(session?.user)
 
+      // Load profile if user is logged in
+      if (user.value) {
+        await loadProfile()
+      }
+
       // Listen for auth changes
-      supabase.auth.onAuthStateChange((event, session) => {
+      supabase.auth.onAuthStateChange(async (event, session) => {
         const previousUser = user.value
         user.value = toUser(session?.user)
+        
+        // Load profile when user signs in
+        if (event === 'SIGNED_IN' && user.value) {
+          await loadProfile()
+        } else if (event === 'SIGNED_OUT') {
+          profile.value = null
+        }
         
         // Emit custom event for other stores to react
         if (event === 'SIGNED_IN' && !previousUser) {
@@ -48,6 +61,65 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function loadProfile(): Promise<void> {
+    if (!user.value) return
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.value.id)
+        .single()
+      
+      if (!error && data) {
+        profile.value = data as UserProfile
+      } else if (error?.code === 'PGRST116') {
+        // No profile found, create one
+        profile.value = {
+          user_id: user.value.id,
+          nickname: user.value.email?.split('@')[0] || '',
+          created_at: new Date().toISOString()
+        }
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    }
+  }
+
+  async function updateProfile(updates: Partial<UserProfile>): Promise<boolean> {
+    if (!user.value) return false
+    
+    try {
+      const profileData = {
+        user_id: user.value.id,
+        ...updates,
+        updated_at: new Date().toISOString()
+      }
+      
+      const { error } = await supabase
+        .from('user_profiles')
+        .upsert(profileData, {
+          onConflict: 'user_id'
+        })
+      
+      if (error) {
+        console.error('Error updating profile:', error)
+        return false
+      }
+      
+      // Update local profile
+      profile.value = {
+        ...profile.value,
+        ...profileData
+      } as UserProfile
+      
+      return true
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      return false
+    }
+  }
+
   async function login(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -55,6 +127,7 @@ export const useAuthStore = defineStore('auth', () => {
     })
     if (error) throw error
     user.value = toUser(data.user)
+    await loadProfile()
     return data
   }
 
@@ -74,6 +147,7 @@ export const useAuthStore = defineStore('auth', () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
     user.value = null
+    profile.value = null
   }
 
   async function resetPassword(email: string) {
@@ -94,6 +168,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     user,
+    profile,
     loading,
     initialized,
     init,
@@ -101,6 +176,8 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     resetPassword,
-    updatePassword
+    updatePassword,
+    loadProfile,
+    updateProfile
   }
 })

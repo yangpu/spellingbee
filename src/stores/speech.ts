@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
-import type { SpeechSettings, VoiceSettings } from '@/types'
+import type { SpeechSettings, VoiceSettings, SpellingSettings } from '@/types'
 
 const STORAGE_KEY = 'spellingbee_speech_settings'
 
@@ -82,22 +82,38 @@ function getDefaultSettings(): SpeechSettings {
     volume: 1.0,
   }
   
+  // 字母拼读默认配置
+  const spellingDefaults: SpellingSettings = {
+    rate: 1.1,      // 字母朗读稍快
+    pitch: 1.1,     // 稍高音调
+    interval: 120,  // 字母间隔 120ms
+  }
+  
   // 根据平台调整默认值
   if (os === 'macos') {
     englishDefaults.rate = 0.8
     chineseDefaults.rate = 0.95
+    spellingDefaults.rate = 1.0
+    spellingDefaults.interval = 120
   } else if (os === 'windows') {
+    // Windows 的 TTS 引擎字母朗读较慢，需要加快
     englishDefaults.rate = 0.9
     chineseDefaults.rate = 1.0
+    spellingDefaults.rate = 1.5   // Windows 需要更快的语速
+    spellingDefaults.pitch = 1.15 // 稍高音调让字母更清晰
+    spellingDefaults.interval = 80 // 缩短间隔
   } else if (os === 'ios' || os === 'android') {
     // 移动端可能需要稍快一点
     englishDefaults.rate = 0.85
     chineseDefaults.rate = 1.0
+    spellingDefaults.rate = 1.1
+    spellingDefaults.interval = 100
   }
   
   return {
     english: englishDefaults,
     chinese: chineseDefaults,
+    spelling: spellingDefaults,
     platform: detectPlatform()
   }
 }
@@ -238,6 +254,9 @@ export const useSpeechStore = defineStore('speech', () => {
         if (parsed.chinese) {
           Object.assign(settings.value.chinese, parsed.chinese)
         }
+        if (parsed.spelling) {
+          Object.assign(settings.value.spelling, parsed.spelling)
+        }
         return true
       }
     } catch (e) {
@@ -252,6 +271,7 @@ export const useSpeechStore = defineStore('speech', () => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         english: settings.value.english,
         chinese: settings.value.chinese,
+        spelling: settings.value.spelling,
         platform: settings.value.platform
       }))
     } catch (e) {
@@ -284,6 +304,9 @@ export const useSpeechStore = defineStore('speech', () => {
         if (cloudSettings.chinese) {
           Object.assign(settings.value.chinese, cloudSettings.chinese)
         }
+        if (cloudSettings.spelling) {
+          Object.assign(settings.value.spelling, cloudSettings.spelling)
+        }
         // 同步到本地
         saveToLocal()
         return true
@@ -302,6 +325,7 @@ export const useSpeechStore = defineStore('speech', () => {
       const settingsData = {
         english: settings.value.english,
         chinese: settings.value.chinese,
+        spelling: settings.value.spelling,
         platform: settings.value.platform,
         updated_at: new Date().toISOString()
       }
@@ -418,11 +442,18 @@ export const useSpeechStore = defineStore('speech', () => {
     saveSettings()
   }
   
+  // 更新字母拼读设置
+  function updateSpellingSettings(newSettings: Partial<SpellingSettings>): void {
+    Object.assign(settings.value.spelling, newSettings)
+    saveSettings()
+  }
+  
   // 重置为默认设置
   function resetToDefaults(): void {
     const defaults = getDefaultSettings()
     settings.value.english = { ...defaults.english }
     settings.value.chinese = { ...defaults.chinese }
+    settings.value.spelling = { ...defaults.spelling }
     initDefaultVoices()
     saveSettings()
   }
@@ -511,10 +542,15 @@ export const useSpeechStore = defineStore('speech', () => {
   
   // 朗读字母（英文，用于拼读）
   function speakLetter(letter: string, options: SpeakOptions = {}): Promise<void> {
-    // 字母朗读使用稍快的语速和稍高的音调
-    const letterRate = options.rate ?? Math.min(1.0, settings.value.english.rate + 0.1)
-    const letterPitch = options.pitch ?? Math.min(1.2, settings.value.english.pitch + 0.1)
+    // 使用字母拼读专用配置
+    const letterRate = options.rate ?? settings.value.spelling.rate
+    const letterPitch = options.pitch ?? settings.value.spelling.pitch
     return speakEnglish(letter, { ...options, rate: letterRate, pitch: letterPitch })
+  }
+  
+  // 获取字母拼读间隔时间
+  function getSpellingInterval(): number {
+    return settings.value.spelling.interval
   }
   
   // 试听英文语音
@@ -557,11 +593,13 @@ export const useSpeechStore = defineStore('speech', () => {
     saveSettings,
     updateEnglishSettings,
     updateChineseSettings,
+    updateSpellingSettings,
     resetToDefaults,
     speakEnglish,
     speakChinese,
     speakWord,
     speakLetter,
+    getSpellingInterval,
     previewEnglish,
     previewChinese,
     loadFromCloud,

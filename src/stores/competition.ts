@@ -300,6 +300,8 @@ export const useCompetitionStore = defineStore('competition', () => {
           records.value = [...newRecords, ...records.value]
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 50)
+          // Save merged records to local storage
+          saveRecordsToLocalStorage()
         }
       } catch (error) {
         console.error('Error loading records:', error)
@@ -356,6 +358,22 @@ export const useCompetitionStore = defineStore('competition', () => {
     }
   })
 
+  // Clear all competition records
+  async function clearAllRecords(): Promise<void> {
+    // Clear local records
+    records.value = []
+    localStorage.removeItem('spellingbee_records')
+
+    // Clear cloud records if logged in
+    if (authStore.user) {
+      try {
+        await supabase.from('competition_records').delete().eq('user_id', authStore.user.id)
+      } catch (error) {
+        console.error('Error clearing cloud competition records:', error)
+      }
+    }
+  }
+
   return {
     // State
     isActive,
@@ -387,6 +405,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     loadRecords,
     saveSession,
     restoreSession,
-    clearSession
+    clearSession,
+    clearAllRecords
   }
 })

@@ -102,6 +102,10 @@
           <template #icon><t-icon name="download" /></template>
           导出数据
         </t-button>
+        <t-button variant="outline" theme="danger" @click="confirmClearRecords">
+          <template #icon><t-icon name="delete" /></template>
+          清空记录
+        </t-button>
       </div>
     </div>
 
@@ -178,7 +182,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { MessagePlugin } from 'tdesign-vue-next'
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useWordsStore } from '@/stores/words'
 import { useLearningStore } from '@/stores/learning'
 import { useCompetitionStore } from '@/stores/competition'
@@ -312,6 +316,30 @@ function getDifficultyTheme(level) {
   return themes[level] || 'default'
 }
 
+// Get status label for export
+function getStatusLabel(word) {
+  const lowerWord = word.toLowerCase()
+  const progress = learningStore.getWordProgress(lowerWord)
+  const stats = getWordStats(word)
+  
+  if (stats.competitionWrong > 0 && stats.competitionCorrect === 0) {
+    return '比赛错误'
+  }
+  if (stats.competitionCorrect > 0 && stats.competitionWrong === 0) {
+    return '比赛正确'
+  }
+  if (stats.competitionCorrect > 0 && stats.competitionWrong > 0) {
+    return '比赛混合'
+  }
+  if (!progress) {
+    return '未学习'
+  }
+  if (progress.mastery_level >= 2) {
+    return '已掌握'
+  }
+  return '学习中'
+}
+
 // Speak word
 function speakWord(word) {
   speechStore.speakWord(word)
@@ -404,6 +432,27 @@ function exportData() {
   URL.revokeObjectURL(url)
   
   MessagePlugin.success('导出成功')
+}
+
+// 清空学习记录
+function confirmClearRecords() {
+  const dialog = DialogPlugin.confirm({
+    header: '确认清空',
+    body: '确定要清空所有学习记录吗？此操作将清除学习进度、掌握状态等数据，且不可恢复。',
+    confirmBtn: { content: '确认清空', theme: 'danger' },
+    onConfirm: async () => {
+      try {
+        await learningStore.clearAllData()
+        MessagePlugin.success('学习记录已清空')
+      } catch (error) {
+        MessagePlugin.error('清空失败，请重试')
+      }
+      dialog.destroy()
+    },
+    onClose: () => {
+      dialog.destroy()
+    }
+  })
 }
 
 onMounted(() => {
