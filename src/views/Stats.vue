@@ -156,6 +156,117 @@
       </div>
     </div>
 
+    <!-- Challenge Stats -->
+    <div class="challenge-section" v-if="authStore.user && (challengeStats.totalGames > 0 || challengeRecords.length > 0)">
+      <h2>挑战赛统计</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon challenge">
+            <t-icon name="sword" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ challengeStats.totalGames }}</span>
+            <span class="stat-label">参赛场次</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon highlight">
+            <t-icon name="crown" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ challengeStats.wins }}</span>
+            <span class="stat-label">获胜场次</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon success">
+            <t-icon name="chart-pie" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value">{{ challengeStats.winRate }}%</span>
+            <span class="stat-label">胜率</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">
+            <t-icon name="arrow-up" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value earned">+{{ challengeStats.totalEarned }}</span>
+            <span class="stat-label">获得积分</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon warning">
+            <t-icon name="arrow-down" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value spent">-{{ challengeStats.totalSpent }}</span>
+            <span class="stat-label">消耗积分</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" :class="{ success: challengeStats.netPoints >= 0, error: challengeStats.netPoints < 0 }">
+            <t-icon name="swap" size="32px" />
+          </div>
+          <div class="stat-info">
+            <span class="stat-value" :class="{ earned: challengeStats.netPoints >= 0, spent: challengeStats.netPoints < 0 }">
+              {{ challengeStats.netPoints >= 0 ? '+' : '' }}{{ challengeStats.netPoints }}
+            </span>
+            <span class="stat-label">净收益</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Challenge Records -->
+    <div class="challenge-records-section" v-if="authStore.user && challengeRecords.length > 0">
+      <div class="section-header">
+        <h2>挑战记录</h2>
+      </div>
+      <div class="challenge-records-grid">
+        <div 
+          class="challenge-record-card" 
+          v-for="challenge in challengeRecords.slice(0, 10)" 
+          :key="challenge.id"
+          :class="{ 'is-winner': challenge.winner_id === authStore.user?.id }"
+          @click="viewChallengeDetail(challenge)"
+        >
+          <div class="challenge-record-header">
+            <div class="challenge-result-badge" :class="challenge.winner_id === authStore.user?.id ? 'win' : 'lose'">
+              <span class="result-icon">{{ challenge.winner_id === authStore.user?.id ? '🏆' : '💔' }}</span>
+              <span class="result-text">{{ challenge.winner_id === authStore.user?.id ? '胜利' : '失败' }}</span>
+            </div>
+            <div class="challenge-points" :class="{ earned: challenge.winner_id === authStore.user?.id, spent: challenge.winner_id !== authStore.user?.id }">
+              <span v-if="challenge.winner_id === authStore.user?.id">+{{ challenge.prize_pool || challenge.entry_fee * (challenge.participants?.length || 2) }}</span>
+              <span v-else>-{{ challenge.entry_fee }}</span>
+            </div>
+          </div>
+          <div class="challenge-record-body">
+            <h4 class="challenge-record-name">{{ challenge.name }}</h4>
+            <div class="challenge-record-meta">
+              <span class="meta-tag">
+                <t-icon name="user" size="14px" />
+                {{ challenge.participants?.length || 0 }}人
+              </span>
+              <span class="meta-tag">
+                <t-icon name="layers" size="14px" />
+                {{ challenge.word_count }}词
+              </span>
+              <span class="meta-tag">
+                <t-icon name="time" size="14px" />
+                {{ challenge.time_limit }}s
+              </span>
+            </div>
+          </div>
+          <div class="challenge-record-footer">
+            <span class="challenge-record-time">{{ formatDate(challenge.finished_at || challenge.created_at) }}</span>
+            <t-icon name="chevron-right" class="arrow-icon" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Competition Overview Stats -->
     <div class="overview-section">
       <h2>比赛统计</h2>
@@ -400,10 +511,14 @@ import { useRouter } from 'vue-router'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useCompetitionStore } from '@/stores/competition'
 import { useLearningStore } from '@/stores/learning'
+import { useChallengeStore } from '@/stores/challenge'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const competitionStore = useCompetitionStore()
 const learningStore = useLearningStore()
+const challengeStore = useChallengeStore()
+const authStore = useAuthStore()
 
 const stats = computed(() => competitionStore.stats)
 const records = computed(() => competitionStore.records)
@@ -413,6 +528,10 @@ const learningStats = computed(() => learningStore.stats)
 const totalLearned = computed(() => learningStore.totalLearned)
 const masteredCount = computed(() => learningStore.masteredWords.length)
 const reviewCount = computed(() => learningStore.wordsToReview.length)
+
+// Challenge stats
+const challengeStats = computed(() => challengeStore.challengeStats)
+const challengeRecords = computed(() => challengeStore.myChallengeRecords)
 
 // 等级详情弹窗
 const levelDialogVisible = ref(false)
@@ -491,13 +610,18 @@ function showLevelDetail(level, index) {
   levelDialogVisible.value = true
 }
 
-// 计算总积分
+// 计算总积分 - 统一积分机制
+// 比赛积分：比赛得分
+// 学习积分：每次正确学习得2分，掌握一个单词额外得5分
+// 挑战积分：挑战赛净收益（获得 - 花费）
 const totalPoints = computed(() => {
   // 比赛积分：总分数
   const competitionPoints = records.value.reduce((sum, r) => sum + (r.score || 0), 0)
   // 学习积分：每次正确学习得2分，掌握一个单词额外得5分
   const learningPoints = (learningStats.value.totalCorrect || 0) * 2 + masteredCount.value * 5
-  return competitionPoints + learningPoints
+  // 挑战积分：净收益
+  const challengePoints = challengeStats.value.netPoints || 0
+  return competitionPoints + learningPoints + challengePoints
 })
 
 // 当前等级
@@ -575,6 +699,12 @@ function viewRecordDetail(recordId) {
   router.push(`/stats/record/${recordId}`)
 }
 
+// 查看挑战详情
+function viewChallengeDetail(challenge) {
+  challengeStore.viewFinishedChallenge(challenge)
+  router.push('/challenge')
+}
+
 function clearRecords() {
   const dialog = DialogPlugin.confirm({
     header: '确认清空',
@@ -597,6 +727,10 @@ function clearRecords() {
 
 onMounted(() => {
   competitionStore.loadRecords()
+  // 加载挑战记录
+  if (authStore.user) {
+    challengeStore.loadMyChallengeRecords()
+  }
   // 检查并保存等级解锁记录
   setTimeout(() => {
     checkAndSaveLevelUnlocks()
@@ -680,6 +814,16 @@ onMounted(() => {
           background: #FEF3C7;
           color: #F59E0B;
         }
+
+        &.challenge {
+          background: #E0E7FF;
+          color: #6366F1;
+        }
+
+        &.error {
+          background: #FEE2E2;
+          color: #EF4444;
+        }
       }
 
       .stat-info {
@@ -691,11 +835,240 @@ onMounted(() => {
           font-weight: 700;
           font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
           color: var(--charcoal-900);
+
+          &.earned {
+            color: var(--success);
+          }
+
+          &.spent {
+            color: var(--error);
+          }
         }
 
         .stat-label {
           font-size: 0.85rem;
           color: var(--text-secondary);
+        }
+      }
+    }
+  }
+
+  .challenge-section {
+    margin-bottom: 3rem;
+
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem;
+      background: var(--bg-card);
+      border-radius: 16px;
+      transition: all 0.3s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+      }
+
+      .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: var(--honey-100);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--honey-600);
+
+        &.highlight {
+          background: linear-gradient(135deg, var(--honey-400) 0%, var(--honey-500) 100%);
+          color: white;
+        }
+
+        &.success {
+          background: #D1FAE5;
+          color: var(--success);
+        }
+
+        &.challenge {
+          background: #E0E7FF;
+          color: #6366F1;
+        }
+
+        &.warning {
+          background: #FEF3C7;
+          color: #F59E0B;
+        }
+
+        &.error {
+          background: #FEE2E2;
+          color: #EF4444;
+        }
+      }
+
+      .stat-info {
+        display: flex;
+        flex-direction: column;
+
+        .stat-value {
+          font-size: 1.75rem;
+          font-weight: 700;
+          font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+          color: var(--charcoal-900);
+
+          &.earned {
+            color: var(--success);
+          }
+
+          &.spent {
+            color: var(--error);
+          }
+        }
+
+        .stat-label {
+          font-size: 0.85rem;
+          color: var(--text-secondary);
+        }
+      }
+    }
+  }
+
+  .challenge-records-section {
+    margin-bottom: 3rem;
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+
+      h2 {
+        font-size: 1.5rem;
+      }
+    }
+
+    .challenge-records-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .challenge-record-card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 2px solid transparent;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+      }
+
+      &.is-winner {
+        border-color: var(--honey-200);
+        background: linear-gradient(135deg, var(--honey-50) 0%, white 100%);
+      }
+
+      .challenge-record-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+
+        .challenge-result-badge {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          padding: 0.25rem 0.75rem;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          font-weight: 600;
+
+          .result-icon {
+            font-size: 1rem;
+          }
+
+          &.win {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: white;
+          }
+
+          &.lose {
+            background: var(--charcoal-100);
+            color: var(--charcoal-600);
+          }
+        }
+
+        .challenge-points {
+          font-size: 1.1rem;
+          font-weight: 700;
+          font-family: Georgia, 'Times New Roman', serif;
+
+          &.earned {
+            color: var(--success);
+          }
+
+          &.spent {
+            color: var(--error);
+          }
+        }
+      }
+
+      .challenge-record-body {
+        .challenge-record-name {
+          margin: 0 0 0.5rem;
+          font-size: 1rem;
+          font-weight: 600;
+          color: var(--text-primary);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .challenge-record-meta {
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+
+          .meta-tag {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+          }
+        }
+      }
+
+      .challenge-record-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--charcoal-100);
+
+        .challenge-record-time {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+        }
+
+        .arrow-icon {
+          color: var(--text-muted);
+          font-size: 14px;
         }
       }
     }
@@ -1424,8 +1797,13 @@ onMounted(() => {
     }
 
     .overview-section .stats-grid,
-    .learning-section .stats-grid {
+    .learning-section .stats-grid,
+    .challenge-section .stats-grid {
       grid-template-columns: repeat(2, 1fr);
+    }
+
+    .challenge-records-section .challenge-records-grid {
+      grid-template-columns: 1fr;
     }
 
     .records-section .record-card {

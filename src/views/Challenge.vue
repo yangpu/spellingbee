@@ -28,6 +28,52 @@
         <span>请先登录后再参与挑战赛</span>
       </div>
 
+      <!-- 状态统计和搜索 -->
+      <div class="filter-section" v-if="challengeStore.challenges.length > 0">
+        <div class="status-tabs">
+          <div 
+            class="status-tab" 
+            :class="{ active: statusFilter === 'all' }"
+            @click="statusFilter = 'all'"
+          >
+            <span class="tab-label">全部</span>
+            <span class="tab-count">{{ statusCounts.all }}</span>
+          </div>
+          <div 
+            class="status-tab" 
+            :class="{ active: statusFilter === 'waiting' }"
+            @click="statusFilter = 'waiting'"
+          >
+            <span class="tab-label">等待中</span>
+            <span class="tab-count waiting">{{ statusCounts.waiting }}</span>
+          </div>
+          <div 
+            class="status-tab" 
+            :class="{ active: statusFilter === 'in_progress' }"
+            @click="statusFilter = 'in_progress'"
+          >
+            <span class="tab-label">进行中</span>
+            <span class="tab-count in_progress">{{ statusCounts.in_progress }}</span>
+          </div>
+          <div 
+            class="status-tab" 
+            :class="{ active: statusFilter === 'finished' }"
+            @click="statusFilter = 'finished'"
+          >
+            <span class="tab-label">已结束</span>
+            <span class="tab-count finished">{{ statusCounts.finished }}</span>
+          </div>
+        </div>
+        <div class="search-box">
+          <t-input 
+            v-model="searchKeyword" 
+            placeholder="搜索挑战赛名称..." 
+            clearable
+            :prefix-icon="() => h(SearchIcon)"
+          />
+        </div>
+      </div>
+
       <!-- 加载中 -->
       <div class="loading-container" v-if="challengeStore.loading">
         <t-loading />
@@ -41,11 +87,19 @@
         <p>成为第一个创建挑战赛的人吧！</p>
       </div>
 
+      <!-- 过滤后无结果 -->
+      <div class="empty-state" v-else-if="paginatedChallenges.length === 0">
+        <t-icon name="search" size="64px" />
+        <h3>没有找到匹配的挑战赛</h3>
+        <p>尝试更换筛选条件或搜索关键词</p>
+        <t-button variant="outline" @click="resetFilters">重置筛选</t-button>
+      </div>
+
       <!-- 挑战赛卡片列表 -->
       <div class="challenge-cards" v-else>
         <div 
           class="challenge-card" 
-          v-for="challenge in challengeStore.challenges" 
+          v-for="challenge in paginatedChallenges" 
           :key="challenge.id"
           :class="{ connecting: connectingId === challenge.id, finished: challenge.status === 'finished', cancelled: challenge.status === 'cancelled' }"
           @click="viewChallenge(challenge)"
@@ -77,11 +131,6 @@
           </div>
           <div class="card-content">
             <h3 class="card-title">{{ challenge.name }}</h3>
-            <!-- 获胜者信息（已结束的比赛） -->
-            <div class="winner-info" v-if="challenge.status === 'finished' && challenge.winner_name">
-              <t-icon name="crown" />
-              <span>冠军: {{ challenge.winner_name }}</span>
-            </div>
             <div class="card-meta">
               <div class="meta-item">
                 <t-icon name="star" />
@@ -96,32 +145,54 @@
                 <span>{{ challenge.time_limit }}s</span>
               </div>
             </div>
-            <div class="card-time">
-              <t-icon name="time" />
-              <span v-if="challenge.status === 'finished' && challenge.finished_at">
-                {{ formatTime(challenge.finished_at) }} 结束
-              </span>
-              <span v-else>
-                {{ formatTime(challenge.created_at) }} 创建
-              </span>
-            </div>
-            <!-- 参赛选手（创建者排第一） -->
-            <div class="card-participants-list">
-              <div 
-                class="participant-item"
-                v-for="p in getSortedParticipants(challenge)"
-                :key="p.user_id"
-              >
-                <t-avatar size="20px" :image="p.avatar_url">
-                  {{ p.nickname?.charAt(0) }}
-                </t-avatar>
-                <span class="participant-name">{{ p.nickname }}</span>
-                <t-tag v-if="p.user_id === challenge.creator_id" size="small" variant="light" theme="warning">房主</t-tag>
+            <!-- 时间和参赛人数同行 -->
+            <div class="card-info-row">
+              <div class="card-time">
+                <t-icon name="time" />
+                <span v-if="challenge.status === 'finished' && challenge.finished_at">
+                  {{ formatTime(challenge.finished_at) }}
+                </span>
+                <span v-else>
+                  {{ formatTime(challenge.created_at) }}
+                </span>
+              </div>
+              <div class="card-participants-count">
+                <t-icon name="user" />
+                <span>{{ challenge.participants?.length || 0 }}/{{ challenge.max_participants }}</span>
               </div>
             </div>
-            <div class="participants-count-row">
-              <t-icon name="user" />
-              <span>{{ challenge.participants?.length || 0 }}/{{ challenge.max_participants }} 人</span>
+            <!-- 参赛选手（单行显示，超过3人只显示创建者名称+其他人图标） -->
+            <div class="card-participants-row">
+              <template v-if="challenge.participants?.length <= 3">
+                <div 
+                  class="participant-chip"
+                  v-for="p in getSortedParticipants(challenge)"
+                  :key="p.user_id"
+                  :class="{ 'is-winner': challenge.status === 'finished' && p.user_id === challenge.winner_id }"
+                >
+                  <span class="winner-icon" v-if="challenge.status === 'finished' && p.user_id === challenge.winner_id">🏆</span>
+                  <t-avatar v-else size="18px" :image="p.avatar_url">{{ p.nickname?.charAt(0) }}</t-avatar>
+                  <span class="participant-name">{{ p.nickname }}</span>
+                </div>
+              </template>
+              <template v-else>
+                <!-- 创建者显示名称 -->
+                <div class="participant-chip" v-if="getCreator(challenge)" :class="{ 'is-winner': challenge.status === 'finished' && getCreator(challenge).user_id === challenge.winner_id }">
+                  <span class="winner-icon" v-if="challenge.status === 'finished' && getCreator(challenge).user_id === challenge.winner_id">🏆</span>
+                  <t-avatar v-else size="18px" :image="getCreator(challenge).avatar_url">{{ getCreator(challenge).nickname?.charAt(0) }}</t-avatar>
+                  <span class="participant-name">{{ getCreator(challenge).nickname }}</span>
+                </div>
+                <!-- 其他人只显示图标 -->
+                <template v-for="p in getOtherParticipants(challenge)" :key="p.user_id">
+                  <span class="winner-icon-only" v-if="challenge.status === 'finished' && p.user_id === challenge.winner_id">🏆</span>
+                  <t-avatar 
+                    v-else
+                    size="18px" 
+                    :image="p.avatar_url"
+                    class="participant-avatar-only"
+                  >{{ p.nickname?.charAt(0) }}</t-avatar>
+                </template>
+              </template>
             </div>
           </div>
           <div class="card-action">
@@ -157,6 +228,17 @@
             </t-button>
           </div>
         </div>
+      </div>
+
+      <!-- 分页 -->
+      <div class="pagination-section" v-if="filteredChallenges.length > pageSize">
+        <t-pagination
+          v-model:current="currentPage"
+          :total="filteredChallenges.length"
+          :page-size="pageSize"
+          :show-jumper="false"
+          size="small"
+        />
       </div>
 
     </div>
@@ -250,9 +332,21 @@
           </t-radio-group>
           <span class="form-hint mode-hint">{{ wordModeHint }}</span>
         </t-form-item>
+        <t-form-item name="hint_options" label="提示选项">
+          <div class="hint-options">
+            <t-checkbox v-model="createData.show_chinese">显示中文词义</t-checkbox>
+            <t-checkbox v-model="createData.show_english">显示英文释义</t-checkbox>
+          </div>
+        </t-form-item>
         <div class="form-actions">
-          <t-button variant="outline" @click="showCreateDialog = false">取消</t-button>
-          <t-button theme="primary" type="submit" :loading="creating">创建</t-button>
+          <t-button variant="outline" @click="showCreateDialog = false">
+            <template #icon><t-icon name="close" /></template>
+            取消
+          </t-button>
+          <t-button theme="primary" type="submit" :loading="creating">
+            <template #icon><t-icon name="add" /></template>
+            创建
+          </t-button>
         </div>
       </t-form>
     </t-dialog>
@@ -260,8 +354,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, h } from 'vue'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
+import { SearchIcon } from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useChallengeStore } from '@/stores/challenge'
 import { supabase } from '@/lib/supabase'
@@ -278,6 +373,61 @@ const coverFiles = ref([])
 const uploadingCover = ref(false)
 const nextChallengeNumber = ref(1) // 下一个比赛序号
 
+// 过滤和分页
+const statusFilter = ref('all')
+const searchKeyword = ref('')
+const currentPage = ref(1)
+const pageSize = 12
+
+// 状态统计
+const statusCounts = computed(() => {
+  const challenges = challengeStore.challenges
+  return {
+    all: challenges.length,
+    waiting: challenges.filter(c => c.status === 'waiting' || c.status === 'ready').length,
+    in_progress: challenges.filter(c => c.status === 'in_progress').length,
+    finished: challenges.filter(c => c.status === 'finished').length
+  }
+})
+
+// 过滤后的挑战赛
+const filteredChallenges = computed(() => {
+  let result = challengeStore.challenges
+
+  // 状态过滤
+  if (statusFilter.value !== 'all') {
+    if (statusFilter.value === 'waiting') {
+      result = result.filter(c => c.status === 'waiting' || c.status === 'ready')
+    } else {
+      result = result.filter(c => c.status === statusFilter.value)
+    }
+  }
+
+  // 搜索过滤
+  if (searchKeyword.value.trim()) {
+    const keyword = searchKeyword.value.trim().toLowerCase()
+    result = result.filter(c => 
+      c.name.toLowerCase().includes(keyword) ||
+      c.creator_name?.toLowerCase().includes(keyword)
+    )
+  }
+
+  return result
+})
+
+// 分页后的挑战赛
+const paginatedChallenges = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return filteredChallenges.value.slice(start, start + pageSize)
+})
+
+// 重置筛选
+function resetFilters() {
+  statusFilter.value = 'all'
+  searchKeyword.value = ''
+  currentPage.value = 1
+}
+
 // 设置存储键
 const CHALLENGE_SETTINGS_KEY = 'spellingbee_challenge_settings'
 
@@ -290,7 +440,9 @@ const createData = reactive({
   word_count: 10,
   time_limit: 30,
   difficulty: null,
-  word_mode: 'simulate' // 比赛模式：simulate, new, random, sequential, reverse
+  word_mode: 'simulate', // 比赛模式：simulate, new, random, sequential, reverse
+  show_chinese: true, // 显示中文词义
+  show_english: true // 显示英文释义
 })
 
 // 加载保存的设置
@@ -305,7 +457,9 @@ async function loadSettings() {
         word_count: settings.word_count ?? 10,
         time_limit: settings.time_limit ?? 30,
         difficulty: settings.difficulty ?? null,
-        word_mode: settings.word_mode ?? 'simulate'
+        word_mode: settings.word_mode ?? 'simulate',
+        show_chinese: settings.show_chinese ?? true,
+        show_english: settings.show_english ?? true
       })
     }
   } catch (e) {
@@ -322,7 +476,9 @@ function saveSettings() {
       word_count: createData.word_count,
       time_limit: createData.time_limit,
       difficulty: createData.difficulty,
-      word_mode: createData.word_mode
+      word_mode: createData.word_mode,
+      show_chinese: createData.show_chinese,
+      show_english: createData.show_english
     }))
   } catch (e) {
     console.error('Error saving challenge settings:', e)
@@ -437,6 +593,16 @@ function getSortedParticipants(challenge) {
     if (b.user_id === challenge.creator_id) return 1
     return 0
   })
+}
+
+// 获取创建者
+function getCreator(challenge) {
+  return challenge.participants?.find(p => p.user_id === challenge.creator_id)
+}
+
+// 获取非创建者的参赛者
+function getOtherParticipants(challenge) {
+  return challenge.participants?.filter(p => p.user_id !== challenge.creator_id) || []
 }
 
 // 自定义上传方法
@@ -633,6 +799,8 @@ async function handleCreate({ validateResult }) {
       time_limit: createData.time_limit,
       difficulty: createData.difficulty,
       word_mode: createData.word_mode,
+      show_chinese: createData.show_chinese,
+      show_english: createData.show_english,
       challenge_number: nextChallengeNumber.value
     })
     
@@ -715,6 +883,81 @@ onMounted(async () => {
   border-radius: 8px;
   color: var(--warning, #d97706);
   margin-bottom: 1.5rem;
+}
+
+.filter-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+
+  .status-tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+
+    .status-tab {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg-card);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+
+      &:hover {
+        background: var(--hover-bg);
+      }
+
+      &.active {
+        border-color: var(--honey-400);
+        background: var(--honey-50);
+      }
+
+      .tab-label {
+        font-size: 0.9rem;
+        color: var(--text-primary);
+      }
+
+      .tab-count {
+        font-size: 0.75rem;
+        padding: 0.125rem 0.5rem;
+        border-radius: 10px;
+        background: var(--charcoal-200);
+        color: var(--text-secondary);
+
+        &.waiting {
+          background: var(--honey-100);
+          color: var(--honey-700);
+        }
+
+        &.in_progress {
+          background: var(--primary-light, #dbeafe);
+          color: var(--primary);
+        }
+
+        &.finished {
+          background: var(--success-light, #d1fae5);
+          color: var(--success);
+        }
+      }
+    }
+  }
+
+  .search-box {
+    min-width: 200px;
+    max-width: 280px;
+  }
+}
+
+.pagination-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
 }
 
 .loading-container {
@@ -888,18 +1131,7 @@ onMounted(async () => {
       font-weight: 600;
     }
 
-    .winner-info {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 0.75rem;
-      background: linear-gradient(135deg, var(--honey-50) 0%, var(--honey-100) 100%);
-      border-radius: 8px;
-      margin-bottom: 0.75rem;
-      font-size: 0.85rem;
-      color: var(--honey-700);
-      font-weight: 500;
-    }
+
 
     .card-meta {
       display: flex;
@@ -915,37 +1147,70 @@ onMounted(async () => {
       }
     }
 
-    .card-participants-list {
+    .card-info-row {
       display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
+      align-items: center;
+      justify-content: space-between;
       margin-top: 0.5rem;
       padding-top: 0.5rem;
       border-top: 1px solid var(--charcoal-100);
+      font-size: 0.8rem;
+      color: var(--text-muted);
 
-      .participant-item {
+      .card-time, .card-participants-count {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        font-size: 0.8rem;
+        gap: 0.25rem;
+      }
+    }
+
+    .card-participants-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+
+      .participant-chip {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.5rem 0.15rem 0.15rem;
+        background: var(--hover-bg);
+        border-radius: 20px;
+        font-size: 0.75rem;
+
+        .winner-icon {
+          font-size: 14px;
+          margin-left: 2px;
+        }
 
         .participant-name {
-          flex: 1;
           color: var(--text-secondary);
+          max-width: 100px;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-      }
-    }
 
-    .participants-count-row {
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-top: 0.5rem;
+        &.is-winner {
+          background: linear-gradient(135deg, var(--honey-100) 0%, var(--honey-200) 100%);
+          
+          .participant-name {
+            color: var(--honey-700);
+            font-weight: 600;
+          }
+        }
+      }
+
+      .winner-icon-only {
+        font-size: 16px;
+        margin-left: -4px;
+      }
+
+      .participant-avatar-only {
+        margin-left: -4px;
+      }
     }
 
     .card-time {
@@ -1012,6 +1277,11 @@ onMounted(async () => {
   margin-left: 0.5rem;
   font-size: 0.85rem;
   color: var(--text-secondary);
+}
+
+.hint-options {
+  display: flex;
+  gap: 1.5rem;
 }
 
 .form-actions {

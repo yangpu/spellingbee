@@ -6,7 +6,7 @@
         <span class="brand-text">Spelling Bee</span>
       </div>
       <div class="nav-links">
-        <router-link to="/" class="nav-link">
+        <router-link to="/" class="nav-link home-link">
           <t-icon name="home" />
           <span>首页</span>
         </router-link>
@@ -460,8 +460,14 @@ const forceRefresh = () => {
       display: none;
     }
 
-    .nav-links .nav-link span {
-      display: none;
+    .nav-links {
+      .nav-link span {
+        display: none;
+      }
+      
+      .home-link {
+        display: none;
+      }
     }
 
     .nav-user .user-avatar-btn .user-name {

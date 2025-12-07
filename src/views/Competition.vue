@@ -173,44 +173,14 @@
         </div>
 
         <!-- Letter input boxes -->
-        <div class="word-mystery">
-          <div
-            v-for="(slot, i) in letterSlots"
-            :key="i"
-            class="letter-slot"
-            :class="{
-              'slot-correct': slot.status === 'correct',
-              'slot-wrong': slot.status === 'wrong',
-              'slot-active': i === currentLetterIndex,
-              'slot-filled': slot.value,
-            }"
-            @click="focusLetterInput(i)"
-          >
-            <input
-              :ref="(el) => (letterInputRefs[i] = el)"
-              type="text"
-              maxlength="1"
-              class="letter-input"
-              :value="slot.value"
-              @input="handleLetterInput($event, i)"
-              @keydown="handleLetterKeydown($event, i)"
-              @compositionstart="handleCompositionStart"
-              @compositionend="handleCompositionEnd($event, i)"
-              @focus="handleInputFocus($event, i)"
-              @beforeinput="handleBeforeInput"
-              autocomplete="off"
-              autocapitalize="off"
-              autocorrect="off"
-              spellcheck="false"
-              enterkeyhint="next"
-              inputmode="text"
-              x-webkit-speech
-            />
-            <span class="letter-hint" v-if="i === 0 && !slot.value">{{
-              currentWord?.word[0]?.toUpperCase()
-            }}</span>
-          </div>
-        </div>
+        <LetterInput
+          ref="letterInputRef"
+          :word="currentWord?.word || ''"
+          :disabled="isAnswerSubmitted"
+          :auto-submit="true"
+          @submit="submitAnswer"
+          @change="handleLetterChange"
+        />
 
         <!-- Voice input toggle and status -->
         <div class="voice-status">
@@ -318,7 +288,7 @@
             theme="primary"
             size="large"
             @click="submitAnswer"
-            :disabled="!isAllLettersFilled"
+            :disabled="!isAllLettersFilled || isAnswerSubmitted"
           >
             <template #icon><t-icon name="check" /></template>
             提交答案
@@ -457,6 +427,7 @@ import { useAnnouncerStore } from '@/stores/announcer';
 import { checkSpeechPermission } from '@/utils/speechPermission';
 import SpeechSettings from '@/components/SpeechSettings.vue';
 import AnnouncerSettings from '@/components/AnnouncerSettings.vue';
+import LetterInput from '@/components/LetterInput.vue';
 
 const baseUrl = import.meta.env.BASE_URL;
 const wordsStore = useWordsStore();
@@ -571,9 +542,8 @@ const showResultAnimal = ref(null); // 'cat' for success, 'dog' for failure
 const showDefinitionHint = ref(false); // 显示中文释义
 
 // Letter input state
-const letterSlots = ref([]);
-const letterInputRefs = ref([]);
-const currentLetterIndex = ref(0);
+const letterInputRef = ref(null);
+const isAnswerSubmitted = ref(false); // 是否已提交答案
 
 // Voice input state
 const isListening = ref(false);
@@ -586,20 +556,6 @@ const lastWordAttempt = ref(''); // 记录上次尝试的单词，避免重复�
 const wordAttemptCount = ref(0); // 单词朗读尝试次数
 const wordPhaseStartTime = ref(0); // 单词阶段开始时间
 const isSpeaking = ref(false); // 页面是否正在朗读
-const isComposing = ref(false); // 是否正在进行IME组合输入
-
-// 防抖相关状态
-const pendingMoveToNext = ref(null); // 待执行的移动到下一个框的操作
-const isProcessingInput = ref(false); // 是否正在处理输入（防止多重触发）
-// 移动端需要更长的锁定时间，因为虚拟键盘事件触发可能有延迟
-const isMobile =
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  );
-
-// 新的防抖机制：记录每个框的最后输入值和时间，只对相同值进行防抖
-const lastInputRecord = ref({}); // { index: { value, time } }
-const duplicateThreshold = 100; // 相同值重复输入的防抖时间（毫秒）
 
 const askedQuestions = reactive({
   pronunciation: false,
@@ -612,7 +568,7 @@ const askedQuestions = reactive({
 const currentWord = computed(() => competitionStore.currentWord);
 
 const isAllLettersFilled = computed(() => {
-  return letterSlots.value.every((slot) => slot.value);
+  return letterInputRef.value?.isFilled() || false;
 });
 
 const timerClass = computed(() => {
@@ -636,20 +592,20 @@ watch(
   currentWord,
   (word) => {
     if (word) {
-      letterSlots.value = word.word.split('').map(() => ({
-        value: '',
-        status: 'empty', // empty, correct, wrong
-      }));
-      currentLetterIndex.value = 0;
+      isAnswerSubmitted.value = false;
       nextTick(() => {
-        if (letterInputRefs.value[0]) {
-          letterInputRefs.value[0].focus();
-        }
+        letterInputRef.value?.reset();
+        letterInputRef.value?.focus();
       });
     }
   },
   { immediate: true }
 );
+
+// 处理字母变化（用于语音输入）
+function handleLetterChange(answer) {
+  // 可以在这里添加语音输入相关的处理
+}
 
 // 恢复未完成的比赛 - 检查语音权限，但不等待用户点击
 async function resumeCompetition() {
@@ -916,354 +872,10 @@ function getWordsReverseMode(count, difficulty) {
 
 function initLetterSlots() {
   if (!currentWord.value) return;
-  letterSlots.value = currentWord.value.word.split('').map(() => ({
-    value: '',
-    status: 'empty',
-  }));
-  currentLetterIndex.value = 0;
-  // 重置处理标记
-  isProcessingInput.value = false;
-  handledByKeydown.value = false;
-  lastInputRecord.value = {}; // 重置输入记录
-  // 取消待执行的移动操作
-  if (pendingMoveToNext.value) {
-    clearTimeout(pendingMoveToNext.value);
-    pendingMoveToNext.value = null;
-  }
-}
-
-// 记录是否由 keydown 处理了输入（防止 input 事件重复处理）
-const handledByKeydown = ref(false);
-
-// 检查是否是重复输入（中文输入法会触发两次相同字母）
-function isDuplicateInput(index, value) {
-  const now = Date.now();
-  const record = lastInputRecord.value[index];
-  
-  // 如果同一个框在短时间内输入相同的值，视为重复
-  if (record && record.value === value && now - record.time < duplicateThreshold) {
-    return true;
-  }
-  
-  return false;
-}
-
-// 记录输入
-function recordInput(index, value) {
-  lastInputRecord.value[index] = {
-    value,
-    time: Date.now()
-  };
-}
-
-function handleLetterInput(event, index) {
-  // 如果正在进行IME组合输入，不处理（等待compositionend）
-  if (isComposing.value) {
-    return;
-  }
-
-  // 如果已经由 keydown 处理过，跳过
-  if (handledByKeydown.value) {
-    handledByKeydown.value = false;
-    // 立即恢复正确的值
-    event.target.value = letterSlots.value[index].value || '';
-    return;
-  }
-
-  // 移动端已在 beforeinput 中处理，这里只做值同步
-  if (isMobile) {
-    // 确保显示正确的值（防止任何残留）
-    event.target.value = letterSlots.value[index].value || '';
-    return;
-  }
-
-  // 以下是 PC 端的处理逻辑
-  const inputValue = event.target.value || '';
-
-  // 提取所有英文字母
-  const letters = inputValue.replace(/[^a-zA-Z]/g, '').toLowerCase();
-
-  // 如果没有有效字母，恢复原值
-  if (!letters) {
-    event.target.value = letterSlots.value[index].value || '';
-    return;
-  }
-
-  // 只取第一个有效字母
-  const value = letters.charAt(0);
-
-  // 如果当前格已经有值且值相同，检查是否是重复触发
-  if (letterSlots.value[index].value === value) {
-    event.target.value = value;
-    return;
-  }
-
-  // 检查是否是中文输入法导致的重复输入
-  if (isDuplicateInput(index, value)) {
-    event.target.value = letterSlots.value[index].value || value;
-    return;
-  }
-
-  // 使用统一的处理函数
-  processLetterInput(value, index, event.target);
-}
-
-// 统一的字母输入处理函数（用于 keydown 和 compositionend）
-function processLetterInput(value, index, inputElement) {
-  // 记录本次输入（用于检测重复）
-  recordInput(index, value);
-
-  // 更新当前框的字母
-  letterSlots.value[index].value = value;
-  if (inputElement) {
-    inputElement.value = value;
-  }
-
-  // 检查是否正确
-  const correctLetter = currentWord.value.word[index].toLowerCase();
-  if (value === correctLetter) {
-    letterSlots.value[index].status = 'correct';
-  } else {
-    letterSlots.value[index].status = 'wrong';
-  }
-
-  // 取消之前的待执行移动操作
-  if (pendingMoveToNext.value) {
-    clearTimeout(pendingMoveToNext.value);
-    pendingMoveToNext.value = null;
-  }
-
-  // 移动到下一个框或自动提交
-  if (index < letterSlots.value.length - 1) {
-    // 快速移动到下一个框，不需要长时间延迟
-    pendingMoveToNext.value = setTimeout(() => {
-      currentLetterIndex.value = index + 1;
-      const nextInput = letterInputRefs.value[index + 1];
-      if (nextInput) {
-        nextInput.value = letterSlots.value[index + 1].value || '';
-        nextInput.focus();
-      }
-      pendingMoveToNext.value = null;
-    }, isMobile ? 80 : 20); // 缩短延迟，提升快速输入体验
-  } else {
-    // 输入最后一个字母后自动提交
-    pendingMoveToNext.value = setTimeout(() => {
-      if (isAllLettersFilled.value) {
-        submitAnswer();
-      }
-      pendingMoveToNext.value = null;
-    }, isMobile ? 100 : 30);
-  }
-}
-
-// IME 组合输入开始
-function handleCompositionStart() {
-  isComposing.value = true;
-}
-
-// IME 组合输入结束
-function handleCompositionEnd(event, index) {
-  isComposing.value = false;
-
-  const inputValue = event.target.value || '';
-
-  // 提取所有英文字母
-  const letters = inputValue.replace(/[^a-zA-Z]/g, '').toLowerCase();
-
-  // 如果没有有效字母，恢复原值
-  if (!letters) {
-    event.target.value = letterSlots.value[index].value || '';
-    return;
-  }
-
-  // 只取第一个字母
-  const value = letters.charAt(0);
-
-  // 如果值相同，不重复处理
-  if (letterSlots.value[index].value === value) {
-    event.target.value = value;
-    return;
-  }
-
-  // 检查是否是重复输入
-  if (isDuplicateInput(index, value)) {
-    event.target.value = letterSlots.value[index].value || value;
-    return;
-  }
-
-  // 使用统一的处理函数
-  processLetterInput(value, index, event.target);
-}
-
-// 处理输入框获得焦点
-function handleInputFocus(event, index) {
-  currentLetterIndex.value = index;
-  // 重置处理标记
-  handledByKeydown.value = false;
-  // 确保输入框显示正确的值，防止残留
-  const correctValue = letterSlots.value[index].value || '';
-  // 强制只显示单个字符
-  event.target.value = correctValue.charAt(0);
-}
-
-// 处理 beforeinput 事件 - 核心：在移动端完全接管输入，防止浏览器先渲染导致闪烁
-function handleBeforeInput(event) {
-  // 如果是组合输入，允许继续
-  if (event.isComposing || isComposing.value) {
-    return;
-  }
-
-  // 对于删除操作，不阻止（让 keydown 处理）
-  if (event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward') {
-    return;
-  }
-
-  // 获取即将输入的数据
-  const data = event.data;
-  if (!data) return;
-
-  // 检查是否包含字母
-  const hasLetter = /[a-zA-Z]/.test(data);
-  if (!hasLetter) {
-    event.preventDefault();
-    return;
-  }
-
-  // 如果已经由 keydown 处理，阻止浏览器默认行为
-  if (handledByKeydown.value) {
-    event.preventDefault();
-    return;
-  }
-
-  // 获取当前输入框索引
-  const inputElement = event.target;
-  const currentIndex = letterInputRefs.value.findIndex(
-    (ref) => ref === inputElement
-  );
-  if (currentIndex === -1) return;
-
-  // 提取第一个有效字母
-  const letters = data.replace(/[^a-zA-Z]/g, '').toLowerCase();
-  if (!letters) {
-    event.preventDefault();
-    return;
-  }
-  
-  const value = letters.charAt(0);
-  
-  // 检查是否是重复输入（中文输入法问题）
-  if (isDuplicateInput(currentIndex, value)) {
-    event.preventDefault();
-    return;
-  }
-
-  // 核心修复：在移动端，完全阻止浏览器默认输入行为，由我们手动控制
-  // 这样可以避免浏览器先渲染字符再被我们覆盖导致的闪烁
-  if (isMobile) {
-    event.preventDefault();
-    
-    // 如果当前格已经有相同的值，不重复处理
-    if (letterSlots.value[currentIndex].value === value) {
-      return;
-    }
-    
-    // 手动处理输入
-    processLetterInput(value, currentIndex, inputElement);
-    return;
-  }
-
-  // PC端：如果输入的不是单个字母，阻止
-  if (data.length > 1) {
-    const multiLetters = data.replace(/[^a-zA-Z]/g, '').toLowerCase();
-    if (multiLetters.length > 1) {
-      event.preventDefault();
-      return;
-    }
-  }
-}
-
-function handleLetterKeydown(event, index) {
-  if (event.key === 'Backspace') {
-    event.preventDefault();
-    handledByKeydown.value = true;
-
-    if (letterSlots.value[index].value) {
-      letterSlots.value[index].value = '';
-      letterSlots.value[index].status = 'empty';
-      if (letterInputRefs.value[index]) {
-        letterInputRefs.value[index].value = '';
-      }
-    } else if (index > 0) {
-      currentLetterIndex.value = index - 1;
-      letterSlots.value[index - 1].value = '';
-      letterSlots.value[index - 1].status = 'empty';
-      nextTick(() => {
-        const prevInput = letterInputRefs.value[index - 1];
-        if (prevInput) {
-          prevInput.value = '';
-          prevInput.focus();
-        }
-        setTimeout(() => {
-          handledByKeydown.value = false;
-        }, 50);
-      });
-      return;
-    }
-
-    setTimeout(() => {
-      handledByKeydown.value = false;
-    }, 50);
-  } else if (event.key === 'Enter') {
-    if (isAllLettersFilled.value) {
-      submitAnswer();
-    }
-  } else if (event.key === 'ArrowLeft' && index > 0) {
-    currentLetterIndex.value = index - 1;
-    letterInputRefs.value[index - 1]?.focus();
-  } else if (
-    event.key === 'ArrowRight' &&
-    index < letterSlots.value.length - 1
-  ) {
-    currentLetterIndex.value = index + 1;
-    letterInputRefs.value[index + 1]?.focus();
-  } else if (/^[a-zA-Z]$/.test(event.key)) {
-    // 直接处理字母键输入
-    event.preventDefault();
-
-    // 标记由 keydown 处理，防止 input 事件重复触发
-    handledByKeydown.value = true;
-
-    const value = event.key.toLowerCase();
-
-    // 如果当前格已经有相同的值，不重复处理
-    if (letterSlots.value[index].value === value) {
-      handledByKeydown.value = false;
-      return;
-    }
-
-    // 使用统一的处理函数
-    processLetterInput(value, index, letterInputRefs.value[index]);
-    
-    // 快速重置标记，允许下一个按键
-    setTimeout(() => {
-      handledByKeydown.value = false;
-    }, 30);
-  }
-}
-
-function focusLetterInput(index) {
-  currentLetterIndex.value = index;
-  const input = letterInputRefs.value[index];
-  if (input) {
-    // 确保输入框显示正确的值，强制只显示单个字符
-    const correctValue = letterSlots.value[index].value || '';
-    input.value = correctValue.charAt(0);
-    input.focus();
-    // 选中内容，方便直接替换
-    if (input.value) {
-      input.select();
-    }
-  }
+  isAnswerSubmitted.value = false;
+  nextTick(() => {
+    letterInputRef.value?.reset();
+  });
 }
 
 // Voice Recognition
@@ -2399,15 +2011,8 @@ function resumeVoiceRecognition() {
 
 function repeatWord() {
   if (currentWord.value) {
-    // 清除已输入的字母
-    letterSlots.value.forEach((slot) => {
-      slot.value = '';
-      slot.status = 'empty';
-    });
-    currentLetterIndex.value = 0;
-    nextTick(() => {
-      letterInputRefs.value[0]?.focus();
-    });
+    // 使用 LetterInput 组件的 reset 方法清除输入
+    letterInputRef.value?.reset();
 
     // 重置语音识别状态
     voicePhase.value = 'word';
@@ -2494,21 +2099,8 @@ function handleTimeout() {
   }
   playDogSound();
 
-  // Show correct answer in slots with error styling
-  if (currentWord.value) {
-    currentWord.value.word.split('').forEach((char, i) => {
-      if (letterSlots.value[i]) {
-        // 如果用户没有输入或输入错误，显示正确答案并标记为错误
-        if (
-          !letterSlots.value[i].value ||
-          letterSlots.value[i].value.toLowerCase() !== char.toLowerCase()
-        ) {
-          letterSlots.value[i].value = char;
-          letterSlots.value[i].status = 'wrong';
-        }
-      }
-    });
-  }
+  // 标记已提交，禁止修改
+  isAnswerSubmitted.value = true;
 
   setTimeout(() => {
     showResultAnimal.value = null;
@@ -2518,9 +2110,14 @@ function handleTimeout() {
 }
 
 async function submitAnswer() {
-  if (!isAllLettersFilled.value || !currentWord.value) return;
-
-  const userAnswer = letterSlots.value.map((s) => s.value).join('');
+  if (!currentWord.value) return;
+  
+  const userAnswer = letterInputRef.value?.getAnswer() || '';
+  if (!userAnswer || !letterInputRef.value?.isFilled()) return;
+  
+  // 标记已提交，禁止修改
+  isAnswerSubmitted.value = true;
+  
   const isCorrect = competitionStore.checkAnswer(userAnswer);
 
   stopTimer();
@@ -2550,17 +2147,6 @@ async function submitAnswer() {
 
     // 播放失败音效
     playDogSound();
-
-    // Show all letters with correct/wrong status
-    currentWord.value.word.split('').forEach((char, i) => {
-      if (letterSlots.value[i]) {
-        if (letterSlots.value[i].value.toLowerCase() !== char.toLowerCase()) {
-          // 错误的字母显示正确答案，标记为红色
-          letterSlots.value[i].value = char;
-          letterSlots.value[i].status = 'wrong';
-        }
-      }
-    });
   }
 
   setTimeout(() => {
@@ -2615,6 +2201,9 @@ function skipWord() {
   stopTimer();
   stopVoiceInput();
 
+  // 标记已提交，禁止修改
+  isAnswerSubmitted.value = true;
+
   // 先保存当前单词信息用于显示
   const skippedWord = currentWord.value?.word;
 
@@ -2622,16 +2211,6 @@ function skipWord() {
   showResultAnimal.value = 'dog';
   showDefinitionHint.value = true;
   playDogSound();
-
-  // 显示正确答案，标记为红色错误
-  if (currentWord.value) {
-    currentWord.value.word.split('').forEach((char, i) => {
-      if (letterSlots.value[i]) {
-        letterSlots.value[i].value = char;
-        letterSlots.value[i].status = 'wrong';
-      }
-    });
-  }
 
   // 调用 skipWord 会记录跳过并移动到下一个单词
   competitionStore.skipWord();
@@ -2658,7 +2237,7 @@ function skipWord() {
       }
 
       nextTick(() => {
-        letterInputRefs.value[0]?.focus();
+        letterInputRef.value?.focus();
       });
     } else {
       endCompetition();
@@ -2677,7 +2256,7 @@ async function moveToNextOrEnd() {
     // 语音识别会在 announceWord -> speakWord 完成后自动启动
 
     await nextTick();
-    letterInputRefs.value[0]?.focus();
+    letterInputRef.value?.focus();
   } else {
     await endCompetition();
   }
@@ -2702,132 +2281,12 @@ function formatDuration(seconds) {
   return mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
 }
 
-// 全局键盘事件处理 - 当输入框失去焦点时，按字母键自动恢复焦点并输入
-function handleGlobalKeydown(event) {
-  // 只在比赛进行中处理
-  if (!competitionStore.isActive) return;
-
-  // 检查当前焦点是否在字母输入框内
-  const activeElement = document.activeElement;
-  const isInputFocused = letterInputRefs.value.some(
-    (ref) => ref === activeElement
-  );
-
-  // 如果已经在输入框内，不处理（让原有逻辑处理）
-  if (isInputFocused) return;
-
-  // 检查是否按下了字母键
-  if (/^[a-zA-Z]$/.test(event.key)) {
-    event.preventDefault();
-
-    // 找到当前应该聚焦的输入框索引
-    let targetIndex = currentLetterIndex.value;
-
-    // 如果当前索引的框已有值，找第一个空框
-    if (letterSlots.value[targetIndex]?.value) {
-      const emptyIndex = letterSlots.value.findIndex((slot) => !slot.value);
-      if (emptyIndex !== -1) {
-        targetIndex = emptyIndex;
-      }
-    }
-
-    // 确保索引有效
-    if (targetIndex >= 0 && targetIndex < letterSlots.value.length) {
-      const value = event.key.toLowerCase();
-      
-      // 记录输入并处理
-      recordInput(targetIndex, value);
-
-      // 更新字母
-      letterSlots.value[targetIndex].value = value;
-
-      // 同步输入框显示
-      if (letterInputRefs.value[targetIndex]) {
-        letterInputRefs.value[targetIndex].value = value;
-      }
-
-      // 检查是否正确
-      const correctLetter = currentWord.value.word[targetIndex].toLowerCase();
-      if (value === correctLetter) {
-        letterSlots.value[targetIndex].status = 'correct';
-      } else {
-        letterSlots.value[targetIndex].status = 'wrong';
-      }
-
-      // 移动到下一个框或自动提交
-      if (targetIndex < letterSlots.value.length - 1) {
-        currentLetterIndex.value = targetIndex + 1;
-        nextTick(() => {
-          const nextInput = letterInputRefs.value[targetIndex + 1];
-          if (nextInput) {
-            nextInput.value = letterSlots.value[targetIndex + 1].value || '';
-            nextInput.focus();
-          }
-        });
-      } else {
-        // 最后一个字母，检查是否自动提交
-        nextTick(() => {
-          if (isAllLettersFilled.value) {
-            submitAnswer();
-          } else {
-            // 聚焦到当前框
-            const input = letterInputRefs.value[targetIndex];
-            if (input) {
-              input.value = value;
-              input.focus();
-            }
-          }
-        });
-      }
-    }
-  } else if (event.key === 'Backspace') {
-    // 处理退格键
-    event.preventDefault();
-
-    let targetIndex = currentLetterIndex.value;
-
-    // 如果当前框有值，清空它
-    if (letterSlots.value[targetIndex]?.value) {
-      letterSlots.value[targetIndex].value = '';
-      letterSlots.value[targetIndex].status = 'empty';
-      nextTick(() => {
-        const input = letterInputRefs.value[targetIndex];
-        if (input) {
-          input.value = '';
-          input.focus();
-        }
-      });
-    } else if (targetIndex > 0) {
-      // 如果当前框为空，移动到上一个框并清空
-      targetIndex = targetIndex - 1;
-      letterSlots.value[targetIndex].value = '';
-      letterSlots.value[targetIndex].status = 'empty';
-      currentLetterIndex.value = targetIndex;
-      nextTick(() => {
-        const input = letterInputRefs.value[targetIndex];
-        if (input) {
-          input.value = '';
-          input.focus();
-        }
-      });
-    }
-  } else if (event.key === 'Enter') {
-    // 处理回车键提交
-    if (isAllLettersFilled.value) {
-      event.preventDefault();
-      submitAnswer();
-    }
-  }
-}
-
 // Lifecycle
 onMounted(async () => {
   await wordsStore.init();
   speechStore.init(); // 初始化语音配置
   announcerStore.init(); // 初始化播音员配置
   loadSettings(); // 加载保存的设置
-  // 添加全局键盘事件监听
-  document.addEventListener('keydown', handleGlobalKeydown);
   
   // 自动恢复未完成的比赛
   if (competitionStore.hasUnfinishedSession) {
@@ -2840,8 +2299,6 @@ onUnmounted(() => {
   stopVoiceInput();
   clearWordPhaseTimer();
   speechSynthesis.cancel();
-  // 移除全局键盘事件监听
-  document.removeEventListener('keydown', handleGlobalKeydown);
 });
 
 // Watch for competition end
@@ -3298,6 +2755,7 @@ watch(
       align-items: center;
       justify-content: center;
       gap: 1rem;
+      margin-top: 1rem;
 
       .voice-toggle {
         display: flex;

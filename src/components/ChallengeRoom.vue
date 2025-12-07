@@ -164,51 +164,34 @@
               重复
             </t-button>
           </div>
-          <div class="word-definition">
-            {{ challengeStore.currentWord?.definition_cn || challengeStore.currentWord?.definition }}
+          <div class="word-definition" v-if="showChinese">
+            {{ challengeStore.currentWord?.definition_cn || (showEnglish ? '' : challengeStore.currentWord?.definition) }}
           </div>
-          <div class="word-definition-en" v-if="challengeStore.currentWord?.definition">
+          <div class="word-definition-en" v-if="showEnglish && challengeStore.currentWord?.definition">
             {{ challengeStore.currentWord?.definition }}
+          </div>
+          <div class="no-hint-notice" v-if="!showChinese && !showEnglish">
+            <t-icon name="info-circle" />
+            <span>*****</span>
           </div>
         </div>
 
         <!-- 输入区域 -->
         <div class="input-section">
-          <div class="letter-slots">
-            <div
-              v-for="(slot, i) in letterSlots"
-              :key="i"
-              class="letter-slot"
-              :class="{
-                'slot-active': i === currentLetterIndex,
-                'slot-filled': slot.value,
-                'slot-correct': slot.status === 'correct',
-                'slot-wrong': slot.status === 'wrong'
-              }"
-              @click="focusInput(i)"
-            >
-              <input
-                :ref="el => letterInputRefs[i] = el"
-                type="text"
-                maxlength="1"
-                :value="slot.value"
-                @input="handleInput($event, i)"
-                @keydown="handleKeydown($event, i)"
-                autocomplete="off"
-                autocapitalize="off"
-              />
-              <span class="letter-hint" v-if="i === 0 && !slot.value">
-                {{ challengeStore.currentWord?.word[0]?.toUpperCase() }}
-              </span>
-            </div>
-          </div>
+          <LetterInput
+            ref="letterInputRef"
+            :word="challengeStore.currentWord?.word || ''"
+            :disabled="challengeStore.hasSubmitted"
+            :auto-submit="true"
+            @submit="handleSubmit"
+          />
 
           <div class="submit-section">
             <t-button
               theme="primary"
               size="large"
-              :disabled="!canSubmit || challengeStore.hasSubmitted"
-              @click="handleSubmit"
+              :disabled="challengeStore.hasSubmitted"
+              @click="handleManualSubmit"
             >
               <template #icon><t-icon :name="challengeStore.hasSubmitted ? 'check' : 'send'" /></template>
               {{ challengeStore.hasSubmitted ? '已提交' : '提交答案' }}
@@ -240,6 +223,18 @@
           下一轮即将开始...
         </div>
       </div>
+
+      <!-- 退出比赛按钮 -->
+      <div class="exit-game-section" v-if="challengeStore.gameStatus === 'playing'">
+        <t-button
+          variant="text"
+          theme="danger"
+          @click="handleExitGame"
+        >
+          <template #icon><t-icon name="logout" /></template>
+          退出比赛
+        </t-button>
+      </div>
     </div>
 
     <!-- 比赛结束 -->
@@ -252,6 +247,33 @@
         </t-button>
       </div>
 
+      <!-- 胜利庆祝区域 -->
+      <div class="victory-celebration" v-if="isWinner">
+        <div class="confetti-container">
+          <div class="confetti" v-for="i in 50" :key="i" :style="getConfettiStyle(i)"></div>
+        </div>
+        <div class="trophy-animation">
+          <div class="trophy-glow"></div>
+          <span class="trophy-icon">🏆</span>
+        </div>
+        <h1 class="victory-title">恭喜获胜！</h1>
+        <p class="victory-subtitle">你在「{{ challenge?.name }}」中取得了胜利</p>
+        <div class="prize-display">
+          <div class="prize-icon">💰</div>
+          <div class="prize-amount">+{{ challenge?.prize_pool || (challenge?.entry_fee * challenge?.participants?.length) }}</div>
+          <div class="prize-label">积分奖励</div>
+        </div>
+      </div>
+
+      <!-- 非胜利者显示 -->
+      <div class="result-header" v-else>
+        <div class="result-icon">{{ challenge?.status === 'cancelled' ? '❌' : '🎮' }}</div>
+        <h2 class="result-title">{{ challenge?.status === 'cancelled' ? '比赛已取消' : '比赛结束' }}</h2>
+        <p class="result-subtitle" v-if="challenge?.winner_name">
+          冠军是 <strong>{{ challenge?.winner_name }}</strong>
+        </p>
+      </div>
+
       <!-- 比赛信息卡片 -->
       <div class="finish-card">
         <div class="finish-card-header">
@@ -262,7 +284,7 @@
             <t-icon name="trophy" size="40px" />
           </div>
           <div class="challenge-info">
-            <h1 class="challenge-name">{{ challenge?.name }}</h1>
+            <h3 class="challenge-name">{{ challenge?.name }}</h3>
             <div class="challenge-tags">
               <t-tag size="small" variant="light">{{ challenge?.word_count }} 词</t-tag>
               <t-tag size="small" variant="light">{{ challenge?.time_limit }}s/题</t-tag>
@@ -276,8 +298,8 @@
           </div>
         </div>
 
-        <!-- 冠军区域 -->
-        <div class="winner-banner" v-if="challenge?.winner_id">
+        <!-- 冠军区域（非胜利者视角） -->
+        <div class="winner-banner" v-if="challenge?.winner_id && !isWinner">
           <div class="winner-decoration">🏆</div>
           <div class="winner-content">
             <t-avatar :image="getWinnerAvatar()" size="64px">
@@ -301,11 +323,21 @@
               class="ranking-item"
               v-for="(p, index) in challengeStore.sortedParticipants"
               :key="p.user_id"
-              :class="{ 'is-winner': index === 0, 'is-me': p.user_id === authStore.user?.id }"
+              :class="{ 
+                'is-winner': index === 0 && !p.has_left, 
+                'is-me': p.user_id === authStore.user?.id,
+                'has-left': p.has_left
+              }"
             >
-              <div class="rank-num" :class="'rank-' + (index + 1)">{{ index + 1 }}</div>
+              <div class="rank-num" :class="'rank-' + (index + 1)">
+                <span v-if="p.has_left">-</span>
+                <span v-else>{{ index + 1 }}</span>
+              </div>
               <t-avatar :image="p.avatar_url" size="36px">{{ p.nickname?.charAt(0) }}</t-avatar>
-              <span class="player-name">{{ p.nickname }}</span>
+              <span class="player-name">
+                {{ p.nickname }}
+                <t-tag v-if="p.has_left" size="small" theme="danger" variant="light" class="left-tag">已退赛</t-tag>
+              </span>
               <span class="player-score">{{ p.score }} 分</span>
             </div>
           </div>
@@ -362,18 +394,42 @@ import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useChallengeStore } from '@/stores/challenge'
 import { useSpeechStore } from '@/stores/speech'
+import LetterInput from '@/components/LetterInput.vue'
 
 const authStore = useAuthStore()
 const challengeStore = useChallengeStore()
 const speechStore = useSpeechStore()
 
 const starting = ref(false)
-const letterSlots = ref([])
-const letterInputRefs = ref([])
-const currentLetterIndex = ref(0)
+const letterInputRef = ref(null)
 const showRecords = ref(false) // 是否显示比赛记录
 
 const challenge = computed(() => challengeStore.currentChallenge)
+
+// 判断当前用户是否是胜利者
+const isWinner = computed(() => {
+  if (!challenge.value || !authStore.user) return false
+  return challenge.value.winner_id === authStore.user.id
+})
+
+// 生成彩带样式
+function getConfettiStyle(index) {
+  const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
+  const color = colors[index % colors.length]
+  const left = Math.random() * 100
+  const delay = Math.random() * 3
+  const duration = 2 + Math.random() * 2
+  const size = 8 + Math.random() * 8
+  
+  return {
+    left: `${left}%`,
+    backgroundColor: color,
+    width: `${size}px`,
+    height: `${size}px`,
+    animationDelay: `${delay}s`,
+    animationDuration: `${duration}s`
+  }
+}
 
 const statusTheme = computed(() => {
   const map = {
@@ -411,22 +467,20 @@ const connectionStatusText = computed(() => {
   return map[challengeStore.connectionStatus] || ''
 })
 
-const canSubmit = computed(() => {
-  return letterSlots.value.every(slot => slot.value)
+// 是否显示中文词义
+const showChinese = computed(() => {
+  return challenge.value?.show_chinese !== false
 })
 
-// 监听当前单词变化，初始化输入框并播放语音
+// 是否显示英文释义
+const showEnglish = computed(() => {
+  return challenge.value?.show_english !== false
+})
+
+// 监听当前单词变化，播放语音
 watch(() => challengeStore.currentWord, (word) => {
   if (word) {
-    letterSlots.value = word.word.split('').map(() => ({
-      value: '',
-      status: 'empty'
-    }))
-    currentLetterIndex.value = 0
     nextTick(() => {
-      if (letterInputRefs.value[0]) {
-        letterInputRefs.value[0].focus()
-      }
       // 播放单词发音
       speakWord(word.word)
     })
@@ -473,71 +527,17 @@ function formatDateTime(dateStr) {
   return `${month}月${day}日 ${hours}:${minutes}`
 }
 
-function focusInput(index) {
-  currentLetterIndex.value = index
-  letterInputRefs.value[index]?.focus()
-}
-
-function handleInput(event, index) {
-  const value = event.target.value.toLowerCase().replace(/[^a-z]/g, '')
-  
-  if (value) {
-    letterSlots.value[index].value = value
-    
-    // 检查是否正确
-    const correctLetter = challengeStore.currentWord?.word[index]?.toLowerCase()
-    letterSlots.value[index].status = value === correctLetter ? 'correct' : 'wrong'
-    
-    // 移动到下一个
-    if (index < letterSlots.value.length - 1) {
-      currentLetterIndex.value = index + 1
-      nextTick(() => {
-        letterInputRefs.value[index + 1]?.focus()
-      })
-    } else {
-      // 最后一个，检查是否自动提交
-      nextTick(() => {
-        if (canSubmit.value && !challengeStore.hasSubmitted) {
-          handleSubmit()
-        }
-      })
-    }
-  }
-  
-  event.target.value = letterSlots.value[index].value
-}
-
-function handleKeydown(event, index) {
-  if (event.key === 'Backspace') {
-    event.preventDefault()
-    
-    if (letterSlots.value[index].value) {
-      letterSlots.value[index].value = ''
-      letterSlots.value[index].status = 'empty'
-    } else if (index > 0) {
-      currentLetterIndex.value = index - 1
-      letterSlots.value[index - 1].value = ''
-      letterSlots.value[index - 1].status = 'empty'
-      nextTick(() => {
-        letterInputRefs.value[index - 1]?.focus()
-      })
-    }
-  } else if (event.key === 'Enter' && canSubmit.value) {
-    handleSubmit()
-  } else if (event.key === 'ArrowLeft' && index > 0) {
-    currentLetterIndex.value = index - 1
-    letterInputRefs.value[index - 1]?.focus()
-  } else if (event.key === 'ArrowRight' && index < letterSlots.value.length - 1) {
-    currentLetterIndex.value = index + 1
-    letterInputRefs.value[index + 1]?.focus()
-  }
-}
-
-function handleSubmit() {
-  if (!canSubmit.value || challengeStore.hasSubmitted) return
-  
-  const answer = letterSlots.value.map(s => s.value).join('')
+function handleSubmit(answer) {
+  if (challengeStore.hasSubmitted) return
   challengeStore.submitAnswer(answer)
+}
+
+function handleManualSubmit() {
+  if (challengeStore.hasSubmitted) return
+  const answer = letterInputRef.value?.getAnswer() || ''
+  if (answer && letterInputRef.value?.isFilled()) {
+    challengeStore.submitAnswer(answer)
+  }
 }
 
 async function handleStart() {
@@ -576,6 +576,20 @@ function handleCancel() {
     confirmBtn: { content: '确认取消', theme: 'danger' },
     onConfirm: async () => {
       await challengeStore.cancelChallenge()
+      dialog.destroy()
+    },
+    onClose: () => dialog.destroy()
+  })
+}
+
+// 比赛进行中退出
+function handleExitGame() {
+  const dialog = DialogPlugin.confirm({
+    header: '确认退出比赛',
+    body: '退出比赛后，您将无法获得冠军奖励。确定要退出吗？',
+    confirmBtn: { content: '确认退出', theme: 'danger' },
+    onConfirm: async () => {
+      await challengeStore.exitGame()
       dialog.destroy()
     },
     onClose: () => dialog.destroy()
@@ -911,83 +925,33 @@ onUnmounted(() => {
         color: var(--text-secondary);
         font-style: italic;
       }
+
+      .no-hint-notice {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: var(--warning-light, #fef3c7);
+        border-radius: 8px;
+        color: var(--warning, #d97706);
+        font-size: 0.95rem;
+      }
     }
 
     .input-section {
-      .letter-slots {
-        display: flex;
-        justify-content: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        margin-bottom: 2rem;
-
-        .letter-slot {
-          width: 48px;
-          height: 60px;
-          position: relative;
-          background: var(--hover-bg);
-          border: 2px solid var(--charcoal-200);
-          border-radius: 8px;
-          transition: all 0.2s;
-
-          &.slot-active {
-            border-color: var(--honey-500);
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
-          }
-
-          &.slot-filled {
-            background: var(--honey-50);
-            border-color: var(--honey-400);
-          }
-
-          &.slot-correct {
-            background: var(--success-light, #d1fae5);
-            border-color: var(--success);
-
-            input {
-              color: var(--success);
-            }
-          }
-
-          &.slot-wrong {
-            background: var(--error-light, #fee2e2);
-            border-color: var(--error);
-
-            input {
-              color: var(--error);
-            }
-          }
-
-          input {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background: transparent;
-            text-align: center;
-            font-size: 1.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            outline: none;
-          }
-
-          .letter-hint {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--charcoal-300);
-            pointer-events: none;
-          }
-        }
-      }
-
       .submit-section {
         display: flex;
         justify-content: center;
+        margin-top: 2rem;
       }
     }
+  }
+
+  .exit-game-section {
+    display: flex;
+    justify-content: center;
+    margin-top: 2.5rem;
   }
 
   .round-result {
@@ -1067,6 +1031,133 @@ onUnmounted(() => {
     margin-bottom: 1rem;
   }
 
+  // 胜利庆祝区域
+  .victory-celebration {
+    text-align: center;
+    padding: 2rem 1rem;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #fff9e6 0%, #ffe066 50%, #ffd700 100%);
+    border-radius: 20px;
+    margin-bottom: 1.5rem;
+
+    .confetti-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      overflow: hidden;
+
+      .confetti {
+        position: absolute;
+        top: -20px;
+        border-radius: 2px;
+        animation: confetti-fall linear infinite;
+      }
+    }
+
+    .trophy-animation {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 1rem;
+
+      .trophy-glow {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 120px;
+        height: 120px;
+        background: radial-gradient(circle, rgba(255, 215, 0, 0.6) 0%, transparent 70%);
+        animation: trophy-pulse 2s ease-in-out infinite;
+      }
+
+      .trophy-icon {
+        position: relative;
+        font-size: 5rem;
+        animation: trophy-bounce 1s ease-in-out infinite;
+        display: block;
+        filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+      }
+    }
+
+    .victory-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #b8860b;
+      margin: 0 0 0.5rem;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+      animation: title-appear 0.5s ease-out;
+    }
+
+    .victory-subtitle {
+      font-size: 1rem;
+      color: #8b7355;
+      margin: 0 0 1.5rem;
+    }
+
+    .prize-display {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem 2rem;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      animation: prize-pop 0.5s ease-out 0.3s both;
+
+      .prize-icon {
+        font-size: 2rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .prize-amount {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #d4af37;
+        font-family: Georgia, 'Times New Roman', serif;
+      }
+
+      .prize-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+      }
+    }
+  }
+
+  // 非胜利者结果头部
+  .result-header {
+    text-align: center;
+    padding: 2rem 1rem;
+    background: var(--bg-card);
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+
+    .result-icon {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .result-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .result-subtitle {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      margin: 0;
+
+      strong {
+        color: var(--honey-600);
+      }
+    }
+  }
+
   .section-title {
     font-size: 0.95rem;
     font-weight: 600;
@@ -1116,7 +1207,7 @@ onUnmounted(() => {
 
         .challenge-name {
           margin: 0 0 0.5rem;
-          font-size: 1.25rem;
+          font-size: 1.1rem;
           font-weight: 700;
           color: var(--text-primary);
         }
@@ -1254,12 +1345,38 @@ onUnmounted(() => {
             flex: 1;
             font-size: 0.9rem;
             font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+
+            .left-tag {
+              font-size: 0.7rem;
+            }
           }
 
           .player-score {
             font-size: 0.9rem;
             font-weight: 700;
             color: var(--honey-600);
+          }
+
+          &.has-left {
+            opacity: 0.6;
+            background: var(--charcoal-100);
+
+            .rank-num {
+              background: var(--charcoal-300);
+              color: var(--charcoal-500);
+            }
+
+            .player-name {
+              color: var(--text-muted);
+              text-decoration: line-through;
+            }
+
+            .player-score {
+              color: var(--text-muted);
+            }
           }
         }
       }
@@ -1392,21 +1509,42 @@ onUnmounted(() => {
   50% { opacity: 0.5; }
 }
 
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(400px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@keyframes trophy-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes trophy-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+  50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.3; }
+}
+
+@keyframes title-appear {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes prize-pop {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 @media (max-width: 768px) {
   .room-waiting {
     .room-info {
       grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
-  .room-playing {
-    .word-section .input-section .letter-slots .letter-slot {
-      width: 36px;
-      height: 48px;
-
-      input {
-        font-size: 1.25rem;
-      }
     }
   }
 }

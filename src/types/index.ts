@@ -149,6 +149,8 @@ export interface Challenge {
   difficulty: number | null
   word_mode?: string // 出题模式：simulate, new, random, sequential, reverse
   challenge_number?: number // 比赛序号
+  show_chinese?: boolean // 显示中文词义，默认 true
+  show_english?: boolean // 显示英文释义，默认 true
   status: 'waiting' | 'ready' | 'in_progress' | 'finished' | 'cancelled'
   participants: ChallengeParticipant[]
   winner_id?: string
@@ -169,6 +171,7 @@ export interface ChallengeParticipant {
   score: number
   peer_id?: string
   joined_at: string
+  has_left?: boolean // 是否中途退出比赛
 }
 
 export interface ChallengeWord {
@@ -188,7 +191,7 @@ export interface ChallengeWordResult {
 }
 
 export interface ChallengeMessage {
-  type: 'join' | 'leave' | 'ready' | 'start' | 'word' | 'answer' | 'round_end' | 'game_end' | 'sync' | 'heartbeat'
+  type: 'join' | 'leave' | 'ready' | 'start' | 'word' | 'answer' | 'round_end' | 'game_end' | 'sync' | 'exit_game' | 'heartbeat'
   data: unknown
   sender_id: string
   timestamp: number

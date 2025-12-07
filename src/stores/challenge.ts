@@ -15,6 +15,7 @@ export const useChallengeStore = defineStore('challenge', () => {
   const currentChallenge = ref<Challenge | null>(null)
   const loading = ref(false)
   const syncing = ref(false)
+  const myChallengeRecords = ref<Challenge[]>([]) // 用户参与的挑战记录
 
   // PeerJS state
   const peer = ref<Peer | null>(null)
@@ -94,7 +95,7 @@ export const useChallengeStore = defineStore('challenge', () => {
         peer.value = newPeer
         peerId.value = id
         connectionStatus.value = 'connected'
-        console.log('PeerJS connected with ID:', id)
+        //console.log('PeerJS connected with ID:', id)
         resolve(id)
       })
 
@@ -122,11 +123,11 @@ export const useChallengeStore = defineStore('challenge', () => {
 
   // Handle incoming connection (for host)
   function handleIncomingConnection(conn: DataConnection) {
-    console.log('Incoming connection from:', conn.peer)
+    //console.log('Incoming connection from:', conn.peer)
     
     conn.on('open', () => {
       connections.value.set(conn.peer, conn)
-      console.log('Connection established with:', conn.peer)
+      //console.log('Connection established with:', conn.peer)
     })
 
     conn.on('data', (data) => {
@@ -157,7 +158,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
       conn.on('open', () => {
         connections.value.set(hostPeerId, conn)
-        console.log('Connected to host:', hostPeerId)
+        //console.log('Connected to host:', hostPeerId)
         
         // 发送加入消息
         sendMessage(conn, {
@@ -214,7 +215,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
   // Handle incoming message
   function handleMessage(message: ChallengeMessage, fromPeerId: string): void {
-    console.log('Received message:', message.type, message)
+    //console.log('Received message:', message.type, message)
 
     switch (message.type) {
       case 'join':
@@ -244,6 +245,9 @@ export const useChallengeStore = defineStore('challenge', () => {
       case 'sync':
         handleSyncMessage(message)
         break
+      case 'exit_game':
+        handleExitGameMessage(message)
+        break
       case 'heartbeat':
         // 心跳响应
         break
@@ -261,7 +265,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       peer_id: string
     }
 
-    console.log('handleJoinMessage: user', data.nickname, 'peer_id', data.peer_id)
+    //console.log('handleJoinMessage: user', data.nickname, 'peer_id', data.peer_id)
 
     // 查找参与者
     let participant = currentChallenge.value.participants.find(p => p.user_id === data.user_id)
@@ -270,7 +274,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       // 更新已存在的参与者状态
       participant.is_online = true
       participant.peer_id = data.peer_id
-      console.log('handleJoinMessage: updated existing participant online status')
+      //console.log('handleJoinMessage: updated existing participant online status')
     } else {
       // 添加新参与者
       const newParticipant: ChallengeParticipant = {
@@ -284,7 +288,7 @@ export const useChallengeStore = defineStore('challenge', () => {
         joined_at: new Date().toISOString()
       }
       currentChallenge.value.participants.push(newParticipant)
-      console.log('handleJoinMessage: added new participant', data.nickname)
+      //console.log('handleJoinMessage: added new participant', data.nickname)
     }
 
     // 广播同步消息
@@ -311,12 +315,12 @@ export const useChallengeStore = defineStore('challenge', () => {
     if (!currentChallenge.value) return
 
     const data = message.data as { is_ready: boolean }
-    console.log('handleReadyMessage: from', message.sender_id, 'ready:', data.is_ready)
+    //console.log('handleReadyMessage: from', message.sender_id, 'ready:', data.is_ready)
     
     const participant = currentChallenge.value.participants.find(p => p.user_id === message.sender_id)
     if (participant) {
       participant.is_ready = data.is_ready
-      console.log('handleReadyMessage: updated participant', participant.nickname, 'to', data.is_ready)
+      //console.log('handleReadyMessage: updated participant', participant.nickname, 'to', data.is_ready)
     }
 
     if (isHost.value) {
@@ -470,7 +474,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
   function handleSyncMessage(message: ChallengeMessage): void {
     const data = message.data as Challenge
-    console.log('handleSyncMessage: received sync, participants:', data.participants?.length, 'status:', data.status)
+    //console.log('handleSyncMessage: received sync, participants:', data.participants?.length, 'status:', data.status)
     
     // 保留当前用户的本地状态（如 is_ready），但更新其他信息
     if (currentChallenge.value && authStore.user) {
@@ -482,12 +486,20 @@ export const useChallengeStore = defineStore('challenge', () => {
         const myNewState = currentChallenge.value.participants.find(p => p.user_id === authStore.user!.id)
         if (myNewState) {
           // 服务器的状态优先
-          console.log('handleSyncMessage: my ready status from server:', myNewState.is_ready)
+          //console.log('handleSyncMessage: my ready status from server:', myNewState.is_ready)
         }
       }
     } else {
       currentChallenge.value = data
     }
+  }
+
+  // 处理玩家中途退出消息
+  function handleExitGameMessage(message: ChallengeMessage): void {
+    if (!isHost.value || !currentChallenge.value) return
+
+    const data = message.data as { user_id: string }
+    handleExitGameAsHost(data.user_id)
   }
 
   // Broadcast sync (host only)
@@ -653,8 +665,9 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     stopRoundTimer()
 
-    // 找出赢家
-    const sortedByScore = [...currentChallenge.value.participants].sort((a, b) => b.score - a.score)
+    // 找出赢家 - 排除中途退出的用户
+    const eligibleParticipants = currentChallenge.value.participants.filter(p => !p.has_left)
+    const sortedByScore = [...eligibleParticipants].sort((a, b) => b.score - a.score)
     const winner = sortedByScore[0]
 
     // 计算总奖池
@@ -743,12 +756,12 @@ export const useChallengeStore = defineStore('challenge', () => {
   // Toggle ready status
   function toggleReady(): void {
     if (!currentChallenge.value || !myParticipant.value) {
-      console.log('toggleReady: no challenge or participant')
+      //console.log('toggleReady: no challenge or participant')
       return
     }
 
     const newStatus = !myParticipant.value.is_ready
-    console.log('toggleReady: setting status to', newStatus)
+    //console.log('toggleReady: setting status to', newStatus)
     
     // 立即更新本地状态
     myParticipant.value.is_ready = newStatus
@@ -764,7 +777,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     } else {
       // 客户端发送给主机
       const hostConn = connections.value.values().next().value
-      console.log('toggleReady: hostConn', hostConn, 'open:', hostConn?.open)
+      //console.log('toggleReady: hostConn', hostConn, 'open:', hostConn?.open)
       if (hostConn && hostConn.open) {
         sendMessage(hostConn, {
           type: 'ready',
@@ -772,9 +785,9 @@ export const useChallengeStore = defineStore('challenge', () => {
           sender_id: authStore.user!.id,
           timestamp: Date.now()
         })
-        console.log('toggleReady: message sent')
+        //console.log('toggleReady: message sent')
       } else {
-        console.log('toggleReady: no connection to host')
+        //console.log('toggleReady: no connection to host')
       }
     }
   }
@@ -880,6 +893,8 @@ export const useChallengeStore = defineStore('challenge', () => {
     difficulty: number | null
     word_mode?: string
     challenge_number?: number
+    show_chinese?: boolean
+    show_english?: boolean
   }): Promise<Challenge> {
     if (!authStore.user) throw new Error('请先登录')
 
@@ -888,6 +903,8 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     const challenge: Omit<Challenge, 'id' | 'created_at'> = {
       ...data,
+      show_chinese: data.show_chinese ?? true,
+      show_english: data.show_english ?? true,
       creator_id: authStore.user.id,
       creator_name: authStore.profile?.nickname || authStore.user.email?.split('@')[0],
       creator_avatar: authStore.profile?.avatar_url,
@@ -976,7 +993,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
       isHost.value = true
       gameStatus.value = 'waiting'
-      console.log('Joined as host with peer_id:', peerId.value)
+      //console.log('Joined as host with peer_id:', peerId.value)
       return
     }
 
@@ -1000,7 +1017,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       // 连接到主机
       const creator = participants.find((p: ChallengeParticipant) => p.user_id === challenge.creator_id)
       if (creator?.peer_id) {
-        console.log('Connecting to host:', creator.peer_id)
+        //console.log('Connecting to host:', creator.peer_id)
         await connectToHost(creator.peer_id)
         isHost.value = false
         gameStatus.value = 'waiting'
@@ -1048,7 +1065,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     // 连接到主机
     const creator = participants.find((p: ChallengeParticipant) => p.user_id === challenge.creator_id)
     if (creator?.peer_id) {
-      console.log('Connecting to host:', creator.peer_id)
+      //console.log('Connecting to host:', creator.peer_id)
       await connectToHost(creator.peer_id)
     } else {
       throw new Error('房主不在线，请稍后再试')
@@ -1119,6 +1136,137 @@ export const useChallengeStore = defineStore('challenge', () => {
     })
 
     await cleanup()
+  }
+
+  // 比赛中途退出
+  async function exitGame(): Promise<void> {
+    if (!currentChallenge.value || !authStore.user) return
+
+    const userId = authStore.user.id
+
+    // 标记该用户为已离开
+    const participant = currentChallenge.value.participants.find(p => p.user_id === userId)
+    if (participant) {
+      participant.is_online = false
+      participant.has_left = true // 添加离开标记
+    }
+
+    // 发送离开消息给主机
+    if (!isHost.value) {
+      const hostConn = connections.value.values().next().value
+      if (hostConn) {
+        sendMessage(hostConn, {
+          type: 'exit_game',
+          data: { user_id: userId },
+          sender_id: userId,
+          timestamp: Date.now()
+        })
+      }
+    } else {
+      // 如果是主机退出，处理退出逻辑
+      await handleExitGameAsHost(userId)
+    }
+
+    // 更新数据库
+    await supabase
+      .from('challenges')
+      .update({ participants: currentChallenge.value.participants })
+      .eq('id', currentChallenge.value.id)
+
+    // 清理连接并返回列表
+    await cleanup()
+  }
+
+  // 主机处理玩家退出
+  async function handleExitGameAsHost(userId: string): Promise<void> {
+    if (!currentChallenge.value) return
+
+    // 标记用户为已离开
+    const participant = currentChallenge.value.participants.find(p => p.user_id === userId)
+    if (participant) {
+      participant.is_online = false
+      participant.has_left = true
+    }
+
+    // 检查剩余在线玩家数量
+    const onlinePlayers = currentChallenge.value.participants.filter(p => p.is_online && !p.has_left)
+    
+    if (onlinePlayers.length < 2) {
+      // 少于2人，自动结束比赛
+      // 找出剩余的唯一玩家作为赢家（如果有的话）
+      const winner = onlinePlayers[0]
+      
+      if (winner) {
+        await endGameWithWinner(winner.user_id, true)
+      } else {
+        // 没有玩家了，取消比赛
+        await supabase
+          .from('challenges')
+          .update({ status: 'cancelled' })
+          .eq('id', currentChallenge.value.id)
+
+        broadcast({
+          type: 'game_end',
+          data: {
+            winner_id: null,
+            winner_name: null,
+            final_scores: []
+          },
+          sender_id: authStore.user!.id,
+          timestamp: Date.now()
+        })
+      }
+    } else {
+      // 广播同步消息
+      broadcastSync()
+    }
+  }
+
+  // 结束比赛并指定赢家
+  async function endGameWithWinner(winnerId: string, dueToExit = false): Promise<void> {
+    if (!currentChallenge.value) return
+
+    stopRoundTimer()
+
+    const winner = currentChallenge.value.participants.find(p => p.user_id === winnerId)
+    const totalPrize = currentChallenge.value.entry_fee * currentChallenge.value.participants.length
+
+    const finalScores = currentChallenge.value.participants.map(p => ({
+      user_id: p.user_id,
+      score: p.score
+    }))
+
+    // 保存结果到数据库
+    await saveChallengeResult(winnerId)
+
+    // 广播游戏结束
+    broadcast({
+      type: 'game_end',
+      data: {
+        winner_id: winnerId,
+        winner_name: winner?.nickname,
+        final_scores: finalScores,
+        prize_pool: totalPrize,
+        game_words: gameWords.value,
+        due_to_exit: dueToExit
+      },
+      sender_id: authStore.user!.id,
+      timestamp: Date.now()
+    })
+
+    // 本地处理
+    handleGameEndMessage({
+      type: 'game_end',
+      data: {
+        winner_id: winnerId,
+        winner_name: winner?.nickname,
+        final_scores: finalScores,
+        prize_pool: totalPrize,
+        game_words: gameWords.value
+      },
+      sender_id: authStore.user!.id,
+      timestamp: Date.now()
+    })
   }
 
   // 删除挑战赛
@@ -1192,10 +1340,72 @@ export const useChallengeStore = defineStore('challenge', () => {
     currentChallenge.value.finished_at = finishedAt
     currentChallenge.value.game_words = gameWords.value
 
-    console.log('Challenge result saved successfully, status:', currentChallenge.value.status)
+    //console.log('Challenge result saved successfully, status:', currentChallenge.value.status)
 
     // TODO: 更新赢家积分到用户账户
   }
+
+  // 加载用户参与的挑战记录
+  async function loadMyChallengeRecords(): Promise<void> {
+    if (!authStore.user) return
+
+    try {
+      const { data, error } = await supabase
+        .from('challenges')
+        .select('*')
+        .eq('status', 'finished')
+        .order('finished_at', { ascending: false })
+        .limit(100)
+
+      if (error) throw error
+
+      // 筛选出用户参与的挑战赛
+      myChallengeRecords.value = (data || []).filter(c => 
+        c.participants?.some((p: ChallengeParticipant) => p.user_id === authStore.user!.id)
+      )
+    } catch (error) {
+      console.error('Error loading my challenge records:', error)
+    }
+  }
+
+  // 计算挑战赛统计数据
+  const challengeStats = computed(() => {
+    if (!authStore.user || myChallengeRecords.value.length === 0) {
+      return {
+        totalGames: 0,
+        wins: 0,
+        winRate: 0,
+        totalEarned: 0,
+        totalSpent: 0,
+        netPoints: 0
+      }
+    }
+
+    const userId = authStore.user.id
+    let wins = 0
+    let totalEarned = 0
+    let totalSpent = 0
+
+    myChallengeRecords.value.forEach(c => {
+      // 计算花费（报名费）
+      totalSpent += c.entry_fee || 0
+
+      // 计算获胜
+      if (c.winner_id === userId) {
+        wins++
+        totalEarned += c.prize_pool || (c.entry_fee * c.participants?.length) || 0
+      }
+    })
+
+    return {
+      totalGames: myChallengeRecords.value.length,
+      wins,
+      winRate: myChallengeRecords.value.length > 0 ? Math.round((wins / myChallengeRecords.value.length) * 100) : 0,
+      totalEarned,
+      totalSpent,
+      netPoints: totalEarned - totalSpent
+    }
+  })
 
   async function cleanup(refreshList = true): Promise<void> {
     stopRoundTimer()
@@ -1235,6 +1445,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     currentChallenge,
     loading,
     syncing,
+    myChallengeRecords,
     peerId,
     isHost,
     connectionStatus,
@@ -1253,9 +1464,11 @@ export const useChallengeStore = defineStore('challenge', () => {
     allReady,
     canStart,
     sortedParticipants,
+    challengeStats,
     // Actions
     initPeer,
     loadChallenges,
+    loadMyChallengeRecords,
     createChallenge,
     joinChallenge,
     leaveChallenge,
@@ -1265,6 +1478,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     toggleReady,
     startGame,
     submitAnswer,
+    exitGame,
     cleanup
   }
 })

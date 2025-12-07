@@ -108,6 +108,37 @@ export default defineConfig({
                 statuses: [0, 200]
               }
             }
+          },
+          // Supabase API 缓存 - 挑战赛列表
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/challenges.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-challenges-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 5 // 5 minutes
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              networkTimeoutSeconds: 10
+            }
+          },
+          // Supabase Storage 缓存 - 头像和封面图片
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'supabase-storage-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
           }
         ]
       },
