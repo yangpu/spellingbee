@@ -220,7 +220,8 @@ const showSpeechSettings = ref(false)
 const settings = reactive({
   count: 10,
   difficulty: null,
-  mode: 'natural' // natural, sequential, reverse, random, review
+  mode: 'natural', // natural, sequential, reverse, random, review
+  autoLearn: false // 自动学习模式
 })
 
 // 设置存储键
@@ -245,7 +246,8 @@ function saveSettings() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify({
       count: settings.count,
       difficulty: settings.difficulty,
-      mode: settings.mode
+      mode: settings.mode,
+      autoLearn: settings.autoLearn
     }))
   } catch (e) {
     console.error('Error saving learn settings:', e)
@@ -335,8 +337,14 @@ function startLearning() {
   // 保存学习会话
   saveCurrentSession()
   
-  // Auto speak word when card shows
-  setTimeout(() => speakWord(), 300)
+  // 根据设置决定是否开启自动学习
+  setTimeout(() => {
+    if (settings.autoLearn) {
+      startAutoLearn()
+    } else {
+      speakWord()
+    }
+  }, 300)
 }
 
 // 自然模式：按最佳记忆曲线
@@ -509,7 +517,8 @@ function saveCurrentSession() {
     masteredWords: masteredWords.value,
     reviewWords: reviewWords.value,
     isFlipped: isFlipped.value,
-    flipCount: flipCount.value
+    flipCount: flipCount.value,
+    isAutoLearning: isAutoLearning.value // 保存自动学习状态
   })
 }
 
@@ -532,7 +541,14 @@ function resumeLearning() {
   isCompleted.value = false
   highlightedLetterIndex.value = 0
   
-  setTimeout(() => speakWord(), 300)
+  // 根据设置决定是否开启自动学习
+  setTimeout(() => {
+    if (settings.autoLearn) {
+      startAutoLearn()
+    } else {
+      speakWord()
+    }
+  }, 300)
 }
 
 function flipCard() {
@@ -726,9 +742,13 @@ function exitLearning() {
 function toggleAutoLearn() {
   if (isAutoLearning.value) {
     stopAutoLearn()
+    settings.autoLearn = false
   } else {
     startAutoLearn()
+    settings.autoLearn = true
   }
+  // 保存设置
+  saveSettings()
 }
 
 function startAutoLearn() {
@@ -854,12 +874,17 @@ watch(currentWord, (newWord) => {
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
   wordsStore.init()
-  learningStore.init()
+  await learningStore.init()
   speechStore.init() // 初始化语音配置
   loadSettings() // 加载保存的设置
   window.addEventListener('keydown', handleKeydown)
+  
+  // 自动恢复未完成的学习
+  if (learningStore.hasUnfinishedSession) {
+    resumeLearning()
+  }
 })
 
 onUnmounted(() => {

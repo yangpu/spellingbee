@@ -551,6 +551,11 @@ onMounted(() => {
     .stats-row {
       justify-content: center;
     }
+
+    // 隐藏分页跳转控件
+    :deep(.t-pagination__jump) {
+      display: none;
+    }
   }
 }
 </style>

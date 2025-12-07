@@ -126,12 +126,22 @@ export const useSpeechStore = defineStore('speech', () => {
   
   // 可用语音列表
   const availableVoices = ref([])
+  
+  // 英文语音（过滤出实际可用的）
   const englishVoices = computed(() => 
     availableVoices.value.filter(v => v.lang.startsWith('en'))
   )
+  
+  // 中文语音（过滤出实际可用的）
   const chineseVoices = computed(() => 
     availableVoices.value.filter(v => v.lang.startsWith('zh'))
   )
+  
+  // 英文语音数量
+  const englishVoiceCount = computed(() => englishVoices.value.length)
+  
+  // 中文语音数量
+  const chineseVoiceCount = computed(() => chineseVoices.value.length)
   
   // 当前设置
   const settings = ref(getDefaultSettings())
@@ -174,19 +184,22 @@ export const useSpeechStore = defineStore('speech', () => {
     })
   }
   
-  // 选择最优语音
+  // 选择最优语音（优先检查优选列表，否则选择第一个可用语音）
   function selectBestVoice(voices, preferredList, langPrefix) {
-    // 按优先级查找
+    // 过滤出匹配语言的语音
+    const langVoices = voices.filter(v => v.lang.startsWith(langPrefix))
+    if (langVoices.length === 0) return null
+    
+    // 按优先级查找优选语音
     for (const preferred of preferredList) {
-      const voice = voices.find(v => 
-        v.name.includes(preferred) && v.lang.startsWith(langPrefix)
+      const voice = langVoices.find(v => 
+        v.name.toLowerCase().includes(preferred.toLowerCase())
       )
       if (voice) return voice.name
     }
     
-    // 回退：找任何匹配语言的语音
-    const fallback = voices.find(v => v.lang.startsWith(langPrefix))
-    return fallback?.name || null
+    // 回退：返回第一个可用语音
+    return langVoices[0].name
   }
   
   // 初始化默认语音
@@ -345,30 +358,46 @@ export const useSpeechStore = defineStore('speech', () => {
     }
   }
   
-  // 验证语音是否可用
+  // 验证语音是否可用（优先检查优选语音，否则选择第一个可用）
   function validateVoices() {
     // 验证英文语音
     if (settings.value.english.voice) {
-      const exists = availableVoices.value.some(v => v.name === settings.value.english.voice)
+      const exists = englishVoices.value.some(v => v.name === settings.value.english.voice)
       if (!exists) {
+        // 当前语音不可用，重新选择
         settings.value.english.voice = selectBestVoice(
           availableVoices.value, 
           PREFERRED_ENGLISH_VOICES, 
           'en'
         )
       }
+    } else {
+      // 没有设置语音，选择最优
+      settings.value.english.voice = selectBestVoice(
+        availableVoices.value, 
+        PREFERRED_ENGLISH_VOICES, 
+        'en'
+      )
     }
     
     // 验证中文语音
     if (settings.value.chinese.voice) {
-      const exists = availableVoices.value.some(v => v.name === settings.value.chinese.voice)
+      const exists = chineseVoices.value.some(v => v.name === settings.value.chinese.voice)
       if (!exists) {
+        // 当前语音不可用，重新选择
         settings.value.chinese.voice = selectBestVoice(
           availableVoices.value, 
           PREFERRED_CHINESE_VOICES, 
           'zh'
         )
       }
+    } else {
+      // 没有设置语音，选择最优
+      settings.value.chinese.voice = selectBestVoice(
+        availableVoices.value, 
+        PREFERRED_CHINESE_VOICES, 
+        'zh'
+      )
     }
   }
   
@@ -502,6 +531,8 @@ export const useSpeechStore = defineStore('speech', () => {
     availableVoices,
     englishVoices,
     chineseVoices,
+    englishVoiceCount,
+    chineseVoiceCount,
     settings,
     initialized,
     loading,

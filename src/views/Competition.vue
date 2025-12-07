@@ -2784,13 +2784,18 @@ function handleGlobalKeydown(event) {
 }
 
 // Lifecycle
-onMounted(() => {
-  wordsStore.init();
+onMounted(async () => {
+  await wordsStore.init();
   speechStore.init(); // 初始化语音配置
   announcerStore.init(); // 初始化播音员配置
   loadSettings(); // 加载保存的设置
   // 添加全局键盘事件监听
   document.addEventListener('keydown', handleGlobalKeydown);
+  
+  // 自动恢复未完成的比赛
+  if (competitionStore.hasUnfinishedSession) {
+    resumeCompetition();
+  }
 });
 
 onUnmounted(() => {

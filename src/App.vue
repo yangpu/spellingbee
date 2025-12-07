@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <nav class="app-nav">
-      <div class="nav-brand">
+      <div class="nav-brand" @click="$router.push('/')" style="cursor: pointer;">
         <img :src="`${baseUrl}bee.svg`" alt="Bee" class="brand-icon" />
         <span class="brand-text">Spelling Bee</span>
       </div>

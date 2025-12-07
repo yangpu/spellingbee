@@ -13,9 +13,10 @@
         <t-tag theme="primary" variant="light">
           {{ platformLabel }}
         </t-tag>
-        <span class="voice-count">
-          可用语音: {{ speechStore.availableVoices.length }} 个
-        </span>
+        <div class="voice-counts">
+          <span class="voice-count">英文: {{ speechStore.englishVoiceCount }} 个</span>
+          <span class="voice-count">中文: {{ speechStore.chineseVoiceCount }} 个</span>
+        </div>
       </div>
 
       <!-- 标签页切换 -->
@@ -408,6 +409,11 @@ onMounted(async () => {
     padding: 0.75rem 1rem;
     background: var(--hover-bg);
     border-radius: 8px;
+
+    .voice-counts {
+      display: flex;
+      gap: 1rem;
+    }
 
     .voice-count {
       font-size: 0.85rem;

@@ -723,6 +723,11 @@ onMounted(() => {
       padding: 0.5rem;
       overflow-x: auto;
     }
+
+    // 隐藏分页跳转控件
+    :deep(.t-pagination__jump) {
+      display: none;
+    }
   }
 }
 
