@@ -2,9 +2,10 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
+import type { Word } from '@/types'
 
 // Default word list for offline/demo mode
-const defaultWords = [
+const defaultWords: Word[] = [
   { id: '1', word: 'abandon', pronunciation: '/əˈbændən/', definition: 'to leave someone or something completely', definition_cn: '放弃；抛弃', part_of_speech: 'verb', example_sentence: 'The ship was abandoned by its crew.', difficulty: 2, category: 'basic' },
   { id: '2', word: 'brilliant', pronunciation: '/ˈbrɪliənt/', definition: 'very bright, intelligent, or successful', definition_cn: '聪明的；杰出的；明亮的', part_of_speech: 'adjective', example_sentence: 'She had a brilliant idea.', difficulty: 2, category: 'basic' },
   { id: '3', word: 'calculate', pronunciation: '/ˈkælkjuleɪt/', definition: 'to find an answer using numbers', definition_cn: '计算；估计', part_of_speech: 'verb', example_sentence: 'Can you calculate the total cost?', difficulty: 2, category: 'basic' },
@@ -37,9 +38,15 @@ const defaultWords = [
   { id: '30', word: 'descendant', pronunciation: '/dɪˈsendənt/', definition: 'a person descended from an ancestor', definition_cn: '后代；子孙', part_of_speech: 'noun', example_sentence: 'She is a descendant of royalty.', difficulty: 4, category: 'social' }
 ]
 
+interface WordList {
+  name: string
+  label: string
+  category: string
+}
+
 export const useWordsStore = defineStore('words', () => {
-  const words = ref([])
-  const userWords = ref([])
+  const words = ref<Word[]>([])
+  const userWords = ref<Word[]>([])
   const loading = ref(false)
   const useLocalStorage = ref(true)
 
@@ -49,7 +56,7 @@ export const useWordsStore = defineStore('words', () => {
   const wordCount = computed(() => words.value.length)
 
   const wordsByDifficulty = computed(() => {
-    const grouped = { 1: [], 2: [], 3: [], 4: [], 5: [] }
+    const grouped: Record<number, Word[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] }
     words.value.forEach(word => {
       if (grouped[word.difficulty]) {
         grouped[word.difficulty].push(word)
@@ -59,18 +66,19 @@ export const useWordsStore = defineStore('words', () => {
   })
 
   const wordsByCategory = computed(() => {
-    const grouped = {}
+    const grouped: Record<string, Word[]> = {}
     words.value.forEach(word => {
-      if (!grouped[word.category]) {
-        grouped[word.category] = []
+      const category = word.category || 'uncategorized'
+      if (!grouped[category]) {
+        grouped[category] = []
       }
-      grouped[word.category].push(word)
+      grouped[category].push(word)
     })
     return grouped
   })
 
   // Initialize words
-  async function init() {
+  async function init(): Promise<void> {
     loading.value = true
     try {
       // Try to load from Supabase first
@@ -107,7 +115,7 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   // Fetch from Supabase
-  async function fetchWordsFromSupabase() {
+  async function fetchWordsFromSupabase(): Promise<void> {
     const { data, error } = await supabase
       .from('words')
       .select('*')
@@ -115,13 +123,13 @@ export const useWordsStore = defineStore('words', () => {
 
     if (error) throw error
     if (data && data.length > 0) {
-      words.value = data
+      words.value = data as Word[]
       useLocalStorage.value = false
     }
   }
 
   // Local storage operations
-  function loadFromLocalStorage() {
+  function loadFromLocalStorage(): void {
     const stored = localStorage.getItem('spellingbee_words')
     if (stored) {
       try {
@@ -132,13 +140,13 @@ export const useWordsStore = defineStore('words', () => {
     }
   }
 
-  function saveToLocalStorage() {
+  function saveToLocalStorage(): void {
     localStorage.setItem('spellingbee_words', JSON.stringify(words.value))
   }
 
   // CRUD operations
-  async function addWord(wordData) {
-    const newWord = {
+  async function addWord(wordData: Omit<Word, 'id' | 'created_at'>): Promise<Word> {
+    const newWord: Word = {
       id: crypto.randomUUID(),
       ...wordData,
       created_at: new Date().toISOString()
@@ -152,16 +160,16 @@ export const useWordsStore = defineStore('words', () => {
         .single()
 
       if (error) throw error
-      words.value.push(data)
+      words.value.push(data as Word)
+      return data as Word
     } else {
       words.value.push(newWord)
       saveToLocalStorage()
+      return newWord
     }
-
-    return newWord
   }
 
-  async function updateWord(id, updates) {
+  async function updateWord(id: string, updates: Partial<Word>): Promise<void> {
     if (!useLocalStorage.value && authStore.user) {
       const { data, error } = await supabase
         .from('words')
@@ -173,7 +181,7 @@ export const useWordsStore = defineStore('words', () => {
       if (error) throw error
       const index = words.value.findIndex(w => w.id === id)
       if (index !== -1) {
-        words.value[index] = data
+        words.value[index] = data as Word
       }
     } else {
       const index = words.value.findIndex(w => w.id === id)
@@ -184,7 +192,7 @@ export const useWordsStore = defineStore('words', () => {
     }
   }
 
-  async function deleteWord(id) {
+  async function deleteWord(id: string): Promise<void> {
     if (!useLocalStorage.value && authStore.user) {
       const { error } = await supabase
         .from('words')
@@ -199,10 +207,10 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   // Import words from JSON
-  async function importWords(wordsData) {
-    const newWords = wordsData.map(w => ({
+  async function importWords(wordsData: Partial<Word>[]): Promise<number> {
+    const newWords: Word[] = wordsData.map(w => ({
       id: w.id || crypto.randomUUID(),
-      word: w.word,
+      word: w.word || '',
       pronunciation: w.pronunciation || '',
       definition: w.definition || '',
       definition_cn: w.definition_cn || '',
@@ -234,12 +242,12 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   // Export words to JSON
-  function exportWords() {
+  function exportWords(): string {
     return JSON.stringify(words.value, null, 2)
   }
 
   // Get random words for practice/competition
-  function getRandomWords(count = 10, difficulty = null) {
+  function getRandomWords(count = 10, difficulty: number | null = null): Word[] {
     let filtered = [...words.value]
 
     if (difficulty !== null) {
@@ -249,19 +257,19 @@ export const useWordsStore = defineStore('words', () => {
     // Fisher-Yates shuffle
     for (let i = filtered.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-        ;[filtered[i], filtered[j]] = [filtered[j], filtered[i]]
+      ;[filtered[i], filtered[j]] = [filtered[j], filtered[i]]
     }
 
     return filtered.slice(0, count)
   }
 
   // Get word by ID
-  function getWordById(id) {
+  function getWordById(id: string): Word | undefined {
     return words.value.find(w => w.id === id)
   }
 
   // Search words
-  function searchWords(query) {
+  function searchWords(query: string): Word[] {
     const q = query.toLowerCase()
     return words.value.filter(w =>
       w.word.toLowerCase().includes(q) ||
@@ -270,7 +278,7 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   // Load word list from JSON file
-  async function loadWordList(listName) {
+  async function loadWordList(listName: string): Promise<number> {
     loading.value = true
     try {
       const baseUrl = import.meta.env.BASE_URL
@@ -278,7 +286,7 @@ export const useWordsStore = defineStore('words', () => {
       if (!response.ok) {
         throw new Error(`Failed to load word list: ${listName}`)
       }
-      const wordsData = await response.json()
+      const wordsData = await response.json() as Word[]
 
       // Merge with existing words, avoid duplicates
       const existingWords = new Set(words.value.map(w => w.word.toLowerCase()))
@@ -296,7 +304,7 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   // Replace all words with a word list
-  async function replaceWithWordList(listName) {
+  async function replaceWithWordList(listName: string): Promise<number> {
     loading.value = true
     try {
       const baseUrl = import.meta.env.BASE_URL
@@ -304,7 +312,7 @@ export const useWordsStore = defineStore('words', () => {
       if (!response.ok) {
         throw new Error(`Failed to load word list: ${listName}`)
       }
-      const wordsData = await response.json()
+      const wordsData = await response.json() as Word[]
       words.value = wordsData
       saveToLocalStorage()
 
@@ -318,7 +326,7 @@ export const useWordsStore = defineStore('words', () => {
   }
 
   // Get available word lists
-  const availableWordLists = [
+  const availableWordLists: WordList[] = [
     { name: 'grade3-400', label: '三年级词汇 (397词)', category: 'grade3' }
   ]
 
@@ -343,4 +351,3 @@ export const useWordsStore = defineStore('words', () => {
     replaceWithWordList
   }
 })
-

@@ -1,8 +1,9 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useAuthStore } from './auth'
 import { useSpeechStore } from './speech'
 import { supabase } from '@/lib/supabase'
+import type { AnnouncerSettings } from '@/types'
 
 const STORAGE_KEY = 'spellingbee_announcer_settings'
 
@@ -10,7 +11,7 @@ const STORAGE_KEY = 'spellingbee_announcer_settings'
 const BASE_URL = import.meta.env.BASE_URL || '/'
 
 // 获取完整的音频文件路径
-function getSoundPath(filename) {
+function getSoundPath(filename: string): string {
   return `${BASE_URL}sounds/${filename}`
 }
 
@@ -19,7 +20,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   const speechStore = useSpeechStore()
   
   // 默认设置（使用相对文件名，运行时拼接完整路径）
-  const defaultSettings = {
+  const defaultSettings: AnnouncerSettings = {
     type: 'animal', // 'human' | 'animal' - 默认动物播音员
     human: {
       correctPhrase: 'Correct!',
@@ -38,14 +39,14 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 当前设置
-  const settings = ref({ ...defaultSettings })
+  const settings = ref<AnnouncerSettings>({ ...defaultSettings })
   const initialized = ref(false)
   
   // 音频缓存
-  const audioCache = ref({})
+  const audioCache = ref<Record<string, HTMLAudioElement>>({})
   
   // 预加载音频
-  async function preloadAudio(url) {
+  async function preloadAudio(url: string): Promise<HTMLAudioElement> {
     if (audioCache.value[url]) return audioCache.value[url]
     
     return new Promise((resolve, reject) => {
@@ -73,7 +74,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 初始化
-  async function init() {
+  async function init(): Promise<void> {
     if (initialized.value) return
     
     loadFromLocal()
@@ -94,7 +95,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 获取完整的音频 URL
-  function getFullSoundUrl(soundFile) {
+  function getFullSoundUrl(soundFile: string): string {
     // 如果是 data URL 或完整 URL，直接返回
     if (soundFile.startsWith('data:') || soundFile.startsWith('http')) {
       return soundFile
@@ -108,11 +109,11 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 从本地加载
-  function loadFromLocal() {
+  function loadFromLocal(): void {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
-        const parsed = JSON.parse(saved)
+        const parsed = JSON.parse(saved) as Partial<AnnouncerSettings>
         settings.value = { ...defaultSettings, ...parsed }
       }
     } catch (e) {
@@ -121,7 +122,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 保存到本地
-  function saveToLocal() {
+  function saveToLocal(): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
     } catch (e) {
@@ -130,7 +131,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 从云端加载
-  async function loadFromCloud() {
+  async function loadFromCloud(): Promise<void> {
     if (!authStore.user) return
     
     try {
@@ -150,7 +151,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 保存到云端
-  async function saveToCloud() {
+  async function saveToCloud(): Promise<void> {
     if (!authStore.user) return
     
     try {
@@ -169,7 +170,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 保存设置
-  async function saveSettings() {
+  async function saveSettings(): Promise<void> {
     saveToLocal()
     if (authStore.user) {
       await saveToCloud()
@@ -177,13 +178,13 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 更新设置
-  function updateSettings(newSettings) {
+  function updateSettings(newSettings: Partial<AnnouncerSettings>): void {
     settings.value = { ...settings.value, ...newSettings }
     saveSettings()
   }
   
   // 播放成功反馈
-  async function playSuccess() {
+  async function playSuccess(): Promise<string> {
     if (settings.value.type === 'human') {
       // 人物模式：朗读成功语句
       await speechStore.speakEnglish(settings.value.human.correctPhrase, { rate: 1.0 })
@@ -197,7 +198,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 播放失败反馈
-  async function playFailure() {
+  async function playFailure(): Promise<string> {
     if (settings.value.type === 'human') {
       // 人物模式：朗读失败语句
       await speechStore.speakEnglish(settings.value.human.incorrectPhrase, { rate: 1.0 })
@@ -211,7 +212,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 播放音效（音量比正常语音小20%）
-  async function playSound(url) {
+  async function playSound(url: string): Promise<void> {
     return new Promise((resolve, reject) => {
       let audio = audioCache.value[url]
       
@@ -233,17 +234,17 @@ export const useAnnouncerStore = defineStore('announcer', () => {
   }
   
   // 重置为默认设置
-  function resetToDefaults() {
+  function resetToDefaults(): void {
     settings.value = { ...defaultSettings }
     saveSettings()
   }
   
   // 上传自定义音效（返回 base64 URL）
-  function uploadCustomSound(file) {
+  function uploadCustomSound(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = (e) => {
-        resolve(e.target.result)
+        resolve(e.target?.result as string)
       }
       reader.onerror = reject
       reader.readAsDataURL(file)

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
+import type { Word, WordProgress, LearningRecord, LearningSession } from '@/types'
 
 const SESSION_KEY = 'spellingbee_learning_session'
 
@@ -9,8 +10,8 @@ export const useLearningStore = defineStore('learning', () => {
   const authStore = useAuthStore()
   
   // State
-  const learningRecords = ref([])
-  const wordProgress = ref({}) // { word: { correct_count, incorrect_count, mastery_level, ... } }
+  const learningRecords = ref<LearningRecord[]>([])
+  const wordProgress = ref<Record<string, WordProgress>>({}) // { word: { correct_count, incorrect_count, mastery_level, ... } }
   const loading = ref(false)
   const syncing = ref(false)
   
@@ -18,14 +19,14 @@ export const useLearningStore = defineStore('learning', () => {
   const _hasUnfinishedSession = ref(false)
   
   // 检查并更新会话状态
-  function checkUnfinishedSession() {
+  function checkUnfinishedSession(): void {
     try {
       const saved = localStorage.getItem(SESSION_KEY)
       if (!saved) {
         _hasUnfinishedSession.value = false
         return
       }
-      const session = JSON.parse(saved)
+      const session = JSON.parse(saved) as LearningSession
       // 检查会话是否过期（超过24小时）
       if (Date.now() - session.savedAt > 24 * 60 * 60 * 1000) {
         localStorage.removeItem(SESSION_KEY)
@@ -105,7 +106,7 @@ export const useLearningStore = defineStore('learning', () => {
   })
 
   // Initialize
-  async function init() {
+  async function init(): Promise<void> {
     loadFromLocalStorage()
     checkUnfinishedSession() // 初始化时检查会话状态
     if (authStore.user) {
@@ -114,8 +115,8 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   // Record a learning attempt
-  async function recordLearning(word, isCorrect, userAnswer = '', studyMode = 'learn') {
-    const record = {
+  async function recordLearning(word: string, isCorrect: boolean, userAnswer = '', studyMode = 'learn'): Promise<LearningRecord> {
+    const record: LearningRecord = {
       id: crypto.randomUUID(),
       word,
       is_correct: isCorrect,
@@ -149,7 +150,7 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   // Update word progress with spaced repetition logic
-  function updateWordProgress(word, isCorrect, studyMode = 'learn') {
+  function updateWordProgress(word: string, isCorrect: boolean, studyMode = 'learn'): void {
     const existing = wordProgress.value[word] || {
       correct_count: 0,
       incorrect_count: 0,
@@ -198,7 +199,9 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   // Sync word progress to cloud
-  async function syncWordProgressToCloud(word, progress) {
+  async function syncWordProgressToCloud(word: string, progress: WordProgress): Promise<void> {
+    if (!authStore.user) return
+    
     try {
       await supabase.from('user_word_progress').upsert({
         user_id: authStore.user.id,
@@ -218,7 +221,7 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   // Sync from cloud
-  async function syncFromCloud() {
+  async function syncFromCloud(): Promise<void> {
     if (!authStore.user) return
     
     syncing.value = true
@@ -234,9 +237,9 @@ export const useLearningStore = defineStore('learning', () => {
       if (!recordsError && records) {
         // Merge with local records
         const localIds = new Set(learningRecords.value.map(r => r.id))
-        const newRecords = records.filter(r => !localIds.has(r.id))
+        const newRecords = (records as LearningRecord[]).filter(r => !localIds.has(r.id))
         learningRecords.value = [...newRecords, ...learningRecords.value]
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 500)
       }
 
@@ -248,9 +251,19 @@ export const useLearningStore = defineStore('learning', () => {
 
       if (!progressError && progress) {
         // Merge with local progress (cloud takes precedence)
-        progress.forEach(p => {
+        interface CloudWordProgress {
+          word: string
+          correct_count: number
+          incorrect_count: number
+          mastery_level: number
+          last_practiced_at: string | null
+          next_review_at: string | null
+          updated_at?: string
+        }
+        
+        (progress as CloudWordProgress[]).forEach(p => {
           const local = wordProgress.value[p.word]
-          if (!local || new Date(p.updated_at) > new Date(local.updated_at || 0)) {
+          if (!local || new Date(p.updated_at || 0).getTime() > new Date(local.updated_at || 0).getTime()) {
             wordProgress.value[p.word] = {
               correct_count: p.correct_count,
               incorrect_count: p.incorrect_count,
@@ -272,12 +285,12 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   // Get word progress
-  function getWordProgress(word) {
+  function getWordProgress(word: string): WordProgress | null {
     return wordProgress.value[word] || null
   }
 
   // Get words that need review
-  function getWordsForReview(count = 10) {
+  function getWordsForReview(count = 10): string[] {
     const now = new Date()
     const reviewWords = Object.entries(wordProgress.value)
       .filter(([_, progress]) => {
@@ -297,9 +310,9 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   // 保存学习会话
-  function saveSession(sessionData) {
+  function saveSession(sessionData: Omit<LearningSession, 'savedAt'>): void {
     try {
-      const session = {
+      const session: LearningSession = {
         ...sessionData,
         savedAt: Date.now()
       }
@@ -311,12 +324,12 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   // 恢复学习会话
-  function restoreSession() {
+  function restoreSession(): LearningSession | null {
     try {
       const saved = localStorage.getItem(SESSION_KEY)
       if (!saved) return null
       
-      const session = JSON.parse(saved)
+      const session = JSON.parse(saved) as LearningSession
       
       // 检查会话是否过期（超过24小时）
       if (Date.now() - session.savedAt > 24 * 60 * 60 * 1000) {
@@ -339,13 +352,13 @@ export const useLearningStore = defineStore('learning', () => {
   }
 
   // 清除学习会话
-  function clearSession() {
+  function clearSession(): void {
     localStorage.removeItem(SESSION_KEY)
     _hasUnfinishedSession.value = false // 立即更新响应式状态
   }
 
   // Local storage
-  function loadFromLocalStorage() {
+  function loadFromLocalStorage(): void {
     try {
       const storedRecords = localStorage.getItem('spellingbee_learning_records')
       if (storedRecords) {
@@ -361,13 +374,13 @@ export const useLearningStore = defineStore('learning', () => {
     }
   }
 
-  function saveToLocalStorage() {
+  function saveToLocalStorage(): void {
     localStorage.setItem('spellingbee_learning_records', JSON.stringify(learningRecords.value.slice(0, 500)))
     localStorage.setItem('spellingbee_word_progress', JSON.stringify(wordProgress.value))
   }
 
   // Clear all data
-  async function clearAllData() {
+  async function clearAllData(): Promise<void> {
     learningRecords.value = []
     wordProgress.value = {}
     saveToLocalStorage()

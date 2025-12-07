@@ -13,4 +13,3 @@ app.use(pinia)
 app.use(router)
 app.use(TDesign)
 app.mount('#app')
-

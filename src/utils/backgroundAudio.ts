@@ -8,15 +8,36 @@
  * 3. 使用 Wake Lock API（如果支持）防止屏幕锁定时暂停
  */
 
+interface BackgroundAudioCallbacks {
+  onPlay?: () => void
+  onPause?: () => void
+  onNext?: () => void
+  onPrevious?: () => void
+}
+
+interface Progress {
+  current: number
+  total: number
+}
+
+// Extend Window interface for webkit prefixed AudioContext
+declare global {
+  interface Window {
+    webkitAudioContext?: typeof AudioContext
+  }
+}
+
 class BackgroundAudioService {
+  private audioContext: AudioContext | null = null
+  private silentSource: OscillatorNode | null = null
+  private silentGain: GainNode | null = null
+  private wakeLock: WakeLockSentinel | null = null
+  private isActive = false
+  private currentWord = ''
+  private currentProgress: Progress = { current: 0, total: 0 }
+  private callbacks: BackgroundAudioCallbacks | null = null
+  
   constructor() {
-    this.audioContext = null
-    this.silentSource = null
-    this.wakeLock = null
-    this.isActive = false
-    this.currentWord = ''
-    this.currentProgress = { current: 0, total: 0 }
-    
     // 绑定方法
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
   }
@@ -24,7 +45,7 @@ class BackgroundAudioService {
   /**
    * 初始化后台音频服务
    */
-  async init() {
+  async init(): Promise<void> {
     if (this.audioContext) return
     
     try {
@@ -49,7 +70,7 @@ class BackgroundAudioService {
   /**
    * 设置 Media Session
    */
-  setupMediaSession() {
+  private setupMediaSession(): void {
     if (!('mediaSession' in navigator)) {
       console.log('[BackgroundAudio] Media Session API not supported')
       return
@@ -74,7 +95,7 @@ class BackgroundAudioService {
   /**
    * 更新媒体会话信息
    */
-  updateMediaSession(word, progress) {
+  updateMediaSession(word: string, progress: Progress): void {
     if (!('mediaSession' in navigator)) return
     
     this.currentWord = word
@@ -95,7 +116,7 @@ class BackgroundAudioService {
   /**
    * 启动后台播放模式
    */
-  async start(callbacks = {}) {
+  async start(callbacks: BackgroundAudioCallbacks = {}): Promise<void> {
     if (this.isActive) return
     
     this.isActive = true
@@ -141,7 +162,7 @@ class BackgroundAudioService {
   /**
    * 停止后台播放模式
    */
-  stop() {
+  stop(): void {
     if (!this.isActive) return
     
     this.isActive = false
@@ -165,7 +186,7 @@ class BackgroundAudioService {
    * 创建并播放静音音频流
    * 这是保持后台活跃的关键
    */
-  startSilentAudio() {
+  private startSilentAudio(): void {
     if (!this.audioContext || this.silentSource) return
     
     try {
@@ -194,7 +215,7 @@ class BackgroundAudioService {
   /**
    * 停止静音音频流
    */
-  stopSilentAudio() {
+  private stopSilentAudio(): void {
     if (this.silentSource) {
       try {
         this.silentSource.stop()
@@ -217,7 +238,7 @@ class BackgroundAudioService {
   /**
    * 请求 Wake Lock（防止屏幕锁定）
    */
-  async requestWakeLock() {
+  private async requestWakeLock(): Promise<void> {
     if (!('wakeLock' in navigator)) {
       console.log('[BackgroundAudio] Wake Lock API not supported')
       return
@@ -232,14 +253,14 @@ class BackgroundAudioService {
       
       console.log('[BackgroundAudio] Wake Lock acquired')
     } catch (e) {
-      console.log('[BackgroundAudio] Wake Lock request failed:', e.message)
+      console.log('[BackgroundAudio] Wake Lock request failed:', (e as Error).message)
     }
   }
   
   /**
    * 释放 Wake Lock
    */
-  async releaseWakeLock() {
+  private async releaseWakeLock(): Promise<void> {
     if (this.wakeLock) {
       try {
         await this.wakeLock.release()
@@ -253,7 +274,7 @@ class BackgroundAudioService {
   /**
    * 处理页面可见性变化
    */
-  async handleVisibilityChange() {
+  private async handleVisibilityChange(): Promise<void> {
     if (!this.isActive) return
     
     if (document.hidden) {
@@ -282,7 +303,7 @@ class BackgroundAudioService {
   /**
    * 检查是否支持后台播放
    */
-  static isSupported() {
+  static isSupported(): boolean {
     const hasAudioContext = !!(window.AudioContext || window.webkitAudioContext)
     const hasMediaSession = 'mediaSession' in navigator
     return hasAudioContext || hasMediaSession
@@ -291,14 +312,14 @@ class BackgroundAudioService {
   /**
    * 检查是否是移动设备
    */
-  static isMobile() {
+  static isMobile(): boolean {
     return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
   }
   
   /**
    * 销毁服务
    */
-  destroy() {
+  destroy(): void {
     this.stop()
     
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)

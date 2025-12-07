@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
+import type { Word, CompetitionRecord, IncorrectWord, CompetitionSession } from '@/types'
 
 const SESSION_KEY = 'spellingbee_competition_session'
 
@@ -9,14 +10,14 @@ export const useCompetitionStore = defineStore('competition', () => {
   // State
   const isActive = ref(false)
   const currentWordIndex = ref(0)
-  const words = ref([])
+  const words = ref<Word[]>([])
   const score = ref(0)
-  const correctWords = ref([])
-  const incorrectWords = ref([])
+  const correctWords = ref<Word[]>([])
+  const incorrectWords = ref<IncorrectWord[]>([])
   const timeRemaining = ref(60)
   const totalTime = ref(60)
-  const startTime = ref(null)
-  const records = ref([])
+  const startTime = ref<number | null>(null)
+  const records = ref<CompetitionRecord[]>([])
   const streak = ref(0) // 连击计数
 
   const authStore = useAuthStore()
@@ -41,10 +42,10 @@ export const useCompetitionStore = defineStore('competition', () => {
   })
 
   // 保存当前比赛状态
-  function saveSession() {
+  function saveSession(): void {
     if (!isActive.value || words.value.length === 0) return
     
-    const session = {
+    const session: CompetitionSession = {
       words: words.value,
       currentWordIndex: currentWordIndex.value,
       score: score.value,
@@ -61,12 +62,12 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // 恢复未完成的比赛
-  function restoreSession() {
+  function restoreSession(): CompetitionSession | null {
     try {
       const saved = localStorage.getItem(SESSION_KEY)
       if (!saved) return null
       
-      const session = JSON.parse(saved)
+      const session = JSON.parse(saved) as CompetitionSession
       
       // 检查会话是否过期（超过24小时）
       if (Date.now() - session.savedAt > 24 * 60 * 60 * 1000) {
@@ -95,12 +96,12 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // 清除保存的会话
-  function clearSession() {
+  function clearSession(): void {
     localStorage.removeItem(SESSION_KEY)
   }
 
   // Start competition
-  function startCompetition(wordList, timeLimit = 60) {
+  function startCompetition(wordList: Word[], timeLimit = 60): void {
     words.value = wordList
     currentWordIndex.value = 0
     score.value = 0
@@ -122,7 +123,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   // 速度奖励：剩余时间每10秒 +1 分
   // 连击奖励：连续答对每次 +1 分（2连+1，3连+2...）
   // 全对奖励：在 endCompetition 中计算，+20% 总分
-  function checkAnswer(userInput) {
+  function checkAnswer(userInput: string): boolean | null {
     if (!currentWord.value) return null
 
     const isCorrect = userInput.toLowerCase().trim() === currentWord.value.word.toLowerCase()
@@ -165,7 +166,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // Next word
-  function nextWord() {
+  function nextWord(): boolean {
     if (currentWordIndex.value < words.value.length - 1) {
       currentWordIndex.value++
       timeRemaining.value = totalTime.value
@@ -177,7 +178,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // Skip word (counts as incorrect)
-  function skipWord() {
+  function skipWord(): boolean {
     if (currentWord.value) {
       incorrectWords.value.push({
         ...currentWord.value,
@@ -192,7 +193,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // Update timer
-  function updateTimer() {
+  function updateTimer(): boolean {
     if (timeRemaining.value > 0) {
       timeRemaining.value--
       return true
@@ -201,7 +202,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // Time out - word is incorrect
-  function timeOut() {
+  function timeOut(): void {
     if (currentWord.value) {
       incorrectWords.value.push({
         ...currentWord.value,
@@ -212,12 +213,12 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // End competition
-  async function endCompetition() {
+  async function endCompetition(): Promise<CompetitionRecord> {
     isActive.value = false
     // 清除保存的会话
     clearSession()
     
-    const duration = Math.floor((Date.now() - startTime.value) / 1000)
+    const duration = Math.floor((Date.now() - (startTime.value || Date.now())) / 1000)
     
     // 全对奖励：+20% 总分
     let finalScore = score.value
@@ -227,7 +228,7 @@ export const useCompetitionStore = defineStore('competition', () => {
       finalScore += perfectBonus
     }
 
-    const record = {
+    const record: CompetitionRecord = {
       id: crypto.randomUUID(),
       score: finalScore,
       total_words: words.value.length,
@@ -263,7 +264,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // Reset competition
-  function resetCompetition() {
+  function resetCompetition(): void {
     isActive.value = false
     currentWordIndex.value = 0
     words.value = []
@@ -278,7 +279,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // Load records
-  async function loadRecords() {
+  async function loadRecords(): Promise<void> {
     // Load from local storage first
     loadRecordsFromLocalStorage()
 
@@ -295,9 +296,9 @@ export const useCompetitionStore = defineStore('competition', () => {
         if (!error && data) {
           // Merge with local records
           const localIds = new Set(records.value.map(r => r.id))
-          const newRecords = data.filter(r => !localIds.has(r.id))
+          const newRecords = (data as CompetitionRecord[]).filter(r => !localIds.has(r.id))
           records.value = [...newRecords, ...records.value]
-            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
             .slice(0, 50)
         }
       } catch (error) {
@@ -307,7 +308,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // Local storage
-  function loadRecordsFromLocalStorage() {
+  function loadRecordsFromLocalStorage(): void {
     const stored = localStorage.getItem('spellingbee_records')
     if (stored) {
       try {
@@ -318,7 +319,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     }
   }
 
-  function saveRecordsToLocalStorage() {
+  function saveRecordsToLocalStorage(): void {
     localStorage.setItem('spellingbee_records', JSON.stringify(records.value.slice(0, 50)))
   }
 
@@ -389,4 +390,3 @@ export const useCompetitionStore = defineStore('competition', () => {
     clearSession
   }
 })
-

@@ -1,24 +1,36 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
+import type { User } from '@/types'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
+
+// Helper to convert Supabase User to our User type
+function toUser(supabaseUser: SupabaseUser | undefined | null): User | null {
+  if (!supabaseUser) return null
+  return {
+    ...supabaseUser,
+    id: supabaseUser.id,
+    email: supabaseUser.email
+  } as User
+}
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref(null)
+  const user = ref<User | null>(null)
   const loading = ref(true)
   const initialized = ref(false)
 
-  async function init() {
+  async function init(): Promise<void> {
     if (initialized.value) return
     
     loading.value = true
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      user.value = session?.user || null
+      user.value = toUser(session?.user)
 
       // Listen for auth changes
       supabase.auth.onAuthStateChange((event, session) => {
         const previousUser = user.value
-        user.value = session?.user || null
+        user.value = toUser(session?.user)
         
         // Emit custom event for other stores to react
         if (event === 'SIGNED_IN' && !previousUser) {
@@ -36,17 +48,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email, password) {
+  async function login(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     })
     if (error) throw error
-    user.value = data.user
+    user.value = toUser(data.user)
     return data
   }
 
-  async function register(email, password) {
+  async function register(email: string, password: string) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -58,13 +70,13 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
-  async function logout() {
+  async function logout(): Promise<void> {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
     user.value = null
   }
 
-  async function resetPassword(email) {
+  async function resetPassword(email: string) {
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`
     })
@@ -72,7 +84,7 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
-  async function updatePassword(newPassword) {
+  async function updatePassword(newPassword: string) {
     const { data, error } = await supabase.auth.updateUser({
       password: newPassword
     })
@@ -92,4 +104,3 @@ export const useAuthStore = defineStore('auth', () => {
     updatePassword
   }
 })
-

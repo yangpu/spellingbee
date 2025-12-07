@@ -2,13 +2,18 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
+import type { SpeechSettings, VoiceSettings } from '@/types'
 
 const STORAGE_KEY = 'spellingbee_speech_settings'
 
+interface Platform {
+  os: string
+  browser: string
+}
+
 // 检测操作系统和浏览器（改进版，优先检测移动端）
-function detectPlatform() {
+function detectPlatform(): Platform {
   const ua = navigator.userAgent
-  const uaLower = ua.toLowerCase()
   
   // 操作系统检测 - 优先检测移动端
   let os = 'unknown'
@@ -58,11 +63,11 @@ function detectPlatform() {
 }
 
 // 获取默认最优配置（针对教育场景）
-function getDefaultSettings() {
-  const { os, browser } = detectPlatform()
+function getDefaultSettings(): SpeechSettings {
+  const { os } = detectPlatform()
   
   // 英文语音默认配置（教育场景：清晰、标准、适中语速）
-  const englishDefaults = {
+  const englishDefaults: VoiceSettings = {
     voice: null, // 将在 voices 加载后选择最优
     rate: 0.85,  // 稍慢语速，便于学生听清
     pitch: 1.0,  // 标准音高
@@ -70,7 +75,7 @@ function getDefaultSettings() {
   }
   
   // 中文语音默认配置
-  const chineseDefaults = {
+  const chineseDefaults: VoiceSettings = {
     voice: null,
     rate: 1.0,   // 标准语速
     pitch: 1.0,
@@ -93,7 +98,7 @@ function getDefaultSettings() {
   return {
     english: englishDefaults,
     chinese: chineseDefaults,
-    platform: { os, browser }
+    platform: detectPlatform()
   }
 }
 
@@ -125,7 +130,7 @@ export const useSpeechStore = defineStore('speech', () => {
   const authStore = useAuthStore()
   
   // 可用语音列表
-  const availableVoices = ref([])
+  const availableVoices = ref<SpeechSynthesisVoice[]>([])
   
   // 英文语音（过滤出实际可用的）
   const englishVoices = computed(() => 
@@ -144,7 +149,7 @@ export const useSpeechStore = defineStore('speech', () => {
   const chineseVoiceCount = computed(() => chineseVoices.value.length)
   
   // 当前设置
-  const settings = ref(getDefaultSettings())
+  const settings = ref<SpeechSettings>(getDefaultSettings())
   const initialized = ref(false)
   const loading = ref(false)
   
@@ -161,7 +166,7 @@ export const useSpeechStore = defineStore('speech', () => {
   })
   
   // 加载可用语音
-  function loadVoices() {
+  function loadVoices(): Promise<SpeechSynthesisVoice[]> {
     return new Promise((resolve) => {
       const voices = speechSynthesis.getVoices()
       if (voices.length > 0) {
@@ -185,7 +190,7 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 选择最优语音（优先检查优选列表，否则选择第一个可用语音）
-  function selectBestVoice(voices, preferredList, langPrefix) {
+  function selectBestVoice(voices: SpeechSynthesisVoice[], preferredList: string[], langPrefix: string): string | null {
     // 过滤出匹配语言的语音
     const langVoices = voices.filter(v => v.lang.startsWith(langPrefix))
     if (langVoices.length === 0) return null
@@ -203,7 +208,7 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 初始化默认语音
-  function initDefaultVoices() {
+  function initDefaultVoices(): void {
     if (!settings.value.english.voice) {
       settings.value.english.voice = selectBestVoice(
         availableVoices.value, 
@@ -221,11 +226,11 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 从本地存储加载设置
-  function loadFromLocal() {
+  function loadFromLocal(): boolean {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
-        const parsed = JSON.parse(saved)
+        const parsed = JSON.parse(saved) as Partial<SpeechSettings>
         // 合并设置，保留默认值作为回退
         if (parsed.english) {
           Object.assign(settings.value.english, parsed.english)
@@ -242,7 +247,7 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 保存到本地存储
-  function saveToLocal() {
+  function saveToLocal(): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         english: settings.value.english,
@@ -255,7 +260,7 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 从 Supabase 加载设置
-  async function loadFromCloud() {
+  async function loadFromCloud(): Promise<boolean> {
     if (!authStore.user) return false
     
     try {
@@ -272,7 +277,7 @@ export const useSpeechStore = defineStore('speech', () => {
       }
       
       if (data?.speech_settings) {
-        const cloudSettings = data.speech_settings
+        const cloudSettings = data.speech_settings as Partial<SpeechSettings>
         if (cloudSettings.english) {
           Object.assign(settings.value.english, cloudSettings.english)
         }
@@ -290,7 +295,7 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 保存到 Supabase
-  async function saveToCloud() {
+  async function saveToCloud(): Promise<boolean> {
     if (!authStore.user) return false
     
     try {
@@ -320,7 +325,7 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 保存设置（同时保存到本地和云端）
-  async function saveSettings() {
+  async function saveSettings(): Promise<void> {
     saveToLocal()
     if (authStore.user) {
       await saveToCloud()
@@ -328,7 +333,7 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 初始化
-  async function init() {
+  async function init(): Promise<void> {
     if (initialized.value) return
     
     loading.value = true
@@ -337,7 +342,7 @@ export const useSpeechStore = defineStore('speech', () => {
       await loadVoices()
       
       // 2. 先从本地加载
-      const hasLocal = loadFromLocal()
+      loadFromLocal()
       
       // 3. 如果用户已登录，尝试从云端加载（云端优先）
       if (authStore.user) {
@@ -359,7 +364,7 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 验证语音是否可用（优先检查优选语音，否则选择第一个可用）
-  function validateVoices() {
+  function validateVoices(): void {
     // 验证英文语音
     if (settings.value.english.voice) {
       const exists = englishVoices.value.some(v => v.name === settings.value.english.voice)
@@ -402,19 +407,19 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 更新英文语音设置
-  function updateEnglishSettings(newSettings) {
+  function updateEnglishSettings(newSettings: Partial<VoiceSettings>): void {
     Object.assign(settings.value.english, newSettings)
     saveSettings()
   }
   
   // 更新中文语音设置
-  function updateChineseSettings(newSettings) {
+  function updateChineseSettings(newSettings: Partial<VoiceSettings>): void {
     Object.assign(settings.value.chinese, newSettings)
     saveSettings()
   }
   
   // 重置为默认设置
-  function resetToDefaults() {
+  function resetToDefaults(): void {
     const defaults = getDefaultSettings()
     settings.value.english = { ...defaults.english }
     settings.value.chinese = { ...defaults.chinese }
@@ -422,8 +427,15 @@ export const useSpeechStore = defineStore('speech', () => {
     saveSettings()
   }
   
+  interface SpeakOptions {
+    rate?: number
+    pitch?: number
+    volume?: number
+    voice?: string
+  }
+  
   // 朗读英文文本
-  function speakEnglish(text, options = {}) {
+  function speakEnglish(text: string, options: SpeakOptions = {}): Promise<void> {
     return new Promise((resolve, reject) => {
       speechSynthesis.cancel()
       
@@ -457,7 +469,7 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 朗读中文文本
-  function speakChinese(text, options = {}) {
+  function speakChinese(text: string, options: SpeakOptions = {}): Promise<void> {
     return new Promise((resolve, reject) => {
       speechSynthesis.cancel()
       
@@ -491,14 +503,14 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 朗读单词（英文，用于学习和比赛）
-  function speakWord(word, options = {}) {
+  function speakWord(word: string, options: SpeakOptions = {}): Promise<void> {
     // 单词朗读使用稍慢的语速
     const wordRate = options.rate ?? Math.max(0.6, settings.value.english.rate - 0.15)
     return speakEnglish(word, { ...options, rate: wordRate })
   }
   
   // 朗读字母（英文，用于拼读）
-  function speakLetter(letter, options = {}) {
+  function speakLetter(letter: string, options: SpeakOptions = {}): Promise<void> {
     // 字母朗读使用稍快的语速和稍高的音调
     const letterRate = options.rate ?? Math.min(1.0, settings.value.english.rate + 0.1)
     const letterPitch = options.pitch ?? Math.min(1.2, settings.value.english.pitch + 0.1)
@@ -506,13 +518,13 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 试听英文语音
-  function previewEnglish(voiceName, rate, pitch, volume) {
+  function previewEnglish(voiceName: string, rate: number, pitch: number, volume: number): Promise<void> {
     const testText = 'Hello, this is a test of the English voice.'
     return speakEnglish(testText, { voice: voiceName, rate, pitch, volume })
   }
   
   // 试听中文语音
-  function previewChinese(voiceName, rate, pitch, volume) {
+  function previewChinese(voiceName: string, rate: number, pitch: number, volume: number): Promise<void> {
     const testText = '你好，这是中文语音测试。'
     return speakChinese(testText, { voice: voiceName, rate, pitch, volume })
   }
