@@ -3,9 +3,9 @@
  * 用于在移动端保持应用在后台时继续播放语音
  * 
  * 原理：
- * 1. 使用 Web Audio API 创建静音音频流，防止系统暂停应用
+ * 1. 使用 <audio> 元素循环播放静音音频文件，触发系统媒体会话
  * 2. 使用 Media Session API 注册媒体会话，让系统识别为媒体应用
- * 3. 使用 Wake Lock API（如果支持）防止屏幕锁定时暂停
+ * 3. iOS 需要真正的 audio 元素才能在灵动岛/控制中心显示
  */
 
 interface BackgroundAudioCallbacks {
@@ -20,25 +20,15 @@ interface Progress {
   total: number
 }
 
-// Extend Window interface for webkit prefixed AudioContext
-declare global {
-  interface Window {
-    webkitAudioContext?: typeof AudioContext
-  }
-}
-
 class BackgroundAudioService {
-  private audioContext: AudioContext | null = null
-  private silentSource: OscillatorNode | null = null
-  private silentGain: GainNode | null = null
+  private audioElement: HTMLAudioElement | null = null
   private wakeLock: WakeLockSentinel | null = null
-  private isActive = false
+  public isActive = false
   private currentWord = ''
   private currentProgress: Progress = { current: 0, total: 0 }
   private callbacks: BackgroundAudioCallbacks | null = null
   
   constructor() {
-    // 绑定方法
     this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
   }
   
@@ -46,25 +36,85 @@ class BackgroundAudioService {
    * 初始化后台音频服务
    */
   async init(): Promise<void> {
-    if (this.audioContext) return
+    if (this.audioElement) return
     
     try {
-      // 创建 AudioContext
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext
-      if (AudioContextClass) {
-        this.audioContext = new AudioContextClass()
-      }
+      // 创建 audio 元素，播放静音音频文件
+      this.audioElement = document.createElement('audio')
+      this.audioElement.id = 'background-audio'
       
-      // 设置 Media Session（如果支持）
+      // 使用一个真实的静音音频文件（需要存在于 public 目录）
+      // 或者使用 data URI 生成一个极短的静音音频
+      this.audioElement.src = this.createSilentAudioDataUri()
+      this.audioElement.loop = true
+      this.audioElement.volume = 0.01 // 极低音量
+      this.audioElement.preload = 'auto'
+      
+      // 添加到 DOM（某些浏览器需要）
+      this.audioElement.style.display = 'none'
+      document.body.appendChild(this.audioElement)
+      
+      // 设置 Media Session
       this.setupMediaSession()
       
       // 监听页面可见性变化
       document.addEventListener('visibilitychange', this.handleVisibilityChange)
       
-      console.log('[BackgroundAudio] Service initialized')
+      //console.log('[BackgroundAudio] Service initialized with audio element')
     } catch (e) {
       console.error('[BackgroundAudio] Init error:', e)
     }
+  }
+  
+  /**
+   * 创建静音音频的 Data URI
+   * 生成一个 1 秒的静音 WAV 文件
+   */
+  private createSilentAudioDataUri(): string {
+    // 创建一个 1 秒的静音 WAV 文件
+    const sampleRate = 8000
+    const numChannels = 1
+    const bitsPerSample = 8
+    const duration = 1 // 1 秒
+    const numSamples = sampleRate * duration
+    
+    const buffer = new ArrayBuffer(44 + numSamples)
+    const view = new DataView(buffer)
+    
+    // WAV 文件头
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i))
+      }
+    }
+    
+    writeString(0, 'RIFF')
+    view.setUint32(4, 36 + numSamples, true)
+    writeString(8, 'WAVE')
+    writeString(12, 'fmt ')
+    view.setUint32(16, 16, true) // Subchunk1Size
+    view.setUint16(20, 1, true) // AudioFormat (PCM)
+    view.setUint16(22, numChannels, true)
+    view.setUint32(24, sampleRate, true)
+    view.setUint32(28, sampleRate * numChannels * bitsPerSample / 8, true) // ByteRate
+    view.setUint16(32, numChannels * bitsPerSample / 8, true) // BlockAlign
+    view.setUint16(34, bitsPerSample, true)
+    writeString(36, 'data')
+    view.setUint32(40, numSamples, true)
+    
+    // 静音数据（8位 PCM 的静音值是 128）
+    for (let i = 0; i < numSamples; i++) {
+      view.setUint8(44 + i, 128)
+    }
+    
+    // 转换为 Base64
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    
+    return 'data:audio/wav;base64,' + btoa(binary)
   }
   
   /**
@@ -72,7 +122,7 @@ class BackgroundAudioService {
    */
   private setupMediaSession(): void {
     if (!('mediaSession' in navigator)) {
-      console.log('[BackgroundAudio] Media Session API not supported')
+      //console.log('[BackgroundAudio] Media Session API not supported')
       return
     }
     
@@ -80,12 +130,7 @@ class BackgroundAudioService {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: '单词学习',
       artist: 'Spelling Bee',
-      album: '自动学习模式',
-      artwork: [
-        { src: '/bee.svg', sizes: '96x96', type: 'image/svg+xml' },
-        { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-        { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' }
-      ]
+      album: '自动学习模式'
     })
     
     // 设置播放状态
@@ -104,12 +149,7 @@ class BackgroundAudioService {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: word || '单词学习',
       artist: `第 ${progress.current} / ${progress.total} 个单词`,
-      album: 'Spelling Bee - 自动学习',
-      artwork: [
-        { src: '/bee.svg', sizes: '96x96', type: 'image/svg+xml' },
-        { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-        { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png' }
-      ]
+      album: 'Spelling Bee - 自动学习'
     })
   }
   
@@ -123,18 +163,16 @@ class BackgroundAudioService {
     this.callbacks = callbacks
     
     try {
-      // 1. 确保 AudioContext 处于运行状态
-      if (this.audioContext && this.audioContext.state === 'suspended') {
-        await this.audioContext.resume()
+      // 1. 播放静音音频（触发系统媒体会话）
+      if (this.audioElement) {
+        await this.audioElement.play()
+        //console.log('[BackgroundAudio] Silent audio playing')
       }
       
-      // 2. 创建静音音频流（保持音频会话活跃）
-      this.startSilentAudio()
-      
-      // 3. 请求 Wake Lock（防止屏幕锁定时暂停）
+      // 2. 请求 Wake Lock（防止屏幕锁定时暂停）
       await this.requestWakeLock()
       
-      // 4. 更新 Media Session 状态
+      // 3. 更新 Media Session 状态
       if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'playing'
         
@@ -153,7 +191,7 @@ class BackgroundAudioService {
         })
       }
       
-      console.log('[BackgroundAudio] Background mode started')
+      //console.log('[BackgroundAudio] Background mode started')
     } catch (e) {
       console.error('[BackgroundAudio] Start error:', e)
     }
@@ -168,8 +206,10 @@ class BackgroundAudioService {
     this.isActive = false
     this.callbacks = null
     
-    // 停止静音音频
-    this.stopSilentAudio()
+    // 暂停静音音频
+    if (this.audioElement) {
+      this.audioElement.pause()
+    }
     
     // 释放 Wake Lock
     this.releaseWakeLock()
@@ -179,60 +219,7 @@ class BackgroundAudioService {
       navigator.mediaSession.playbackState = 'paused'
     }
     
-    console.log('[BackgroundAudio] Background mode stopped')
-  }
-  
-  /**
-   * 创建并播放静音音频流
-   * 这是保持后台活跃的关键
-   */
-  private startSilentAudio(): void {
-    if (!this.audioContext || this.silentSource) return
-    
-    try {
-      // 创建一个非常小的振荡器（几乎静音）
-      const oscillator = this.audioContext.createOscillator()
-      const gainNode = this.audioContext.createGain()
-      
-      // 设置为几乎听不到的音量
-      gainNode.gain.value = 0.001
-      
-      oscillator.connect(gainNode)
-      gainNode.connect(this.audioContext.destination)
-      
-      oscillator.frequency.value = 1 // 1Hz，人耳听不到
-      oscillator.start()
-      
-      this.silentSource = oscillator
-      this.silentGain = gainNode
-      
-      console.log('[BackgroundAudio] Silent audio started')
-    } catch (e) {
-      console.error('[BackgroundAudio] Silent audio error:', e)
-    }
-  }
-  
-  /**
-   * 停止静音音频流
-   */
-  private stopSilentAudio(): void {
-    if (this.silentSource) {
-      try {
-        this.silentSource.stop()
-        this.silentSource.disconnect()
-      } catch (e) {
-        // 忽略错误
-      }
-      this.silentSource = null
-    }
-    if (this.silentGain) {
-      try {
-        this.silentGain.disconnect()
-      } catch (e) {
-        // 忽略错误
-      }
-      this.silentGain = null
-    }
+    //console.log('[BackgroundAudio] Background mode stopped')
   }
   
   /**
@@ -240,7 +227,7 @@ class BackgroundAudioService {
    */
   private async requestWakeLock(): Promise<void> {
     if (!('wakeLock' in navigator)) {
-      console.log('[BackgroundAudio] Wake Lock API not supported')
+      //console.log('[BackgroundAudio] Wake Lock API not supported')
       return
     }
     
@@ -248,12 +235,12 @@ class BackgroundAudioService {
       this.wakeLock = await navigator.wakeLock.request('screen')
       
       this.wakeLock.addEventListener('release', () => {
-        console.log('[BackgroundAudio] Wake Lock released')
+        //console.log('[BackgroundAudio] Wake Lock released')
       })
       
-      console.log('[BackgroundAudio] Wake Lock acquired')
+      //console.log('[BackgroundAudio] Wake Lock acquired')
     } catch (e) {
-      console.log('[BackgroundAudio] Wake Lock request failed:', (e as Error).message)
+      //console.log('[BackgroundAudio] Wake Lock request failed:', (e as Error).message)
     }
   }
   
@@ -278,20 +265,19 @@ class BackgroundAudioService {
     if (!this.isActive) return
     
     if (document.hidden) {
-      // 页面进入后台
-      console.log('[BackgroundAudio] Page hidden, maintaining audio session')
+      // 页面进入后台 - 确保音频继续播放
+      //console.log('[BackgroundAudio] Page hidden, maintaining audio session')
       
-      // 确保 AudioContext 继续运行
-      if (this.audioContext && this.audioContext.state === 'suspended') {
+      if (this.audioElement && this.audioElement.paused) {
         try {
-          await this.audioContext.resume()
+          await this.audioElement.play()
         } catch (e) {
-          console.error('[BackgroundAudio] Failed to resume AudioContext:', e)
+          console.error('[BackgroundAudio] Failed to resume audio:', e)
         }
       }
     } else {
       // 页面回到前台
-      console.log('[BackgroundAudio] Page visible')
+      //console.log('[BackgroundAudio] Page visible')
       
       // 重新请求 Wake Lock（可能在后台被释放）
       if (!this.wakeLock && this.isActive) {
@@ -304,9 +290,7 @@ class BackgroundAudioService {
    * 检查是否支持后台播放
    */
   static isSupported(): boolean {
-    const hasAudioContext = !!(window.AudioContext || window.webkitAudioContext)
-    const hasMediaSession = 'mediaSession' in navigator
-    return hasAudioContext || hasMediaSession
+    return 'mediaSession' in navigator
   }
   
   /**
@@ -324,13 +308,13 @@ class BackgroundAudioService {
     
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
     
-    if (this.audioContext) {
-      try {
-        this.audioContext.close()
-      } catch (e) {
-        // 忽略错误
+    if (this.audioElement) {
+      this.audioElement.pause()
+      this.audioElement.src = ''
+      if (this.audioElement.parentNode) {
+        this.audioElement.parentNode.removeChild(this.audioElement)
       }
-      this.audioContext = null
+      this.audioElement = null
     }
   }
 }

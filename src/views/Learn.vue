@@ -1,5 +1,5 @@
 <template>
-  <div class="learn-page">
+  <div class="learn-page" @click="onPageClick">
     <div class="page-header">
       <h1>单词学习</h1>
       <p>通过卡片学习单词，掌握拼写、发音和释义</p>
@@ -204,10 +204,12 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import { MessagePlugin } from 'tdesign-vue-next'
 import { useWordsStore } from '@/stores/words'
 import { useLearningStore } from '@/stores/learning'
 import { useSpeechStore } from '@/stores/speech'
 import { backgroundAudio } from '@/utils/backgroundAudio'
+import { checkSpeechPermission } from '@/utils/speechPermission'
 import SpeechSettings from '@/components/SpeechSettings.vue'
 
 const wordsStore = useWordsStore()
@@ -216,6 +218,23 @@ const speechStore = useSpeechStore()
 
 // 语音配置弹窗
 const showSpeechSettings = ref(false)
+
+// 语音权限提示状态
+const showSpeechPermission = ref(false)
+
+// 页面点击处理 - 任何点击都满足交互条件，获取语音权限
+function onPageClick() {
+  if (showSpeechPermission.value) {
+    // 尝试播放静音语音以获取权限
+    const utterance = new SpeechSynthesisUtterance('')
+    utterance.volume = 0
+    speechSynthesis.speak(utterance)
+    
+    showSpeechPermission.value = false
+    MessagePlugin.closeAll()
+    MessagePlugin.success('语音播放已启用')
+  }
+}
 
 // Settings
 const settings = reactive({
@@ -523,8 +542,27 @@ function saveCurrentSession() {
   })
 }
 
-// 恢复学习
-function resumeLearning() {
+// 恢复学习 - 检查语音权限，但不等待用户点击
+async function resumeLearning() {
+  const hasPermission = await checkSpeechPermission()
+  if (!hasPermission) {
+    // 显示 TDesign Message 提示，不阻塞流程
+    showSpeechPermission.value = true
+    MessagePlugin.warning({
+      content: '点击页面任意位置启用语音播放',
+      duration: 0, // 不自动关闭
+      closeBtn: true,
+      onClose: () => {
+        showSpeechPermission.value = false
+      }
+    })
+  }
+  // 无论是否有权限，都直接恢复学习
+  doResumeLearning()
+}
+
+// 实际执行恢复学习
+function doResumeLearning() {
   const session = learningStore.restoreSession()
   if (!session || !session.learnWords || session.learnWords.length === 0) {
     // 会话无效，清除
@@ -915,7 +953,7 @@ onMounted(async () => {
   loadSettings() // 加载保存的设置
   window.addEventListener('keydown', handleKeydown)
   
-  // 自动恢复未完成的学习
+  // 自动恢复未完成的学习（会检测语音权限）
   if (learningStore.hasUnfinishedSession) {
     resumeLearning()
   }
