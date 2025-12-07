@@ -18,6 +18,10 @@
           <t-icon name="microphone" />
           <span>比赛</span>
         </router-link>
+        <router-link to="/challenge" class="nav-link">
+          <t-icon name="usergroup" />
+          <span>挑战</span>
+        </router-link>
         <router-link to="/words" class="nav-link">
           <t-icon name="book" />
           <span>词库</span>

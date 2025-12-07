@@ -133,6 +133,67 @@ export interface AnnouncerSettings {
   }
 }
 
+// Challenge types
+export interface Challenge {
+  id: string
+  name: string
+  description?: string
+  image_url?: string
+  creator_id: string
+  creator_name?: string
+  creator_avatar?: string
+  max_participants: number
+  entry_fee: number // 参赛积分
+  word_count: number
+  time_limit: number
+  difficulty: number | null
+  word_mode?: string // 出题模式：simulate, new, random, sequential, reverse
+  challenge_number?: number // 比赛序号
+  status: 'waiting' | 'ready' | 'in_progress' | 'finished' | 'cancelled'
+  participants: ChallengeParticipant[]
+  winner_id?: string
+  winner_name?: string
+  prize_pool?: number
+  game_words?: ChallengeWord[] // 比赛单词记录
+  created_at: string
+  started_at?: string
+  finished_at?: string
+}
+
+export interface ChallengeParticipant {
+  user_id: string
+  nickname: string
+  avatar_url?: string
+  is_online: boolean
+  is_ready: boolean
+  score: number
+  peer_id?: string
+  joined_at: string
+}
+
+export interface ChallengeWord {
+  word: Word
+  round: number
+  status: 'pending' | 'active' | 'finished'
+  winner_id?: string
+  results: ChallengeWordResult[]
+}
+
+export interface ChallengeWordResult {
+  user_id: string
+  answer: string
+  is_correct: boolean
+  time_taken: number // 毫秒
+  submitted_at: string
+}
+
+export interface ChallengeMessage {
+  type: 'join' | 'leave' | 'ready' | 'start' | 'word' | 'answer' | 'round_end' | 'game_end' | 'sync' | 'heartbeat'
+  data: unknown
+  sender_id: string
+  timestamp: number
+}
+
 // Auth event types
 declare global {
   interface WindowEventMap {

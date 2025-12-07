@@ -22,6 +22,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Competition.vue')
   },
   {
+    path: '/challenge',
+    name: 'Challenge',
+    component: () => import('@/views/Challenge.vue')
+  },
+  {
     path: '/words',
     name: 'Words',
     component: () => import('@/views/Words.vue')
