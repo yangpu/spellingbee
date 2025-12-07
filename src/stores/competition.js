@@ -17,6 +17,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   const totalTime = ref(60)
   const startTime = ref(null)
   const records = ref([])
+  const streak = ref(0) // 连击计数
 
   const authStore = useAuthStore()
 
@@ -52,6 +53,7 @@ export const useCompetitionStore = defineStore('competition', () => {
       timeRemaining: timeRemaining.value,
       totalTime: totalTime.value,
       startTime: startTime.value,
+      streak: streak.value,
       savedAt: Date.now()
     }
     
@@ -81,6 +83,7 @@ export const useCompetitionStore = defineStore('competition', () => {
       timeRemaining.value = session.totalTime // 重置时间，给用户完整时间
       totalTime.value = session.totalTime
       startTime.value = Date.now()
+      streak.value = session.streak || 0
       isActive.value = true
       
       return session
@@ -106,13 +109,19 @@ export const useCompetitionStore = defineStore('competition', () => {
     timeRemaining.value = timeLimit
     totalTime.value = timeLimit
     startTime.value = Date.now()
+    streak.value = 0
     isActive.value = true
     
     // 保存会话
     saveSession()
   }
 
-  // Check answer
+  // Check answer - 新计分规则
+  // 基础分：10分
+  // 难度加成：难度1-5分别 +0/+2/+4/+6/+8 分
+  // 速度奖励：剩余时间每10秒 +1 分
+  // 连击奖励：连续答对每次 +1 分（2连+1，3连+2...）
+  // 全对奖励：在 endCompetition 中计算，+20% 总分
   function checkAnswer(userInput) {
     if (!currentWord.value) return null
 
@@ -120,15 +129,33 @@ export const useCompetitionStore = defineStore('competition', () => {
     
     if (isCorrect) {
       correctWords.value.push(currentWord.value)
-      // Score based on difficulty and time remaining
+      streak.value++
+      
+      // 基础分 10 分
+      let wordScore = 10
+      
+      // 难度加成：难度1-5分别 +0/+2/+4/+6/+8 分
+      const difficulty = currentWord.value.difficulty || 1
+      const difficultyBonus = (difficulty - 1) * 2
+      wordScore += difficultyBonus
+      
+      // 速度奖励：剩余时间每10秒 +1 分
       const timeBonus = Math.floor(timeRemaining.value / 10)
-      const difficultyBonus = currentWord.value.difficulty * 10
-      score.value += 10 + timeBonus + difficultyBonus
+      wordScore += timeBonus
+      
+      // 连击奖励：连续答对每次 +1 分（2连+1，3连+2...）
+      if (streak.value >= 2) {
+        const streakBonus = streak.value - 1
+        wordScore += streakBonus
+      }
+      
+      score.value += wordScore
     } else {
       incorrectWords.value.push({
         ...currentWord.value,
         userAnswer: userInput
       })
+      streak.value = 0 // 答错重置连击
     }
     
     // 保存会话
@@ -156,6 +183,7 @@ export const useCompetitionStore = defineStore('competition', () => {
         ...currentWord.value,
         userAnswer: '[跳过]'
       })
+      streak.value = 0 // 跳过重置连击
     }
     const result = nextWord()
     // 保存会话
@@ -179,6 +207,7 @@ export const useCompetitionStore = defineStore('competition', () => {
         ...currentWord.value,
         userAnswer: '[超时]'
       })
+      streak.value = 0 // 超时重置连击
     }
   }
 
@@ -189,10 +218,18 @@ export const useCompetitionStore = defineStore('competition', () => {
     clearSession()
     
     const duration = Math.floor((Date.now() - startTime.value) / 1000)
+    
+    // 全对奖励：+20% 总分
+    let finalScore = score.value
+    const isPerfect = incorrectWords.value.length === 0 && correctWords.value.length === words.value.length
+    if (isPerfect && correctWords.value.length > 0) {
+      const perfectBonus = Math.round(score.value * 0.2)
+      finalScore += perfectBonus
+    }
 
     const record = {
       id: crypto.randomUUID(),
-      score: score.value,
+      score: finalScore,
       total_words: words.value.length,
       correct_words: correctWords.value.length,
       correct_words_list: correctWords.value.map(w => w.word),
@@ -235,6 +272,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     incorrectWords.value = []
     timeRemaining.value = 60
     startTime.value = null
+    streak.value = 0
     // 清除保存的会话
     clearSession()
   }
@@ -328,6 +366,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     timeRemaining,
     totalTime,
     records,
+    streak,
     // Computed
     currentWord,
     progress,

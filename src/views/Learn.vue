@@ -207,6 +207,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useWordsStore } from '@/stores/words'
 import { useLearningStore } from '@/stores/learning'
 import { useSpeechStore } from '@/stores/speech'
+import { backgroundAudio } from '@/utils/backgroundAudio'
 import SpeechSettings from '@/components/SpeechSettings.vue'
 
 const wordsStore = useWordsStore()
@@ -753,6 +754,28 @@ function toggleAutoLearn() {
 
 function startAutoLearn() {
   isAutoLearning.value = true
+  
+  // 启动后台播放服务（移动端）
+  if (backgroundAudio.constructor.isMobile()) {
+    backgroundAudio.init().then(() => {
+      backgroundAudio.start({
+        onPause: () => stopAutoLearn(),
+        onPlay: () => {
+          if (!isAutoLearning.value) startAutoLearn()
+        },
+        onNext: () => markMastered(),
+        onPrevious: () => markReview()
+      })
+      // 更新媒体会话信息
+      if (currentWord.value) {
+        backgroundAudio.updateMediaSession(currentWord.value.word, {
+          current: currentIndex.value + 1,
+          total: learnWords.value.length
+        })
+      }
+    })
+  }
+  
   startAutoLearnCycle()
 }
 
@@ -763,6 +786,9 @@ function stopAutoLearn() {
     autoLearnTimer.value = null
   }
   speechSynthesis.cancel()
+  
+  // 停止后台播放服务
+  backgroundAudio.stop()
 }
 
 function startAutoLearnCycle() {
@@ -776,6 +802,14 @@ function startAutoLearnCycle() {
   
   // 保存当前单词引用，防止异步过程中单词变化
   const wordToLearn = currentWord.value
+  
+  // 更新媒体会话信息（用于后台播放显示）
+  if (backgroundAudio.isActive) {
+    backgroundAudio.updateMediaSession(wordToLearn.word, {
+      current: currentIndex.value + 1,
+      total: learnWords.value.length
+    })
+  }
   
   // Step 1: Speak the word
   speechSynthesis.cancel()
@@ -891,6 +925,8 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
   stopAutoLearn()
   speechSynthesis.cancel()
+  // 销毁后台播放服务
+  backgroundAudio.destroy()
 })
 </script>
 

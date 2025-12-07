@@ -69,7 +69,7 @@
               v-model="settings.wordMode"
               variant="default-filled"
             >
-              <t-radio-button value="natural">自然</t-radio-button>
+              <t-radio-button value="simulate">模拟</t-radio-button>
               <t-radio-button value="new">新题</t-radio-button>
               <t-radio-button value="random">随机</t-radio-button>
               <t-radio-button value="sequential">顺序</t-radio-button>
@@ -82,26 +82,6 @@
             <t-switch v-model="settings.voiceInput" />
             <span class="setting-hint">开启后可通过语音拼读单词</span>
           </div>
-        </div>
-
-        <div class="setup-rules">
-          <h3>比赛规则</h3>
-          <ul>
-            <li>发音官会朗读单词，你需要正确拼写每个字母</li>
-            <li>每个单词有 {{ settings.timeLimit }} 秒答题时间</li>
-            <li>可以点击按钮询问发音、释义、词性和例句</li>
-            <li>直接在字母框中输入，正确显示绿色，错误显示红色</li>
-            <li>开启语音输入后，先朗读单词，再逐个拼读字母</li>
-          </ul>
-          
-          <h3>计分规则</h3>
-          <ul>
-            <li><strong>基础分</strong>：正确拼写一个单词得 10 分</li>
-            <li><strong>难度加成</strong>：根据单词难度额外加分（难度1-5对应+0/+2/+5/+8/+12分）</li>
-            <li><strong>速度奖励</strong>：剩余时间越多，奖励越高（每秒+1分）</li>
-            <li><strong>连击奖励</strong>：连续答对可获得连击加成（2连+5分，3连+10分，4连+15分...）</li>
-            <li><strong>完美奖励</strong>：全部答对额外奖励 50 分</li>
-          </ul>
         </div>
 
         <div class="setup-actions">
@@ -117,6 +97,26 @@
             <template #icon><t-icon name="play-circle" /></template>
             开始比赛
           </t-button>
+        </div>
+
+        <div class="setup-rules">
+          <h3>比赛规则</h3>
+          <ul>
+            <li>发音官会朗读单词，你需要正确拼写每个字母</li>
+            <li>每个单词有 {{ settings.timeLimit }} 秒答题时间</li>
+            <li>可以点击按钮询问发音、释义、词性和例句</li>
+            <li>直接在字母框中输入，正确显示绿色，错误显示红色</li>
+            <li>开启语音输入后，先朗读单词，再逐个拼读字母</li>
+          </ul>
+          
+          <h3>计分规则</h3>
+          <ul>
+            <li><strong>基础分</strong>：正确拼写一个单词得 10 分</li>
+            <li><strong>难度加成</strong>：难度1-5分别 +0/+2/+4/+6/+8 分</li>
+            <li><strong>速度奖励</strong>：剩余时间每10秒 +1 分</li>
+            <li><strong>连击奖励</strong>：连续答对每次 +1 分（2连+1，3连+2...）</li>
+            <li><strong>全对奖励</strong>：全部答对额外 +20% 总分</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -476,7 +476,7 @@ const settings = reactive({
   timeLimit: 60,
   difficulty: null,
   voiceInput: false,
-  wordMode: 'natural', // natural, new, random, sequential
+  wordMode: 'simulate', // simulate, new, random, sequential, reverse
 });
 
 // 设置存储键
@@ -513,7 +513,7 @@ function saveSettings() {
 // Word mode hint text
 const wordModeHint = computed(() => {
   switch (settings.wordMode) {
-    case 'natural':
+    case 'simulate':
       return '模拟真实比赛，按难度递进出题';
     case 'new':
       return '优先出现未考过的单词';
@@ -673,8 +673,8 @@ async function startCompetition() {
   
   // Get words based on selected mode
   switch (settings.wordMode) {
-    case 'natural':
-      // Natural mode: simulate real competition, progressive difficulty
+    case 'simulate':
+      // Simulate mode: simulate real competition, progressive difficulty
       words = getWordsNaturalMode(settings.wordCount, settings.difficulty);
       break;
     case 'new':
@@ -2910,7 +2910,7 @@ watch(
       background: var(--hover-bg);
       border-radius: 12px;
       padding: 1.5rem;
-      margin-bottom: 2rem;
+      // margin-bottom: 2rem;
 
       h3 {
         font-size: 1rem;
@@ -2935,6 +2935,7 @@ watch(
       gap: 1rem;
       justify-content: center;
       align-items: center;
+      margin-bottom: 2rem;
     }
   }
 }

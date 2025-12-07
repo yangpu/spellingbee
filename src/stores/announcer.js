@@ -210,7 +210,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
     }
   }
   
-  // 播放音效
+  // 播放音效（音量比正常语音小20%）
   async function playSound(url) {
     return new Promise((resolve, reject) => {
       let audio = audioCache.value[url]
@@ -221,6 +221,9 @@ export const useAnnouncerStore = defineStore('announcer', () => {
         // 重置播放位置
         audio.currentTime = 0
       }
+      
+      // 设置音量为80%（比正常语音小20%）
+      audio.volume = 0.8
       
       audio.onended = () => resolve()
       audio.onerror = (e) => reject(e)
