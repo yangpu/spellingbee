@@ -520,6 +520,16 @@ export const useChallengeStore = defineStore('challenge', () => {
       // 更新缓存列表中的挑战赛
       updateChallengeInList(currentChallenge.value)
     }
+
+    // 播放播音员音效：比赛结束时，胜利播放成功音效，失败播放错误音效
+    const announcerStore = useAnnouncerStore()
+    announcerStore.init().then(() => {
+      if (data.winner_id === authStore.user?.id) {
+        announcerStore.playSuccess()
+      } else {
+        announcerStore.playFailure()
+      }
+    })
   }
 
   function handleSyncMessage(message: ChallengeMessage): void {

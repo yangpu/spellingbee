@@ -1911,7 +1911,8 @@ function exitCompetition() {
   stopTimer();
   stopVoiceInput();
   speechSynthesis.cancel();
-  competitionStore.resetCompetition();
+  // 暂停比赛，保留会话数据以便恢复
+  competitionStore.pauseCompetition();
   showResults.value = false;
   lastResult.value = null;
 }

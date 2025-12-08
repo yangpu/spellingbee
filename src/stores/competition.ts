@@ -263,6 +263,14 @@ export const useCompetitionStore = defineStore('competition', () => {
     return record
   }
 
+  // Pause competition (exit without clearing session)
+  function pauseCompetition(): void {
+    // 先保存当前进度
+    saveSession()
+    // 只设置 isActive 为 false，保留其他状态和会话数据
+    isActive.value = false
+  }
+
   // Reset competition
   function resetCompetition(): void {
     isActive.value = false
@@ -401,6 +409,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     updateTimer,
     timeOut,
     endCompetition,
+    pauseCompetition,
     resetCompetition,
     loadRecords,
     saveSession,
