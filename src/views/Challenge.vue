@@ -119,7 +119,7 @@
             <span>正在建立连接...</span>
           </div>
           <div class="card-image">
-            <img v-if="challenge.image_url" :src="challenge.image_url" alt="" />
+            <img v-if="getCoverUrl(challenge)" :src="getCoverUrl(challenge)" alt="" />
             <div v-else class="card-image-placeholder">
               <t-icon name="trophy" size="48px" />
             </div>
@@ -412,6 +412,17 @@ const coverType = ref('default')
 const customCoverUrl = ref('')
 const defaultCoverUrl = `${import.meta.env.BASE_URL}challenge-default.svg`
 
+// 获取封面图片URL（处理默认封面和旧数据兼容）
+function getCoverUrl(challenge) {
+  if (!challenge.image_url) return ''
+  // 如果是默认封面标识或包含 challenge-default.svg，使用当前环境的默认封面路径
+  if (challenge.image_url === 'default' || challenge.image_url.includes('challenge-default.svg')) {
+    return defaultCoverUrl
+  }
+  // 否则直接返回存储的URL（自定义封面）
+  return challenge.image_url
+}
+
 // 过滤和分页
 const statusFilter = ref('all')
 const searchKeyword = ref('')
@@ -559,7 +570,7 @@ async function openCreateDialog() {
   createData.name = `挑战赛-${randomWord.toUpperCase()}`
   // 重置封面选择为默认
   coverType.value = 'default'
-  createData.image_url = defaultCoverUrl
+  createData.image_url = 'default' // 使用标识符而不是完整路径
   customCoverUrl.value = ''
   coverFiles.value = []
   showCreateDialog.value = true
@@ -746,7 +757,7 @@ function selectCoverType(type) {
   if (type === 'none') {
     createData.image_url = ''
   } else if (type === 'default') {
-    createData.image_url = defaultCoverUrl
+    createData.image_url = 'default' // 使用标识符而不是完整路径
   } else if (type === 'custom' && customCoverUrl.value) {
     createData.image_url = customCoverUrl.value
   }

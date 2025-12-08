@@ -1005,18 +1005,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     console.log('[loadChallenges] 开始从数据库加载, force:', force)
     loading.value = true
     try {
-      // 强制刷新时，先清除 SW 缓存
-      if (force && 'caches' in window) {
-        try {
-          const cache = await caches.open('supabase-challenges-cache')
-          const keys = await cache.keys()
-          await Promise.all(keys.map(key => cache.delete(key)))
-          console.log('[loadChallenges] SW 缓存已清除')
-        } catch (e) {
-          console.warn('[loadChallenges] 清除缓存失败:', e)
-        }
-      }
-      
+      // 第一次请求：正常请求（可能返回 SW 缓存数据）
       const { data, error } = await supabase
         .from('challenges')
         .select('*')
@@ -1026,16 +1015,66 @@ export const useChallengeStore = defineStore('challenge', () => {
 
       if (error) throw error
       
-      console.log('[loadChallenges] 数据库返回数量:', data?.length)
+      console.log('[loadChallenges] 首次返回数量:', data?.length)
       challenges.value = (data || []).map(c => ({
         ...c,
         participants: c.participants || []
       }))
       lastLoadTime.value = Date.now()
+      
+      // 强制刷新时，在后台发起第二次请求绕过缓存，获取最新数据
+      if (force) {
+        // 使用 setTimeout 确保先渲染缓存数据
+        setTimeout(() => {
+          fetchFreshChallenges()
+        }, 100)
+      }
     } catch (error) {
       console.error('Error loading challenges:', error)
     } finally {
       loading.value = false
+    }
+  }
+  
+  // 绕过缓存获取最新数据
+  async function fetchFreshChallenges(): Promise<void> {
+    try {
+      console.log('[fetchFreshChallenges] 绕过缓存获取最新数据')
+      
+      // 使用 fetch API 直接请求，添加 Cache-Control 头绕过 SW 缓存
+      // 从 supabase 客户端获取配置，避免环境变量未定义
+      const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
+      
+      const url = `${supabaseUrl}/rest/v1/challenges?select=*&status=in.(waiting,ready,in_progress,finished)&order=created_at.desc&limit=50`
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        cache: 'no-store' // 强制绕过缓存
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      console.log('[fetchFreshChallenges] 最新数据数量:', data?.length)
+      
+      // 更新数据
+      challenges.value = (data || []).map((c: Challenge) => ({
+        ...c,
+        participants: c.participants || []
+      }))
+      lastLoadTime.value = Date.now()
+    } catch (error) {
+      console.error('[fetchFreshChallenges] 获取最新数据失败:', error)
     }
   }
 

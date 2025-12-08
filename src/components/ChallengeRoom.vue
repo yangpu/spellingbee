@@ -15,8 +15,8 @@
           </div>
         </div>
         <div class="room-header-main">
-          <div class="room-cover" v-if="challenge?.image_url">
-            <img :src="challenge.image_url" alt="" />
+          <div class="room-cover" v-if="getCoverUrl(challenge?.image_url)">
+            <img :src="getCoverUrl(challenge?.image_url)" alt="" />
           </div>
           <div class="room-cover placeholder" v-else>
             <t-icon name="trophy" size="32px" />
@@ -287,8 +287,8 @@
       <!-- 比赛信息卡片 -->
       <div class="finish-card">
         <div class="finish-card-header">
-          <div class="challenge-cover" v-if="challenge?.image_url">
-            <img :src="challenge.image_url" alt="" />
+          <div class="challenge-cover" v-if="getCoverUrl(challenge?.image_url)">
+            <img :src="getCoverUrl(challenge?.image_url)" alt="" />
           </div>
           <div class="challenge-cover placeholder" v-else>
             <t-icon name="trophy" size="40px" />
@@ -406,9 +406,23 @@ import { useChallengeStore } from '@/stores/challenge'
 import { useSpeechStore } from '@/stores/speech'
 import LetterInput from '@/components/LetterInput.vue'
 
+const baseUrl = import.meta.env.BASE_URL
+const defaultCoverUrl = `${baseUrl}challenge-default.svg`
+
 const authStore = useAuthStore()
 const challengeStore = useChallengeStore()
 const speechStore = useSpeechStore()
+
+// 获取封面图片URL（处理默认封面和旧数据兼容）
+function getCoverUrl(imageUrl) {
+  if (!imageUrl) return ''
+  // 如果是默认封面标识或包含 challenge-default.svg，使用当前环境的默认封面路径
+  if (imageUrl === 'default' || imageUrl.includes('challenge-default.svg')) {
+    return defaultCoverUrl
+  }
+  // 否则直接返回存储的URL（自定义封面）
+  return imageUrl
+}
 
 const starting = ref(false)
 const letterInputRef = ref(null)
