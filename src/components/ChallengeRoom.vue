@@ -50,8 +50,7 @@
       <div class="participants-section">
         <h3>参赛选手 ({{ challenge?.participants?.length || 0 }}/{{ challenge?.max_participants }})</h3>
         <div class="participants-grid">
-          <div 
-            class="participant-card"
+          <div class="participant-card"
             v-for="p in challenge?.participants"
             :key="p.user_id"
             :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-creator': p.user_id === challenge?.creator_id }"
@@ -60,7 +59,7 @@
               <t-avatar :image="p.avatar_url" size="large">
                 {{ p.nickname?.charAt(0) }}
               </t-avatar>
-              <div class="online-status" :class="{ online: p.is_online }"></div>
+              <div class="online-status" :class="{ online: isParticipantOnline(p) }"></div>
             </div>
             <div class="participant-info">
               <div class="participant-name">
@@ -68,8 +67,8 @@
                 <t-tag v-if="p.user_id === challenge?.creator_id" size="small" theme="warning">房主</t-tag>
               </div>
               <div class="participant-status">
-                <t-icon :name="p.is_ready ? 'check-circle' : 'time'" :class="{ ready: p.is_ready }" />
-                {{ p.is_ready ? '已准备' : '未准备' }}
+                <t-icon :name="isParticipantReady(p) ? 'check-circle' : 'time'" :class="{ ready: isParticipantReady(p) }" />
+                {{ isParticipantReady(p) ? '已准备' : '未准备' }}
               </div>
             </div>
           </div>
@@ -430,6 +429,28 @@ const showRecords = ref(false) // 是否显示比赛记录
 
 const challenge = computed(() => challengeStore.currentChallenge)
 
+// 判断参与者是否在线（房主在房间内总是在线）
+function isParticipantOnline(participant) {
+  // 如果是当前用户自己，肯定在线
+  if (participant.user_id === authStore.user?.id) {
+    return true
+  }
+  // 房主如果连接状态是 connected，则在线
+  if (participant.user_id === challenge.value?.creator_id && challengeStore.connectionStatus === 'connected') {
+    return participant.is_online
+  }
+  return participant.is_online
+}
+
+// 判断参与者是否已准备（房主总是已准备）
+function isParticipantReady(participant) {
+  // 房主总是已准备状态
+  if (participant.user_id === challenge.value?.creator_id) {
+    return true
+  }
+  return participant.is_ready
+}
+
 // 判断当前用户是否是胜利者
 const isWinner = computed(() => {
   if (!challenge.value || !authStore.user) return false
@@ -730,6 +751,7 @@ onUnmounted(() => {
 
     h3 {
       margin: 0 0 1rem;
+      font-size: 1.25rem;
     }
 
     .participants-grid {
@@ -764,6 +786,7 @@ onUnmounted(() => {
           border-radius: 50%;
           background: var(--charcoal-300);
           border: 2px solid white;
+          z-index: 100;
 
           &.online {
             background: var(--success);

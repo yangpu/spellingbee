@@ -52,6 +52,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
         navigateFallback: isProduction ? '/spellingbee/index.html' : '/index.html',
         navigateFallbackDenylist: [/^\/api/],
+        // 禁用 workbox 的日志
+        disableDevLogs: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -158,8 +160,12 @@ export default defineConfig({
       },
       devOptions: {
         enabled: true, // 开发模式下启用 PWA 以测试缓存
-        type: 'module'
-      }
+        type: 'module',
+        navigateFallback: 'index.html'
+      },
+      // 禁用 workbox 的 verbose 和 debug 日志
+      injectRegister: 'auto',
+      selfDestroying: false
     })
   ],
   base,

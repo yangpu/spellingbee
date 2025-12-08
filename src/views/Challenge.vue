@@ -243,10 +243,11 @@
       <div class="pagination-section" v-if="filteredChallenges.length > pageSize">
         <t-pagination
           v-model:current="currentPage"
+          v-model:page-size="pageSize"
           :total="filteredChallenges.length"
-          :page-size="pageSize"
+          :page-size-options="pageSizeOptions"
           :show-jumper="false"
-          size="small"
+          size="medium"
         />
       </div>
 
@@ -485,7 +486,12 @@ function getCoverUrl(challenge) {
 const statusFilter = ref('all')
 const searchKeyword = ref('')
 const currentPage = ref(1)
-const pageSize = 12
+const pageSize = ref(12)
+const pageSizeOptions = [
+  { label: '12条/页', value: 12 },
+  { label: '24条/页', value: 24 },
+  { label: '48条/页', value: 48 }
+]
 
 // 滚动位置保存
 const savedScrollPosition = ref(0)
@@ -538,8 +544,8 @@ const filteredChallenges = computed(() => {
 
 // 分页后的挑战赛
 const paginatedChallenges = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return filteredChallenges.value.slice(start, start + pageSize)
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredChallenges.value.slice(start, start + pageSize.value)
 })
 
 // 重置筛选
@@ -1309,18 +1315,18 @@ onMounted(async () => {
         color: var(--text-secondary);
 
         &.waiting {
-          background: var(--honey-100);
-          color: var(--honey-700);
+          background: var(--success-light, #d1fae5);
+          color: var(--success, #10b981);
         }
 
         &.in_progress {
           background: var(--primary-light, #dbeafe);
-          color: var(--primary);
+          color: var(--primary, #3b82f6);
         }
 
         &.finished {
-          background: var(--success-light, #d1fae5);
-          color: var(--success);
+          background: var(--honey-100);
+          color: var(--honey-700);
         }
 
         &.mine {
@@ -1464,23 +1470,23 @@ onMounted(async () => {
       color: var(--text-primary);
 
       &.waiting {
-        background: var(--honey-100);
-        color: var(--honey-700);
+        background: var(--success-light, #d1fae5);
+        color: var(--success, #10b981);
       }
 
       &.ready {
         background: var(--success-light, #d1fae5);
-        color: var(--success);
+        color: var(--success, #10b981);
       }
 
       &.in_progress {
         background: var(--primary-light, #dbeafe);
-        color: var(--primary);
+        color: var(--primary, #3b82f6);
       }
 
       &.finished {
-        background: var(--success-light, #d1fae5);
-        color: var(--success);
+        background: var(--honey-100);
+        color: var(--honey-700);
       }
 
       &.cancelled {

@@ -121,25 +121,32 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import { MessagePlugin } from 'tdesign-vue-next';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
+import { notificationService } from '@/lib/network';
 import UserProfile from '@/components/UserProfile.vue';
 
 const baseUrl = import.meta.env.BASE_URL;
 const appVersion = __APP_VERSION__;
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const wordsStore = useWordsStore();
 const competitionStore = useCompetitionStore();
 const learningStore = useLearningStore();
 const speechStore = useSpeechStore();
+
+// 挑战赛通知取消订阅函数
+let unsubscribeNotification = null;
+// 通知服务是否已初始化
+let notificationInitialized = false;
 
 // 判断挑战路由是否激活（包括 /challenge 和 /challenge/:id）
 const isChallengeActive = computed(() => {
@@ -253,6 +260,70 @@ const syncAllData = async () => {
   }
 };
 
+// 初始化挑战赛通知服务
+const initNotificationService = async () => {
+  if (!authStore.user) return;
+  
+  // 防止重复初始化
+  if (notificationInitialized) {
+    return;
+  }
+  notificationInitialized = true;
+  
+  try {
+    await notificationService.init(authStore.user.id);
+    
+    // 订阅新挑战赛通知
+    unsubscribeNotification = notificationService.addHandler(async (notification) => {
+      if (notification.type === 'new_challenge') {
+        // 显示新挑战赛通知弹窗
+        const challenge = notification.challenge;
+        const creatorName = notification.fromUser?.nickname || '未知用户';
+        
+        const dialog = DialogPlugin.confirm({
+          header: '新的挑战赛',
+          body: `${creatorName} 创建了挑战赛「${challenge.name}」\n参赛费：${challenge.entry_fee} 积分 | 人数：${challenge.max_participants}人\n是否立即加入？`,
+          confirmBtn: '加入挑战',
+          cancelBtn: '稍后再说',
+          onConfirm: async () => {
+            dialog.destroy();
+            try {
+              // 先导入 challengeStore
+              const { useChallengeStore } = await import('@/stores/challenge');
+              const challengeStore = useChallengeStore();
+              // 加入挑战赛
+              await challengeStore.joinChallenge(challenge.id);
+              // 跳转到挑战赛房间
+              router.push(`/challenge/${challenge.id}`);
+              MessagePlugin.success('加入成功');
+            } catch (error) {
+              MessagePlugin.error(error.message || '加入失败');
+            }
+          },
+          onClose: () => {
+            dialog.destroy();
+          }
+        });
+      }
+    });
+    
+    // console.log('[App] Challenge notification service initialized');
+  } catch (error) {
+    console.error('[App] Failed to init notification service:', error);
+    notificationInitialized = false; // 失败时重置，允许重试
+  }
+};
+
+// 销毁通知服务
+const destroyNotificationService = async () => {
+  if (unsubscribeNotification) {
+    unsubscribeNotification();
+    unsubscribeNotification = null;
+  }
+  await notificationService.disconnect();
+  notificationInitialized = false; // 重置初始化标志
+};
+
 // Initialize
 onMounted(async () => {
   await authStore.init();
@@ -260,6 +331,16 @@ onMounted(async () => {
   await wordsStore.init();
   await learningStore.init();
   await competitionStore.loadRecords();
+  
+  // 初始化挑战赛通知服务（用户已登录时）
+  if (authStore.user) {
+    await initNotificationService();
+  }
+});
+
+// Cleanup
+onUnmounted(async () => {
+  await destroyNotificationService();
 });
 
 // Watch for auth changes
@@ -267,6 +348,11 @@ watch(() => authStore.user, async (newUser, oldUser) => {
   if (newUser && !oldUser) {
     // User just logged in
     await syncAllData();
+    // 初始化挑战赛通知服务
+    await initNotificationService();
+  } else if (!newUser && oldUser) {
+    // User logged out
+    await destroyNotificationService();
   }
 });
 
