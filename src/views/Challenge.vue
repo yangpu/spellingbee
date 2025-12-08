@@ -338,6 +338,20 @@
                   </div>
                   <div 
                     class="cover-option" 
+                    :class="{ active: coverType === 'random' }"
+                    @click="selectRandomCover"
+                  >
+                    <div class="cover-option-preview" v-if="randomCoverUrl && !loadingRandomCover">
+                      <img :src="randomCoverUrl" alt="随机封面" />
+                    </div>
+                    <div class="cover-option-preview empty" v-else>
+                      <t-loading v-if="loadingRandomCover" size="small" />
+                      <t-icon v-else name="refresh" size="24px" />
+                    </div>
+                    <span>随机</span>
+                  </div>
+                  <div 
+                    class="cover-option" 
                     :class="{ active: coverType === 'custom' }"
                     @click="triggerUpload"
                   >
@@ -449,9 +463,11 @@ const coverFiles = ref([])
 const uploadingCover = ref(false)
 const uploadRef = ref(null) // 上传组件引用
 
-// 封面类型：none, default, custom
+// 封面类型：none, default, random, custom
 const coverType = ref('default')
 const customCoverUrl = ref('')
+const randomCoverUrl = ref('')
+const loadingRandomCover = ref(false)
 const defaultCoverUrl = `${import.meta.env.BASE_URL}challenge-default.svg`
 
 // 获取封面图片URL（处理默认封面和旧数据兼容）
@@ -614,6 +630,7 @@ async function openCreateDialog() {
   coverType.value = 'default'
   createData.image_url = 'default' // 使用标识符而不是完整路径
   customCoverUrl.value = ''
+  randomCoverUrl.value = ''
   coverFiles.value = []
   showCreateDialog.value = true
 }
@@ -800,8 +817,50 @@ function selectCoverType(type) {
     createData.image_url = ''
   } else if (type === 'default') {
     createData.image_url = 'default' // 使用标识符而不是完整路径
+  } else if (type === 'random' && randomCoverUrl.value) {
+    createData.image_url = randomCoverUrl.value
   } else if (type === 'custom' && customCoverUrl.value) {
     createData.image_url = customCoverUrl.value
+  }
+}
+
+// 选择随机封面
+async function selectRandomCover() {
+  coverType.value = 'random'
+  await fetchRandomCover()
+}
+
+// 获取随机封面图片
+async function fetchRandomCover() {
+  if (loadingRandomCover.value) return // 防止重复请求
+  
+  loadingRandomCover.value = true
+  
+  try {
+    // 使用 Picsum API 获取随机图片（更稳定）
+    // 使用随机种子确保每次获取不同图片
+    const seed = Date.now() + Math.random().toString(36).slice(2, 8)
+    const imageUrl = `https://picsum.photos/seed/${seed}/400/200`
+    
+    // 预加载图片确保可用
+    await new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        // 获取实际加载的URL（Picsum会重定向到CDN）
+        randomCoverUrl.value = img.src
+        createData.image_url = img.src
+        resolve()
+      }
+      img.onerror = () => reject(new Error('Image load failed'))
+      img.src = imageUrl
+      // 设置超时
+      setTimeout(() => reject(new Error('timeout')), 10000)
+    })
+  } catch (error) {
+    console.error('Failed to fetch random cover:', error)
+    MessagePlugin.error('获取随机图片失败，请重试')
+  } finally {
+    loadingRandomCover.value = false
   }
 }
 
@@ -1041,6 +1100,7 @@ async function handleCreate({ validateResult }) {
     createData.image_url = ''
     coverFiles.value = []
     customCoverUrl.value = ''
+    randomCoverUrl.value = ''
     coverType.value = 'default'
   } catch (error) {
     MessagePlugin.error(error.message || '创建失败')
@@ -1510,7 +1570,7 @@ onMounted(async () => {
 
   .cover-options {
     display: flex;
-    gap: 1rem;
+    gap: 0.3rem;
   }
 
   .cover-option {
