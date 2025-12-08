@@ -582,6 +582,8 @@ async function loadSettings() {
         show_chinese: settings.show_chinese ?? true,
         show_english: settings.show_english ?? true
       })
+      // 恢复封面类型
+      coverType.value = settings.coverType ?? 'default'
     }
   } catch (e) {
     console.error('Error loading challenge settings:', e)
@@ -599,7 +601,8 @@ function saveSettings() {
       difficulty: createData.difficulty,
       word_mode: createData.word_mode,
       show_chinese: createData.show_chinese,
-      show_english: createData.show_english
+      show_english: createData.show_english,
+      coverType: coverType.value
     }))
   } catch (e) {
     console.error('Error saving challenge settings:', e)
@@ -626,12 +629,27 @@ async function getRandomWordForName() {
 async function openCreateDialog() {
   const randomWord = await getRandomWordForName()
   createData.name = `挑战赛-${randomWord.toUpperCase()}`
-  // 重置封面选择为默认
-  coverType.value = 'default'
-  createData.image_url = 'default' // 使用标识符而不是完整路径
+  // 根据保存的封面类型设置
   customCoverUrl.value = ''
   randomCoverUrl.value = ''
   coverFiles.value = []
+  
+  // 根据封面类型设置 image_url
+  if (coverType.value === 'none') {
+    createData.image_url = ''
+  } else if (coverType.value === 'default') {
+    createData.image_url = 'default'
+  } else if (coverType.value === 'random') {
+    // 随机封面：自动获取新图片
+    createData.image_url = ''
+    fetchRandomCover()
+  } else if (coverType.value === 'custom') {
+    // 自定义封面：需要重新上传
+    createData.image_url = ''
+    coverType.value = 'default'
+    createData.image_url = 'default'
+  }
+  
   showCreateDialog.value = true
 }
 
@@ -830,6 +848,11 @@ async function selectRandomCover() {
   await fetchRandomCover()
 }
 
+// Unsplash API 配置
+const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY
+// 随机封面主题列表
+const randomCoverTopics = ['technology', 'artificial-intelligence', 'sports', 'nature']
+
 // 获取随机封面图片
 async function fetchRandomCover() {
   if (loadingRandomCover.value) return // 防止重复请求
@@ -837,24 +860,43 @@ async function fetchRandomCover() {
   loadingRandomCover.value = true
   
   try {
-    // 使用 Picsum API 获取随机图片（更稳定）
-    // 使用随机种子确保每次获取不同图片
-    const seed = Date.now() + Math.random().toString(36).slice(2, 8)
-    const imageUrl = `https://picsum.photos/seed/${seed}/400/200`
+    // 随机选择一个主题
+    const topic = randomCoverTopics[Math.floor(Math.random() * randomCoverTopics.length)]
+    // 使用 Unsplash API 获取随机图片
+    const response = await fetch(
+      `https://api.unsplash.com/photos/random?query=${topic}&orientation=landscape&w=800&h=400`,
+      {
+        headers: {
+          'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}`
+        }
+      }
+    )
+    
+    if (!response.ok) {
+      throw new Error(`Unsplash API error: ${response.status}`)
+    }
+    
+    const data = await response.json()
+    // 使用 regular 尺寸的图片URL（约 1080px 宽）
+    const imageUrl = data.urls?.regular || data.urls?.small
+    
+    if (!imageUrl) {
+      throw new Error('No image URL in response')
+    }
     
     // 预加载图片确保可用
     await new Promise((resolve, reject) => {
       const img = new Image()
+      img.crossOrigin = 'anonymous'
       img.onload = () => {
-        // 获取实际加载的URL（Picsum会重定向到CDN）
-        randomCoverUrl.value = img.src
-        createData.image_url = img.src
+        randomCoverUrl.value = imageUrl
+        createData.image_url = imageUrl
         resolve()
       }
       img.onerror = () => reject(new Error('Image load failed'))
       img.src = imageUrl
       // 设置超时
-      setTimeout(() => reject(new Error('timeout')), 10000)
+      setTimeout(() => reject(new Error('timeout')), 15000)
     })
   } catch (error) {
     console.error('Failed to fetch random cover:', error)
@@ -1018,42 +1060,47 @@ async function quickCreate(playerCount) {
       .eq('name', name)
       .limit(1)
     
+    let finalName = name
     if (existing && existing.length > 0) {
       // 如果重复，添加时间戳
       const timestamp = Date.now().toString(36).slice(-4)
-      const uniqueName = `${playerCount}人对战-${randomWord.toUpperCase()}-${timestamp}`
-      await doQuickCreate(uniqueName, playerCount)
-    } else {
-      await doQuickCreate(name, playerCount)
+      finalName = `${playerCount}人对战-${randomWord.toUpperCase()}-${timestamp}`
     }
+    
+    // 保存设置
+    saveSettings()
+    
+    // 确定封面URL
+    let imageUrl = 'default'
+    if (coverType.value === 'none') {
+      imageUrl = ''
+    } else if (coverType.value === 'random' && randomCoverUrl.value) {
+      imageUrl = randomCoverUrl.value
+    } else if (coverType.value === 'custom' && customCoverUrl.value) {
+      imageUrl = customCoverUrl.value
+    }
+    
+    await challengeStore.createChallenge({
+      name: finalName,
+      description: undefined,
+      image_url: imageUrl || undefined,
+      max_participants: playerCount,
+      entry_fee: createData.entry_fee,
+      word_count: createData.word_count,
+      time_limit: createData.time_limit,
+      difficulty: createData.difficulty,
+      word_mode: createData.word_mode,
+      show_chinese: createData.show_chinese,
+      show_english: createData.show_english
+    })
+    
+    showCreateDialog.value = false
+    MessagePlugin.success(`${playerCount}人对战创建成功`)
   } catch (error) {
     MessagePlugin.error(error.message || '创建失败')
   } finally {
     quickCreating.value = null
   }
-}
-
-// 执行快速创建
-async function doQuickCreate(name, playerCount) {
-  // 保存设置
-  saveSettings()
-  
-  await challengeStore.createChallenge({
-    name,
-    description: undefined,
-    image_url: 'default',
-    max_participants: playerCount,
-    entry_fee: createData.entry_fee,
-    word_count: createData.word_count,
-    time_limit: createData.time_limit,
-    difficulty: createData.difficulty,
-    word_mode: createData.word_mode,
-    show_chinese: createData.show_chinese,
-    show_english: createData.show_english
-  })
-  
-  showCreateDialog.value = false
-  MessagePlugin.success(`${playerCount}人对战创建成功`)
 }
 
 async function handleCreate({ validateResult }) {
