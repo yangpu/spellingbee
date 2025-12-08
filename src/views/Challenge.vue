@@ -262,122 +262,162 @@
       :footer="false"
       width="500px"
     >
-      <t-form
-        ref="createForm"
-        :data="createData"
-        :rules="createRules"
-        @submit="handleCreate"
-        label-width="100px"
-      >
-        <t-form-item name="name" label="挑战赛名称">
-          <t-input v-model="createData.name" placeholder="给挑战赛起个名字" maxlength="30" />
-        </t-form-item>
-        <t-form-item name="description" label="描述">
-          <t-textarea v-model="createData.description" placeholder="描述一下这场挑战赛（可选）" maxlength="200" />
-        </t-form-item>
-        <t-form-item name="image_url" label="封面图片">
-          <div class="cover-selection">
-            <div class="cover-options">
-              <div 
-                class="cover-option" 
-                :class="{ active: coverType === 'none' }"
-                @click="selectCoverType('none')"
-              >
-                <div class="cover-option-preview empty">
-                  <t-icon name="image" size="24px" />
-                </div>
-                <span>无封面</span>
-              </div>
-              <div 
-                class="cover-option" 
-                :class="{ active: coverType === 'default' }"
-                @click="selectCoverType('default')"
-              >
-                <div class="cover-option-preview">
-                  <img :src="`${baseUrl}challenge-default.svg`" alt="默认封面" />
-                </div>
-                <span>默认</span>
-              </div>
-              <div 
-                class="cover-option" 
-                :class="{ active: coverType === 'custom' }"
-                @click="triggerUpload"
-              >
-                <div class="cover-option-preview" v-if="customCoverUrl">
-                  <img :src="customCoverUrl" alt="自定义封面" />
-                </div>
-                <div class="cover-option-preview empty" v-else>
-                  <t-icon name="upload" size="24px" />
-                </div>
-                <span>自定义</span>
-              </div>
-            </div>
-            <t-upload
-              ref="uploadRef"
-              v-model="coverFiles"
-              :action="''"
-              theme="custom"
-              accept="image/*"
-              :auto-upload="false"
-              :show-upload-progress="false"
-              :request-method="customUpload"
-              @change="handleCoverChange"
-              style="display: none;"
-            />
-            <t-loading v-if="uploadingCover" size="small" class="upload-loading" />
-          </div>
-        </t-form-item>
-        <t-form-item name="max_participants" label="参赛人数">
-          <t-input-number v-model="createData.max_participants" :min="2" :max="10" />
-        </t-form-item>
-        <t-form-item name="entry_fee" label="参赛积分">
-          <t-input-number v-model="createData.entry_fee" :min="0" :max="1000" :step="10" />
-          <span class="form-hint">赢家将获得所有参赛积分</span>
-        </t-form-item>
-        <t-form-item name="word_count" label="单词数量">
-          <t-input-number v-model="createData.word_count" :min="5" :max="500" :step="5" />
-          <span class="form-hint">5-500个单词</span>
-        </t-form-item>
-        <t-form-item name="time_limit" label="答题时间">
-          <t-slider v-model="createData.time_limit" :min="15" :max="60" :step="5" :marks="timeLimitMarks" />
-        </t-form-item>
-        <t-form-item name="difficulty" label="难度选择">
-          <t-radio-group v-model="createData.difficulty" variant="default-filled">
-            <t-radio-button :value="null">全部</t-radio-button>
-            <t-radio-button :value="1">简单</t-radio-button>
-            <t-radio-button :value="2">较易</t-radio-button>
-            <t-radio-button :value="3">中等</t-radio-button>
-            <t-radio-button :value="4">较难</t-radio-button>
-            <t-radio-button :value="5">困难</t-radio-button>
-          </t-radio-group>
-        </t-form-item>
-        <t-form-item name="word_mode" label="出题模式">
-          <t-radio-group v-model="createData.word_mode" variant="default-filled">
-            <t-radio-button value="simulate">模拟</t-radio-button>
-            <t-radio-button value="new">新题</t-radio-button>
-            <t-radio-button value="random">随机</t-radio-button>
-            <t-radio-button value="sequential">顺序</t-radio-button>
-            <t-radio-button value="reverse">倒序</t-radio-button>
-          </t-radio-group>
-          <span class="form-hint mode-hint">{{ wordModeHint }}</span>
-        </t-form-item>
-        <t-form-item name="hint_options" label="提示选项">
-          <div class="hint-options">
-            <t-checkbox v-model="createData.show_chinese">中文词义</t-checkbox>
-            <t-checkbox v-model="createData.show_english">英文释义</t-checkbox>
-          </div>
-        </t-form-item>
-        <div class="form-actions">
-          <t-button variant="outline" @click="showCreateDialog = false">
-            <template #icon><t-icon name="close" /></template>
-            取消
+      <!-- 快速创建按钮 -->
+      <div class="quick-create-section">
+        <div class="quick-create-buttons">
+          <t-button 
+            theme="primary" 
+            size="large" 
+            block 
+            :loading="quickCreating === 2"
+            :disabled="quickCreating !== null"
+            @click="quickCreate(2)"
+          >
+            <template #icon><t-icon name="usergroup-add" /></template>
+            两人对战
           </t-button>
-          <t-button theme="primary" type="submit" :loading="creating">
-            <template #icon><t-icon name="add" /></template>
-            创建
+          <t-button 
+            variant="outline"
+            size="large" 
+            block 
+            :loading="quickCreating === 3"
+            :disabled="quickCreating !== null"
+            @click="quickCreate(3)"
+          >
+            <template #icon><t-icon name="usergroup" /></template>
+            三人对战
           </t-button>
         </div>
-      </t-form>
+      </div>
+
+      <!-- 定制挑战赛切换 -->
+      <div class="custom-create-section">
+        <div class="custom-toggle" @click="showCustomCreate = !showCustomCreate">
+          <span class="toggle-title">
+            <t-icon name="setting" />
+            定制挑战赛
+          </span>
+          <t-icon :name="showCustomCreate ? 'chevron-up' : 'chevron-down'" />
+        </div>
+        <div class="custom-content" :class="showCustomCreate ? 'expanded' : 'collapsed'">
+          <t-form
+            ref="createForm"
+            :data="createData"
+            :rules="createRules"
+            @submit="handleCreate"
+            label-width="100px"
+          >
+            <t-form-item name="name" label="名称">
+              <t-input v-model="createData.name" placeholder="给挑战赛起个名字" maxlength="30" />
+            </t-form-item>
+            <t-form-item name="description" label="描述">
+              <t-textarea v-model="createData.description" placeholder="描述一下这场挑战赛（可选）" maxlength="200" />
+            </t-form-item>
+            <t-form-item name="image_url" label="封面图片">
+              <div class="cover-selection">
+                <div class="cover-options">
+                  <div 
+                    class="cover-option" 
+                    :class="{ active: coverType === 'none' }"
+                    @click="selectCoverType('none')"
+                  >
+                    <div class="cover-option-preview empty">
+                      <t-icon name="image" size="24px" />
+                    </div>
+                    <span>无封面</span>
+                  </div>
+                  <div 
+                    class="cover-option" 
+                    :class="{ active: coverType === 'default' }"
+                    @click="selectCoverType('default')"
+                  >
+                    <div class="cover-option-preview">
+                      <img :src="`${baseUrl}challenge-default.svg`" alt="默认封面" />
+                    </div>
+                    <span>默认</span>
+                  </div>
+                  <div 
+                    class="cover-option" 
+                    :class="{ active: coverType === 'custom' }"
+                    @click="triggerUpload"
+                  >
+                    <div class="cover-option-preview" v-if="customCoverUrl">
+                      <img :src="customCoverUrl" alt="自定义封面" />
+                    </div>
+                    <div class="cover-option-preview empty" v-else>
+                      <t-icon name="upload" size="24px" />
+                    </div>
+                    <span>自定义</span>
+                  </div>
+                </div>
+                <t-upload
+                  ref="uploadRef"
+                  v-model="coverFiles"
+                  :action="''"
+                  theme="custom"
+                  accept="image/*"
+                  :auto-upload="false"
+                  :show-upload-progress="false"
+                  :request-method="customUpload"
+                  @change="handleCoverChange"
+                  style="display: none;"
+                />
+                <t-loading v-if="uploadingCover" size="small" class="upload-loading" />
+              </div>
+            </t-form-item>
+            <t-form-item name="max_participants" label="参赛人数">
+              <t-input-number v-model="createData.max_participants" :min="2" :max="10" />
+            </t-form-item>
+            <t-form-item name="entry_fee" label="参赛积分">
+              <t-input-number v-model="createData.entry_fee" :min="0" :max="1000" :step="10" />
+              <span class="form-hint">赢家将获得所有参赛积分</span>
+            </t-form-item>
+            <t-form-item name="word_count" label="单词数量">
+              <t-input-number v-model="createData.word_count" :min="5" :max="500" :step="5" />
+              <span class="form-hint">5-500个单词</span>
+            </t-form-item>
+            <t-form-item name="time_limit" label="答题时间">
+              <t-slider v-model="createData.time_limit" :min="15" :max="60" :step="5" :marks="timeLimitMarks" />
+            </t-form-item>
+            <t-form-item name="difficulty" label="难度选择">
+              <t-radio-group v-model="createData.difficulty" variant="default-filled">
+                <t-radio-button :value="null">全部</t-radio-button>
+                <t-radio-button :value="1">简单</t-radio-button>
+                <t-radio-button :value="2">较易</t-radio-button>
+                <t-radio-button :value="3">中等</t-radio-button>
+                <t-radio-button :value="4">较难</t-radio-button>
+                <t-radio-button :value="5">困难</t-radio-button>
+              </t-radio-group>
+            </t-form-item>
+            <t-form-item name="word_mode" label="出题模式">
+              <t-radio-group v-model="createData.word_mode" variant="default-filled">
+                <t-radio-button value="simulate">模拟</t-radio-button>
+                <t-radio-button value="new">新题</t-radio-button>
+                <t-radio-button value="random">随机</t-radio-button>
+                <t-radio-button value="sequential">顺序</t-radio-button>
+                <t-radio-button value="reverse">倒序</t-radio-button>
+              </t-radio-group>
+              <span class="form-hint mode-hint">{{ wordModeHint }}</span>
+            </t-form-item>
+            <t-form-item name="hint_options" label="提示选项">
+              <div class="hint-options">
+                <t-checkbox v-model="createData.show_chinese">中文词义</t-checkbox>
+                <t-checkbox v-model="createData.show_english">英文释义</t-checkbox>
+              </div>
+            </t-form-item>
+            <div class="form-actions">
+              <t-button variant="outline" @click="showCreateDialog = false">
+                <template #icon><t-icon name="close" /></template>
+                取消
+              </t-button>
+              <t-button theme="primary" type="submit" :loading="creating">
+                <template #icon><t-icon name="add" /></template>
+                创建
+              </t-button>
+            </div>
+          </t-form>
+        </div>
+      </div>
     </t-dialog>
   </div>
 </template>
@@ -402,6 +442,8 @@ const wordsStore = useWordsStore()
 
 const showCreateDialog = ref(false)
 const creating = ref(false)
+const quickCreating = ref(null) // 快速创建状态：null, 2, 3
+const showCustomCreate = ref(false) // 定制挑战赛展开状态，默认不展开
 const connectingId = ref(null) // 正在连接的挑战赛ID
 const coverFiles = ref([])
 const uploadingCover = ref(false)
@@ -899,6 +941,60 @@ async function handleDelete(challenge) {
     },
     onClose: () => dialog.destroy()
   })
+}
+
+// 快速创建挑战赛（两人/三人对战）
+async function quickCreate(playerCount) {
+  quickCreating.value = playerCount
+  
+  try {
+    // 生成随机名称
+    const randomWord = await getRandomWordForName()
+    const name = `${playerCount}人对战-${randomWord.toUpperCase()}`
+    
+    // 检查名称是否重复
+    const { data: existing } = await supabase
+      .from('challenges')
+      .select('id')
+      .eq('name', name)
+      .limit(1)
+    
+    if (existing && existing.length > 0) {
+      // 如果重复，添加时间戳
+      const timestamp = Date.now().toString(36).slice(-4)
+      const uniqueName = `${playerCount}人对战-${randomWord.toUpperCase()}-${timestamp}`
+      await doQuickCreate(uniqueName, playerCount)
+    } else {
+      await doQuickCreate(name, playerCount)
+    }
+  } catch (error) {
+    MessagePlugin.error(error.message || '创建失败')
+  } finally {
+    quickCreating.value = null
+  }
+}
+
+// 执行快速创建
+async function doQuickCreate(name, playerCount) {
+  // 保存设置
+  saveSettings()
+  
+  await challengeStore.createChallenge({
+    name,
+    description: undefined,
+    image_url: 'default',
+    max_participants: playerCount,
+    entry_fee: createData.entry_fee,
+    word_count: createData.word_count,
+    time_limit: createData.time_limit,
+    difficulty: createData.difficulty,
+    word_mode: createData.word_mode,
+    show_chinese: createData.show_chinese,
+    show_english: createData.show_english
+  })
+  
+  showCreateDialog.value = false
+  MessagePlugin.success(`${playerCount}人对战创建成功`)
 }
 
 async function handleCreate({ validateResult }) {
@@ -1489,6 +1585,66 @@ onMounted(async () => {
   gap: 1.5rem;
 }
 
+// 快速创建区域样式
+.quick-create-section {
+  margin-bottom: 1rem;
+  min-width: 100%; // 确保宽度稳定
+
+  .quick-create-buttons {
+    display: flex;
+    gap: 1rem;
+
+    .t-button {
+      flex: 1;
+      height: 56px;
+      font-size: 1rem;
+    }
+  }
+}
+
+// 定制挑战赛区域样式
+.custom-create-section {
+  min-width: 100%; // 确保宽度稳定
+
+  .custom-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+
+    &:hover {
+      color: var(--text-primary);
+    }
+
+    .toggle-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+  }
+
+  .custom-content {
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+    
+    &.collapsed {
+      max-height: 0;
+      opacity: 0;
+      padding-top: 0;
+    }
+    
+    &.expanded {
+      max-height: 1000px;
+      opacity: 1;
+      padding-top: 1rem;
+    }
+  }
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -1514,6 +1670,123 @@ onMounted(async () => {
 
   .challenge-cards {
     grid-template-columns: 1fr;
+  }
+
+  // 移动端创建挑战赛弹窗优化
+  :deep(.t-dialog) {
+    .t-dialog__body {
+      max-height: 60vh;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+  }
+
+  // 快速创建按钮移动端优化
+  .quick-create-section {
+    margin-bottom: 0.75rem;
+
+    .quick-create-buttons {
+      gap: 0.75rem;
+
+      .t-button {
+        height: 48px;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  // 移动端定制挑战赛表单优化
+  .custom-create-section {
+    .custom-toggle {
+      padding: 0.5rem 0;
+    }
+
+    .custom-content {
+      max-width: 100%;
+      box-sizing: border-box;
+
+      &.expanded {
+        padding-top: 0.75rem;
+      }
+
+      :deep(.t-form) {
+        max-width: 100%;
+
+        .t-form__item {
+          flex-direction: column;
+          align-items: flex-start;
+          margin-bottom: 0.75rem;
+
+          .t-form__label {
+            width: auto !important;
+            padding-right: 0;
+            margin-bottom: 0.25rem;
+            font-size: 0.85rem;
+          }
+
+          .t-form__controls {
+            width: 100%;
+            margin-left: 0 !important;
+          }
+        }
+
+        // radio-group 自适应换行
+        .t-radio-group {
+          flex-wrap: wrap;
+          gap: 0.35rem;
+
+          .t-radio-button {
+            flex: none;
+            padding: 0 0.5rem;
+            font-size: 0.8rem;
+            height: 28px;
+            line-height: 26px;
+          }
+        }
+
+        // 滑块宽度自适应
+        .t-slider {
+          width: 100%;
+        }
+
+        // 输入框优化
+        .t-input, .t-textarea, .t-input-number {
+          font-size: 0.9rem;
+        }
+      }
+    }
+  }
+
+  // 封面选项移动端优化
+  .cover-options {
+    gap: 0.5rem !important;
+
+    .cover-option {
+      .cover-option-preview {
+        width: 80px !important;
+        height: 54px !important;
+      }
+
+      span {
+        font-size: 0.75rem;
+      }
+    }
+  }
+
+  // 表单提示文字优化
+  .form-hint {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+  }
+
+  // 表单操作按钮优化
+  .form-actions {
+    margin-top: 1rem;
+    gap: 0.75rem;
+    
+    .t-button {
+      font-size: 0.9rem;
+    }
   }
 }
 </style>
