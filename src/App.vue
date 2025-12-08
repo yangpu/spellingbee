@@ -18,7 +18,7 @@
           <t-icon name="microphone" />
           <span>比赛</span>
         </router-link>
-        <router-link to="/challenge" class="nav-link">
+        <router-link to="/challenge" class="nav-link" :class="{ 'router-link-active': isChallengeActive }">
           <t-icon name="usergroup" />
           <span>挑战</span>
         </router-link>
@@ -122,6 +122,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useWordsStore } from '@/stores/words';
@@ -133,11 +134,17 @@ import UserProfile from '@/components/UserProfile.vue';
 const baseUrl = import.meta.env.BASE_URL;
 const appVersion = __APP_VERSION__;
 
+const route = useRoute();
 const authStore = useAuthStore();
 const wordsStore = useWordsStore();
 const competitionStore = useCompetitionStore();
 const learningStore = useLearningStore();
 const speechStore = useSpeechStore();
+
+// 判断挑战路由是否激活（包括 /challenge 和 /challenge/:id）
+const isChallengeActive = computed(() => {
+  return route.path === '/challenge' || route.path.startsWith('/challenge/')
+});
 
 const showAuthDialog = ref(false);
 const showProfileDialog = ref(false);

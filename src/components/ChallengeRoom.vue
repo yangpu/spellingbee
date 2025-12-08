@@ -3,18 +3,28 @@
     <!-- 等待/准备阶段 -->
     <div class="room-waiting" v-if="challengeStore.gameStatus === 'waiting' || challengeStore.gameStatus === 'ready'">
       <div class="room-header">
-        <t-button variant="text" @click="handleLeave">
-          <template #icon><t-icon name="chevron-left" /></template>
-          返回列表
-        </t-button>
-        <div class="room-title">
-          <h2>{{ challenge?.name }}</h2>
-          <t-tag :theme="statusTheme" variant="light">{{ statusText }}</t-tag>
-        </div>
-        <div class="room-actions" v-if="challengeStore.isCreator">
-          <t-button variant="outline" theme="danger" size="small" @click="handleCancel">
-            取消挑战赛
+        <div class="room-header-top">
+          <t-button variant="text" @click="handleLeave">
+            <template #icon><t-icon name="chevron-left" /></template>
+            返回列表
           </t-button>
+          <div class="room-actions" v-if="challengeStore.isCreator">
+            <t-button variant="outline" theme="danger" size="small" @click="handleCancel">
+              取消挑战赛
+            </t-button>
+          </div>
+        </div>
+        <div class="room-header-main">
+          <div class="room-cover" v-if="challenge?.image_url">
+            <img :src="challenge.image_url" alt="" />
+          </div>
+          <div class="room-cover placeholder" v-else>
+            <t-icon name="trophy" size="32px" />
+          </div>
+          <div class="room-title">
+            <h2>{{ challenge?.name }}</h2>
+            <t-tag :theme="statusTheme" variant="light">{{ statusText }}</t-tag>
+          </div>
         </div>
       </div>
 
@@ -615,18 +625,52 @@ onUnmounted(() => {
 // 等待阶段
 .room-waiting {
   .room-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     margin-bottom: 2rem;
+
+    .room-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .room-header-main {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .room-cover {
+      width: 80px;
+      height: 56px;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--honey-400) 0%, var(--honey-500) 100%);
+
+      &.placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+      }
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
 
     .room-title {
       display: flex;
       align-items: center;
       gap: 1rem;
+      flex-wrap: wrap;
 
       h2 {
         margin: 0;
+        font-size: 1.25rem;
       }
     }
   }
@@ -1543,6 +1587,18 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .room-waiting {
+    .room-header {
+      .room-header-main {
+        flex-direction: column;
+        align-items: flex-start;
+
+        .room-cover {
+          width: 100%;
+          height: 120px;
+        }
+      }
+    }
+
     .room-info {
       grid-template-columns: repeat(2, 1fr);
     }

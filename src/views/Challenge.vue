@@ -63,6 +63,15 @@
             <span class="tab-label">已结束</span>
             <span class="tab-count finished">{{ statusCounts.finished }}</span>
           </div>
+          <div 
+            v-if="authStore.user"
+            class="status-tab" 
+            :class="{ active: statusFilter === 'mine' }"
+            @click="statusFilter = 'mine'"
+          >
+            <span class="tab-label">我的比赛</span>
+            <span class="tab-count mine">{{ statusCounts.mine }}</span>
+          </div>
         </div>
         <div class="search-box">
           <t-input 
@@ -267,35 +276,55 @@
           <t-textarea v-model="createData.description" placeholder="描述一下这场挑战赛（可选）" maxlength="200" />
         </t-form-item>
         <t-form-item name="image_url" label="封面图片">
-          <div class="cover-upload">
+          <div class="cover-selection">
+            <div class="cover-options">
+              <div 
+                class="cover-option" 
+                :class="{ active: coverType === 'none' }"
+                @click="selectCoverType('none')"
+              >
+                <div class="cover-option-preview empty">
+                  <t-icon name="image" size="24px" />
+                </div>
+                <span>无封面</span>
+              </div>
+              <div 
+                class="cover-option" 
+                :class="{ active: coverType === 'default' }"
+                @click="selectCoverType('default')"
+              >
+                <div class="cover-option-preview">
+                  <img :src="`${baseUrl}challenge-default.svg`" alt="默认封面" />
+                </div>
+                <span>默认</span>
+              </div>
+              <div 
+                class="cover-option" 
+                :class="{ active: coverType === 'custom' }"
+                @click="triggerUpload"
+              >
+                <div class="cover-option-preview" v-if="customCoverUrl">
+                  <img :src="customCoverUrl" alt="自定义封面" />
+                </div>
+                <div class="cover-option-preview empty" v-else>
+                  <t-icon name="upload" size="24px" />
+                </div>
+                <span>自定义</span>
+              </div>
+            </div>
             <t-upload
+              ref="uploadRef"
               v-model="coverFiles"
               :action="''"
-              theme="image"
+              theme="custom"
               accept="image/*"
               :auto-upload="false"
               :show-upload-progress="false"
               :request-method="customUpload"
               @change="handleCoverChange"
-            >
-              <template #default>
-                <div class="upload-area" v-if="!createData.image_url">
-                  <t-icon name="add" size="32px" />
-                  <span>上传封面</span>
-                </div>
-                <img v-else :src="createData.image_url" class="cover-preview" />
-              </template>
-            </t-upload>
+              style="display: none;"
+            />
             <t-loading v-if="uploadingCover" size="small" class="upload-loading" />
-            <t-button 
-              v-if="createData.image_url" 
-              variant="text" 
-              theme="danger" 
-              size="small"
-              @click="removeCover"
-            >
-              移除
-            </t-button>
           </div>
         </t-form-item>
         <t-form-item name="max_participants" label="参赛人数">
@@ -334,8 +363,8 @@
         </t-form-item>
         <t-form-item name="hint_options" label="提示选项">
           <div class="hint-options">
-            <t-checkbox v-model="createData.show_chinese">显示中文词义</t-checkbox>
-            <t-checkbox v-model="createData.show_english">显示英文释义</t-checkbox>
+            <t-checkbox v-model="createData.show_chinese">中文词义</t-checkbox>
+            <t-checkbox v-model="createData.show_english">英文释义</t-checkbox>
           </div>
         </t-form-item>
         <div class="form-actions">
@@ -354,7 +383,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, h } from 'vue'
+import { ref, reactive, onMounted, computed, h, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { SearchIcon } from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/stores/auth'
@@ -363,6 +393,8 @@ import { supabase } from '@/lib/supabase'
 import ChallengeRoom from '@/components/ChallengeRoom.vue'
 
 const baseUrl = import.meta.env.BASE_URL
+const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const challengeStore = useChallengeStore()
 
@@ -372,6 +404,12 @@ const connectingId = ref(null) // 正在连接的挑战赛ID
 const coverFiles = ref([])
 const uploadingCover = ref(false)
 const nextChallengeNumber = ref(1) // 下一个比赛序号
+const uploadRef = ref(null) // 上传组件引用
+
+// 封面类型：none, default, custom
+const coverType = ref('default')
+const customCoverUrl = ref('')
+const defaultCoverUrl = `${import.meta.env.BASE_URL}challenge-default.svg`
 
 // 过滤和分页
 const statusFilter = ref('all')
@@ -379,23 +417,36 @@ const searchKeyword = ref('')
 const currentPage = ref(1)
 const pageSize = 12
 
+// 滚动位置保存
+const savedScrollPosition = ref(0)
+
 // 状态统计
 const statusCounts = computed(() => {
   const challenges = challengeStore.challenges
+  const userId = authStore.user?.id
   return {
     all: challenges.length,
     waiting: challenges.filter(c => c.status === 'waiting' || c.status === 'ready').length,
     in_progress: challenges.filter(c => c.status === 'in_progress').length,
-    finished: challenges.filter(c => c.status === 'finished').length
+    finished: challenges.filter(c => c.status === 'finished').length,
+    mine: userId ? challenges.filter(c => c.participants?.some(p => p.user_id === userId)).length : 0
   }
 })
 
 // 过滤后的挑战赛
 const filteredChallenges = computed(() => {
   let result = challengeStore.challenges
+  const userId = authStore.user?.id
 
   // 状态过滤
-  if (statusFilter.value !== 'all') {
+  if (statusFilter.value === 'mine') {
+    // 我的比赛：参赛人员中包含当前用户
+    if (userId) {
+      result = result.filter(c => c.participants?.some(p => p.user_id === userId))
+    } else {
+      result = []
+    }
+  } else if (statusFilter.value !== 'all') {
     if (statusFilter.value === 'waiting') {
       result = result.filter(c => c.status === 'waiting' || c.status === 'ready')
     } else {
@@ -506,6 +557,11 @@ async function getNextChallengeNumber() {
 async function openCreateDialog() {
   await getNextChallengeNumber()
   createData.name = `挑战赛-${nextChallengeNumber.value}`
+  // 重置封面选择为默认
+  coverType.value = 'default'
+  createData.image_url = defaultCoverUrl
+  customCoverUrl.value = ''
+  coverFiles.value = []
   showCreateDialog.value = true
 }
 
@@ -663,7 +719,9 @@ const uploadCover = async (file) => {
       .getPublicUrl(filePath)
     
     if (urlData?.publicUrl) {
+      customCoverUrl.value = urlData.publicUrl
       createData.image_url = urlData.publicUrl
+      coverType.value = 'custom'
       MessagePlugin.success('封面上传成功')
     }
   } catch (error) {
@@ -678,6 +736,50 @@ const uploadCover = async (file) => {
 const removeCover = () => {
   createData.image_url = ''
   coverFiles.value = []
+  customCoverUrl.value = ''
+  coverType.value = 'none'
+}
+
+// 选择封面类型
+function selectCoverType(type) {
+  coverType.value = type
+  if (type === 'none') {
+    createData.image_url = ''
+  } else if (type === 'default') {
+    createData.image_url = defaultCoverUrl
+  } else if (type === 'custom' && customCoverUrl.value) {
+    createData.image_url = customCoverUrl.value
+  }
+}
+
+// 触发上传
+function triggerUpload() {
+  coverType.value = 'custom'
+  if (customCoverUrl.value) {
+    createData.image_url = customCoverUrl.value
+  } else {
+    // 触发文件选择
+    const input = document.querySelector('.cover-selection input[type="file"]')
+    if (input) input.click()
+  }
+}
+
+// 保存当前滚动位置
+function saveScrollPosition() {
+  savedScrollPosition.value = window.scrollY || document.documentElement.scrollTop
+}
+
+// 恢复滚动位置（无动画，直接跳转）
+function restoreScrollPosition() {
+  if (savedScrollPosition.value > 0) {
+    // 使用 requestAnimationFrame 确保 DOM 已渲染，同时使用 instant 避免滚动动画
+    requestAnimationFrame(() => {
+      window.scrollTo({
+        top: savedScrollPosition.value,
+        behavior: 'instant'
+      })
+    })
+  }
 }
 
 async function viewChallenge(challenge) {
@@ -694,9 +796,14 @@ async function viewChallenge(challenge) {
   
   if (connectingId.value) return // 防止重复点击
   
+  // 保存滚动位置
+  saveScrollPosition()
+  
   connectingId.value = challenge.id
   try {
     await challengeStore.joinChallenge(challenge.id)
+    // 更新 URL
+    router.push({ name: 'ChallengeRoom', params: { id: challenge.id } })
     if (!isJoined(challenge)) {
       MessagePlugin.success('加入成功')
     }
@@ -709,7 +816,12 @@ async function viewChallenge(challenge) {
 
 // 查看已结束挑战赛的详情
 function viewChallengeDetail(challenge) {
+  // 保存滚动位置
+  saveScrollPosition()
+  
   challengeStore.viewFinishedChallenge(challenge)
+  // 更新 URL
+  router.push({ name: 'ChallengeRoom', params: { id: challenge.id } })
 }
 
 async function enterChallenge(challenge) {
@@ -720,9 +832,14 @@ async function enterChallenge(challenge) {
 
   if (connectingId.value) return
   
+  // 保存滚动位置
+  saveScrollPosition()
+  
   connectingId.value = challenge.id
   try {
     await challengeStore.joinChallenge(challenge.id)
+    // 更新 URL
+    router.push({ name: 'ChallengeRoom', params: { id: challenge.id } })
   } catch (error) {
     MessagePlugin.error(error.message || '进入失败')
   } finally {
@@ -738,9 +855,14 @@ async function joinChallenge(challenge) {
 
   if (connectingId.value) return
   
+  // 保存滚动位置
+  saveScrollPosition()
+  
   connectingId.value = challenge.id
   try {
     await challengeStore.joinChallenge(challenge.id)
+    // 更新 URL
+    router.push({ name: 'ChallengeRoom', params: { id: challenge.id } })
     MessagePlugin.success('加入成功')
   } catch (error) {
     MessagePlugin.error(error.message || '加入失败')
@@ -812,6 +934,8 @@ async function handleCreate({ validateResult }) {
     createData.description = ''
     createData.image_url = ''
     coverFiles.value = []
+    customCoverUrl.value = ''
+    coverType.value = 'default'
   } catch (error) {
     MessagePlugin.error(error.message || '创建失败')
   } finally {
@@ -820,12 +944,53 @@ async function handleCreate({ validateResult }) {
 }
 
 async function refreshList() {
-  await challengeStore.loadChallenges()
+  await challengeStore.loadChallenges(true) // 强制刷新
 }
+
+// 通过 URL 参数加入挑战赛
+async function joinChallengeById(challengeId) {
+  if (!challengeId) return
+  
+  // 先加载列表以获取挑战赛信息
+  await challengeStore.loadChallenges()
+  
+  // 如果已经在这个挑战赛中，不需要重新加入
+  if (challengeStore.currentChallenge?.id === challengeId) return
+  
+  connectingId.value = challengeId
+  try {
+    await challengeStore.joinChallenge(challengeId)
+  } catch (error) {
+    MessagePlugin.error(error.message || '加入失败')
+    // 加入失败，返回列表
+    router.replace({ name: 'Challenge' })
+  } finally {
+    connectingId.value = null
+  }
+}
+
+// 监听 currentChallenge 变化，同步 URL
+watch(() => challengeStore.currentChallenge, (newVal, oldVal) => {
+  if (newVal && route.params.id !== newVal.id) {
+    // 进入挑战赛，更新 URL
+    router.replace({ name: 'ChallengeRoom', params: { id: newVal.id } })
+  } else if (!newVal && oldVal && route.params.id) {
+    // 离开挑战赛，返回列表
+    router.replace({ name: 'Challenge' })
+    // 恢复滚动位置
+    restoreScrollPosition()
+  }
+})
 
 onMounted(async () => {
   await loadSettings()
   await challengeStore.loadChallenges()
+  
+  // 如果 URL 中有挑战赛 ID，尝试加入
+  const challengeId = route.params.id
+  if (challengeId) {
+    await joinChallengeById(challengeId)
+  }
 })
 </script>
 
@@ -943,6 +1108,11 @@ onMounted(async () => {
         &.finished {
           background: var(--success-light, #d1fae5);
           color: var(--success);
+        }
+
+        &.mine {
+          background: var(--primary-light, #dbeafe);
+          color: var(--primary);
         }
       }
     }
@@ -1228,48 +1398,73 @@ onMounted(async () => {
   }
 }
 
-// 封面上传样式
-.cover-upload {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+// 封面选择样式
+.cover-selection {
   position: relative;
 
-  .upload-area {
-    width: 120px;
-    height: 80px;
-    border: 2px dashed var(--charcoal-300);
-    border-radius: 8px;
+  .cover-options {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .cover-option {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     gap: 0.5rem;
-    color: var(--text-secondary);
     cursor: pointer;
-    transition: all 0.2s;
 
-    &:hover {
-      border-color: var(--honey-400);
-      color: var(--honey-600);
+    .cover-option-preview {
+      width: 80px;
+      height: 54px;
+      border: 2px solid var(--charcoal-200);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      background: var(--bg-card);
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      &.empty {
+        background: var(--charcoal-50);
+        color: var(--text-secondary);
+      }
     }
 
     span {
-      font-size: 0.85rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
     }
-  }
 
-  .cover-preview {
-    width: 120px;
-    height: 80px;
-    object-fit: cover;
-    border-radius: 8px;
+    &:hover .cover-option-preview {
+      border-color: var(--honey-400);
+    }
+
+    &.active {
+      .cover-option-preview {
+        border-color: var(--honey-500);
+        box-shadow: 0 0 0 2px var(--honey-200);
+      }
+
+      span {
+        color: var(--honey-600);
+        font-weight: 500;
+      }
+    }
   }
 
   .upload-loading {
     position: absolute;
-    left: 50px;
-    top: 30px;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
   }
 }
 

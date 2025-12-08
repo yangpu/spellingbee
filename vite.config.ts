@@ -109,31 +109,45 @@ export default defineConfig({
               }
             }
           },
-          // Supabase API 缓存 - 挑战赛列表
+          // Supabase API 缓存 - 挑战赛列表（使用 StaleWhileRevalidate 策略）
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/challenges.*/i,
-            handler: 'NetworkFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'supabase-challenges-cache',
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 60 * 5 // 5 minutes
+                maxAgeSeconds: 60 * 10 // 10 minutes
               },
               cacheableResponse: {
                 statuses: [0, 200]
-              },
-              networkTimeoutSeconds: 10
+              }
             }
           },
-          // Supabase Storage 缓存 - 头像和封面图片
+          // Supabase Storage 缓存 - 头像和封面图片（CacheFirst，长期缓存）
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'supabase-storage-cache',
               expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Supabase API 缓存 - 其他 REST API（profiles 等）
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'supabase-api-cache',
+              expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+                maxAgeSeconds: 60 * 5 // 5 minutes
               },
               cacheableResponse: {
                 statuses: [0, 200]
@@ -143,7 +157,8 @@ export default defineConfig({
         ]
       },
       devOptions: {
-        enabled: false // 开发模式下禁用 PWA，避免 workbox 警告
+        enabled: true, // 开发模式下启用 PWA 以测试缓存
+        type: 'module'
       }
     })
   ],

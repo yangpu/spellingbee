@@ -16,6 +16,11 @@ export const useChallengeStore = defineStore('challenge', () => {
   const loading = ref(false)
   const syncing = ref(false)
   const myChallengeRecords = ref<Challenge[]>([]) // 用户参与的挑战记录
+  
+  // 缓存控制
+  const lastLoadTime = ref<number>(0)
+  const CACHE_DURATION = 30 * 1000 // 30秒内不重复请求
+  const needRefreshOnReturn = ref<boolean>(false) // 返回列表时是否需要刷新
 
   // PeerJS state
   const peer = ref<Peer | null>(null)
@@ -441,6 +446,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     stopRoundTimer()
     gameStatus.value = 'finished'
+    needRefreshOnReturn.value = true // 比赛结束后返回需要刷新
 
     if (currentChallenge.value) {
       currentChallenge.value.status = 'finished'
@@ -859,7 +865,32 @@ export const useChallengeStore = defineStore('challenge', () => {
   }
 
   // CRUD operations
-  async function loadChallenges(): Promise<void> {
+  async function loadChallenges(force = false): Promise<void> {
+    // 如果不是强制刷新，且缓存有效，直接返回
+    if (!force && challenges.value.length > 0 && Date.now() - lastLoadTime.value < CACHE_DURATION) {
+      console.log('[loadChallenges] 使用缓存，跳过刷新')
+      return
+    }
+    
+    // 防止并发请求
+    if (loading.value) {
+      if (!force) {
+        console.log('[loadChallenges] 正在加载中，跳过')
+        return
+      }
+      // 强制刷新时，等待当前加载完成
+      console.log('[loadChallenges] 等待当前加载完成...')
+      await new Promise<void>(resolve => {
+        const checkLoading = setInterval(() => {
+          if (!loading.value) {
+            clearInterval(checkLoading)
+            resolve()
+          }
+        }, 50)
+      })
+    }
+    
+    console.log('[loadChallenges] 开始从数据库加载, force:', force)
     loading.value = true
     try {
       const { data, error } = await supabase
@@ -871,10 +902,12 @@ export const useChallengeStore = defineStore('challenge', () => {
 
       if (error) throw error
       
+      console.log('[loadChallenges] 数据库返回数量:', data?.length)
       challenges.value = (data || []).map(c => ({
         ...c,
         participants: c.participants || []
       }))
+      lastLoadTime.value = Date.now()
     } catch (error) {
       console.error('Error loading challenges:', error)
     } finally {
@@ -942,6 +975,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     currentChallenge.value = newChallenge
     isHost.value = true
     gameStatus.value = 'waiting'
+    needRefreshOnReturn.value = true // 创建后返回需要刷新
 
     return newChallenge
   }
@@ -1407,7 +1441,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
   })
 
-  async function cleanup(refreshList = true): Promise<void> {
+  async function cleanup(): Promise<void> {
     stopRoundTimer()
     
     // 关闭所有连接
@@ -1421,9 +1455,13 @@ export const useChallengeStore = defineStore('challenge', () => {
     peer.value = null
     peerId.value = ''
 
-    // 先刷新列表以获取最新状态（在清理本地状态之前）
-    if (refreshList) {
-      await loadChallenges()
+    // 根据 needRefreshOnReturn 决定是否刷新列表
+    console.log('[cleanup] needRefreshOnReturn:', needRefreshOnReturn.value)
+    if (needRefreshOnReturn.value) {
+      console.log('[cleanup] 开始刷新列表...')
+      await loadChallenges(true) // 强制刷新
+      console.log('[cleanup] 刷新完成，challenges 数量:', challenges.value.length)
+      needRefreshOnReturn.value = false // 重置标记
     }
 
     // 然后重置本地状态
