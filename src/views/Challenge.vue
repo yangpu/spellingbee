@@ -389,6 +389,7 @@ import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { SearchIcon } from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useChallengeStore } from '@/stores/challenge'
+import { useWordsStore } from '@/stores/words'
 import { supabase } from '@/lib/supabase'
 import ChallengeRoom from '@/components/ChallengeRoom.vue'
 
@@ -397,13 +398,13 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const challengeStore = useChallengeStore()
+const wordsStore = useWordsStore()
 
 const showCreateDialog = ref(false)
 const creating = ref(false)
 const connectingId = ref(null) // 正在连接的挑战赛ID
 const coverFiles = ref([])
 const uploadingCover = ref(false)
-const nextChallengeNumber = ref(1) // 下一个比赛序号
 const uploadRef = ref(null) // 上传组件引用
 
 // 封面类型：none, default, custom
@@ -536,27 +537,26 @@ function saveSettings() {
   }
 }
 
-// 获取下一个比赛序号
-async function getNextChallengeNumber() {
-  try {
-    const { data, error } = await supabase
-      .from('challenges')
-      .select('challenge_number')
-      .order('challenge_number', { ascending: false })
-      .limit(1)
-    
-    if (error) throw error
-    nextChallengeNumber.value = (data?.[0]?.challenge_number || 0) + 1
-  } catch (e) {
-    console.error('Error getting next challenge number:', e)
-    nextChallengeNumber.value = 1
+// 获取随机单词作为挑战赛名称
+async function getRandomWordForName() {
+  // 确保词汇表已加载
+  if (wordsStore.words.length === 0) {
+    await wordsStore.init()
   }
+  
+  if (wordsStore.words.length > 0) {
+    const randomIndex = Math.floor(Math.random() * wordsStore.words.length)
+    return wordsStore.words[randomIndex].word
+  }
+  
+  // 如果词汇表为空，使用时间戳
+  return Date.now().toString(36)
 }
 
 // 打开创建对话框
 async function openCreateDialog() {
-  await getNextChallengeNumber()
-  createData.name = `挑战赛-${nextChallengeNumber.value}`
+  const randomWord = await getRandomWordForName()
+  createData.name = `挑战赛-${randomWord.toUpperCase()}`
   // 重置封面选择为默认
   coverType.value = 'default'
   createData.image_url = defaultCoverUrl
@@ -922,8 +922,7 @@ async function handleCreate({ validateResult }) {
       difficulty: createData.difficulty,
       word_mode: createData.word_mode,
       show_chinese: createData.show_chinese,
-      show_english: createData.show_english,
-      challenge_number: nextChallengeNumber.value
+      show_english: createData.show_english
     })
     
     showCreateDialog.value = false

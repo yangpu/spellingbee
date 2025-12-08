@@ -34,7 +34,7 @@
             <t-slider
               v-model="settings.wordCount"
               :min="5"
-              :max="30"
+              :max="100"
               :step="5"
               :marks="wordCountMarks"
             />
@@ -519,12 +519,12 @@ const wordModeHint = computed(() => {
 
 const wordCountMarks = {
   5: '5',
-  10: '10',
-  15: '15',
-  20: '20',
   25: '25',
-  30: '30',
-};
+  50: '50',
+  75: '75',
+  100: '100'
+}
+
 const timeLimitMarks = {
   30: '30s',
   45: '45s',

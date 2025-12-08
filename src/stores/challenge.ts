@@ -4,6 +4,7 @@ import Peer, { DataConnection } from 'peerjs'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { useWordsStore } from './words'
+import { useAnnouncerStore } from './announcer'
 import type { Challenge, ChallengeParticipant, ChallengeWord, ChallengeMessage, ChallengeWordResult, Word } from '@/types'
 
 export const useChallengeStore = defineStore('challenge', () => {
@@ -20,7 +21,6 @@ export const useChallengeStore = defineStore('challenge', () => {
   // 缓存控制
   const lastLoadTime = ref<number>(0)
   const CACHE_DURATION = 30 * 1000 // 30秒内不重复请求
-  const needRefreshOnReturn = ref<boolean>(false) // 返回列表时是否需要刷新
 
   // PeerJS state
   const peer = ref<Peer | null>(null)
@@ -36,6 +36,7 @@ export const useChallengeStore = defineStore('challenge', () => {
   const roundStartTime = ref(0)
   const roundTimeRemaining = ref(0)
   const roundTimer = ref<ReturnType<typeof setInterval> | null>(null)
+  const statusCheckTimer = ref<ReturnType<typeof setInterval> | null>(null) // 状态检查定时器
   const gameStatus = ref<'waiting' | 'ready' | 'playing' | 'round_result' | 'finished'>('waiting')
   const roundResults = ref<ChallengeWordResult[]>([])
   const myAnswer = ref('')
@@ -85,14 +86,39 @@ export const useChallengeStore = defineStore('challenge', () => {
 
       connectionStatus.value = 'connecting'
       
-      // 使用公共 PeerJS 服务器
+      // 使用公共 PeerJS 服务器，配置 STUN + TURN 服务器
+      // TURN 服务器是跨复杂网络连接的关键
       const newPeer = new Peer({
         debug: 2,
         config: {
           iceServers: [
+            // STUN 服务器（用于 NAT 穿透）
             { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            // 免费 TURN 服务器（OpenRelay 项目提供）
+            // 注意：免费服务器可能不稳定，生产环境建议使用付费服务
+            {
+              urls: 'turn:openrelay.metered.ca:80',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            },
+            {
+              urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            }
+          ],
+          // ICE 候选策略：优先使用 relay（TURN）可以提高复杂网络下的成功率
+          // 但会增加延迟，可选值：'all' | 'relay'
+          // iceTransportPolicy: 'all'
         }
       })
 
@@ -358,6 +384,11 @@ export const useChallengeStore = defineStore('challenge', () => {
       currentChallenge.value.started_at = new Date().toISOString()
     }
     
+    // 非主机用户启动状态检查定时器
+    if (!isHost.value) {
+      startStatusCheckTimer()
+    }
+    
     // 开始第一轮
     startRound()
   }
@@ -427,6 +458,17 @@ export const useChallengeStore = defineStore('challenge', () => {
       })
     }
 
+    // 播放播音员音效：本轮获胜播放成功音效，否则播放失败音效
+    const announcerStore = useAnnouncerStore()
+    // 确保播音员已初始化
+    announcerStore.init().then(() => {
+      if (data.winner_id === authStore.user?.id) {
+        announcerStore.playSuccess()
+      } else {
+        announcerStore.playFailure()
+      }
+    })
+
     // 3秒后进入下一轮
     setTimeout(async () => {
       if (isHost.value) {
@@ -446,7 +488,6 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     stopRoundTimer()
     gameStatus.value = 'finished'
-    needRefreshOnReturn.value = true // 比赛结束后返回需要刷新
 
     if (currentChallenge.value) {
       currentChallenge.value.status = 'finished'
@@ -475,6 +516,9 @@ export const useChallengeStore = defineStore('challenge', () => {
           participant.score = s.score
         }
       })
+
+      // 更新缓存列表中的挑战赛
+      updateChallengeInList(currentChallenge.value)
     }
   }
 
@@ -600,6 +644,61 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
   }
 
+  // 启动状态检查定时器（非主机用户使用）
+  function startStatusCheckTimer(): void {
+    stopStatusCheckTimer()
+    
+    // 每3秒检查一次数据库状态
+    statusCheckTimer.value = setInterval(async () => {
+      if (!currentChallenge.value || isHost.value || gameStatus.value === 'finished') {
+        stopStatusCheckTimer()
+        return
+      }
+
+      try {
+        const { data: latestChallenge } = await supabase
+          .from('challenges')
+          .select('status, winner_id, winner_name, prize_pool, finished_at, game_words, participants')
+          .eq('id', currentChallenge.value.id)
+          .single()
+
+        if (latestChallenge && (latestChallenge.status === 'finished' || latestChallenge.status === 'cancelled')) {
+          // 比赛已结束，更新本地状态
+          stopStatusCheckTimer()
+          stopRoundTimer()
+          
+          gameStatus.value = 'finished'
+          currentChallenge.value.status = latestChallenge.status
+          currentChallenge.value.winner_id = latestChallenge.winner_id
+          currentChallenge.value.winner_name = latestChallenge.winner_name
+          currentChallenge.value.prize_pool = latestChallenge.prize_pool
+          currentChallenge.value.finished_at = latestChallenge.finished_at
+          
+          if (latestChallenge.game_words) {
+            gameWords.value = latestChallenge.game_words
+            currentChallenge.value.game_words = latestChallenge.game_words
+          }
+          
+          if (latestChallenge.participants) {
+            currentChallenge.value.participants = latestChallenge.participants
+          }
+
+          // 更新缓存列表
+          updateChallengeInList(currentChallenge.value)
+        }
+      } catch (e) {
+        console.error('Error checking challenge status:', e)
+      }
+    }, 3000)
+  }
+
+  function stopStatusCheckTimer(): void {
+    if (statusCheckTimer.value) {
+      clearInterval(statusCheckTimer.value)
+      statusCheckTimer.value = null
+    }
+  }
+
   function endRound(winnerId: string | null): void {
     if (!isHost.value || !currentChallenge.value || !currentWord.value) return
 
@@ -673,7 +772,14 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     // 找出赢家 - 排除中途退出的用户
     const eligibleParticipants = currentChallenge.value.participants.filter(p => !p.has_left)
-    const sortedByScore = [...eligibleParticipants].sort((a, b) => b.score - a.score)
+    const sortedByScore = [...eligibleParticipants].sort((a, b) => {
+      // 先按分数排序
+      if (b.score !== a.score) return b.score - a.score
+      // 分数相同时，创建者优先
+      if (a.user_id === currentChallenge.value!.creator_id) return -1
+      if (b.user_id === currentChallenge.value!.creator_id) return 1
+      return 0
+    })
     const winner = sortedByScore[0]
 
     // 计算总奖池
@@ -684,36 +790,32 @@ export const useChallengeStore = defineStore('challenge', () => {
       score: p.score
     }))
 
-    // 先保存结果到数据库，确保状态持久化
+    const gameEndData = {
+      winner_id: winner.user_id,
+      winner_name: winner.nickname,
+      final_scores: finalScores,
+      prize_pool: totalPrize,
+      game_words: gameWords.value // 传递比赛单词记录
+    }
+
+    // 先广播游戏结束消息（多次发送确保送达）
+    const gameEndMessage: ChallengeMessage = {
+      type: 'game_end',
+      data: gameEndData,
+      sender_id: authStore.user!.id,
+      timestamp: Date.now()
+    }
+    
+    // 发送3次，间隔100ms，确保消息送达
+    broadcast(gameEndMessage)
+    setTimeout(() => broadcast(gameEndMessage), 100)
+    setTimeout(() => broadcast(gameEndMessage), 200)
+
+    // 保存结果到数据库
     await saveChallengeResult(winner.user_id)
 
-    // 然后广播游戏结束
-    broadcast({
-      type: 'game_end',
-      data: {
-        winner_id: winner.user_id,
-        winner_name: winner.nickname,
-        final_scores: finalScores,
-        prize_pool: totalPrize,
-        game_words: gameWords.value // 传递比赛单词记录
-      },
-      sender_id: authStore.user!.id,
-      timestamp: Date.now()
-    })
-
     // 本地也处理
-    handleGameEndMessage({
-      type: 'game_end',
-      data: {
-        winner_id: winner.user_id,
-        winner_name: winner.nickname,
-        final_scores: finalScores,
-        prize_pool: totalPrize,
-        game_words: gameWords.value
-      },
-      sender_id: authStore.user!.id,
-      timestamp: Date.now()
-    })
+    handleGameEndMessage(gameEndMessage)
   }
 
   // Submit answer
@@ -893,6 +995,18 @@ export const useChallengeStore = defineStore('challenge', () => {
     console.log('[loadChallenges] 开始从数据库加载, force:', force)
     loading.value = true
     try {
+      // 强制刷新时，先清除 SW 缓存
+      if (force && 'caches' in window) {
+        try {
+          const cache = await caches.open('supabase-challenges-cache')
+          const keys = await cache.keys()
+          await Promise.all(keys.map(key => cache.delete(key)))
+          console.log('[loadChallenges] SW 缓存已清除')
+        } catch (e) {
+          console.warn('[loadChallenges] 清除缓存失败:', e)
+        }
+      }
+      
       const { data, error } = await supabase
         .from('challenges')
         .select('*')
@@ -975,7 +1089,6 @@ export const useChallengeStore = defineStore('challenge', () => {
     currentChallenge.value = newChallenge
     isHost.value = true
     gameStatus.value = 'waiting'
-    needRefreshOnReturn.value = true // 创建后返回需要刷新
 
     return newChallenge
   }
@@ -983,7 +1096,7 @@ export const useChallengeStore = defineStore('challenge', () => {
   async function joinChallenge(challengeId: string): Promise<void> {
     if (!authStore.user) throw new Error('请先登录')
 
-    // 获取挑战赛信息
+    // 获取挑战赛最新信息（强制从数据库获取）
     const { data: challenge, error } = await supabase
       .from('challenges')
       .select('*')
@@ -1026,7 +1139,20 @@ export const useChallengeStore = defineStore('challenge', () => {
       } as Challenge
 
       isHost.value = true
-      gameStatus.value = 'waiting'
+      
+      // 根据比赛状态设置游戏状态
+      if (challenge.status === 'in_progress') {
+        // 比赛正在进行中，但房主刷新了页面
+        // 这种情况下比赛数据已丢失，需要标记为异常结束
+        gameStatus.value = 'finished'
+        currentChallenge.value.status = 'cancelled'
+        await supabase
+          .from('challenges')
+          .update({ status: 'cancelled' })
+          .eq('id', challengeId)
+      } else {
+        gameStatus.value = 'waiting'
+      }
       //console.log('Joined as host with peer_id:', peerId.value)
       return
     }
@@ -1047,6 +1173,48 @@ export const useChallengeStore = defineStore('challenge', () => {
         ...challenge,
         participants
       } as Challenge
+      
+      // 如果比赛正在进行中，需要重新连接并同步状态
+      // 但由于 WebRTC 状态无法恢复，参与者刷新页面后只能等待比赛结束
+      if (challenge.status === 'in_progress') {
+        // 尝试连接到主机获取最新状态
+        const creator = participants.find((p: ChallengeParticipant) => p.user_id === challenge.creator_id)
+        if (creator?.peer_id) {
+          try {
+            await connectToHost(creator.peer_id)
+            isHost.value = false
+            // 设置为 playing 状态，等待主机同步
+            gameStatus.value = 'playing'
+          } catch (e) {
+            // 连接失败，可能主机已断开，检查数据库最新状态
+            const { data: latestChallenge } = await supabase
+              .from('challenges')
+              .select('*')
+              .eq('id', challengeId)
+              .single()
+            
+            if (latestChallenge?.status === 'finished' || latestChallenge?.status === 'cancelled') {
+              viewFinishedChallenge(latestChallenge as Challenge)
+              return
+            }
+            throw new Error('无法连接到房主，请稍后再试')
+          }
+        } else {
+          // 房主不在线，检查数据库最新状态
+          const { data: latestChallenge } = await supabase
+            .from('challenges')
+            .select('*')
+            .eq('id', challengeId)
+            .single()
+          
+          if (latestChallenge?.status === 'finished' || latestChallenge?.status === 'cancelled') {
+            viewFinishedChallenge(latestChallenge as Challenge)
+            return
+          }
+          throw new Error('房主不在线，请稍后再试')
+        }
+        return
+      }
       
       // 连接到主机
       const creator = participants.find((p: ChallengeParticipant) => p.user_id === challenge.creator_id)
@@ -1152,10 +1320,15 @@ export const useChallengeStore = defineStore('challenge', () => {
   async function cancelChallenge(): Promise<void> {
     if (!currentChallenge.value || !isCreator.value) return
 
+    const challengeId = currentChallenge.value.id
+
     await supabase
       .from('challenges')
       .update({ status: 'cancelled' })
-      .eq('id', currentChallenge.value.id)
+      .eq('id', challengeId)
+
+    // 更新本地状态
+    currentChallenge.value.status = 'cancelled'
 
     // 广播取消
     broadcast({
@@ -1168,6 +1341,9 @@ export const useChallengeStore = defineStore('challenge', () => {
       sender_id: authStore.user!.id,
       timestamp: Date.now()
     })
+
+    // 更新缓存列表中的挑战赛
+    updateChallengeInList(currentChallenge.value)
 
     await cleanup()
   }
@@ -1376,7 +1552,18 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     //console.log('Challenge result saved successfully, status:', currentChallenge.value.status)
 
+    // 更新缓存列表中的挑战赛
+    updateChallengeInList(currentChallenge.value)
+
     // TODO: 更新赢家积分到用户账户
+  }
+
+  // 更新缓存列表中的挑战赛
+  function updateChallengeInList(challenge: Challenge): void {
+    const index = challenges.value.findIndex(c => c.id === challenge.id)
+    if (index !== -1) {
+      challenges.value[index] = { ...challenge }
+    }
   }
 
   // 加载用户参与的挑战记录
@@ -1443,6 +1630,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
   async function cleanup(): Promise<void> {
     stopRoundTimer()
+    stopStatusCheckTimer()
     
     // 关闭所有连接
     connections.value.forEach(conn => conn.close())
@@ -1454,15 +1642,6 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
     peer.value = null
     peerId.value = ''
-
-    // 根据 needRefreshOnReturn 决定是否刷新列表
-    console.log('[cleanup] needRefreshOnReturn:', needRefreshOnReturn.value)
-    if (needRefreshOnReturn.value) {
-      console.log('[cleanup] 开始刷新列表...')
-      await loadChallenges(true) // 强制刷新
-      console.log('[cleanup] 刷新完成，challenges 数量:', challenges.value.length)
-      needRefreshOnReturn.value = false // 重置标记
-    }
 
     // 然后重置本地状态
     currentChallenge.value = null

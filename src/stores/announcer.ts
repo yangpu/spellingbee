@@ -79,10 +79,6 @@ export const useAnnouncerStore = defineStore('announcer', () => {
     
     loadFromLocal()
     
-    if (authStore.user) {
-      await loadFromCloud()
-    }
-    
     // 预加载动物音效
     try {
       await preloadAudio(getFullSoundUrl(settings.value.animal.success.soundFile))
@@ -130,51 +126,9 @@ export const useAnnouncerStore = defineStore('announcer', () => {
     }
   }
   
-  // 从云端加载
-  async function loadFromCloud(): Promise<void> {
-    if (!authStore.user) return
-    
-    try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('announcer_settings')
-        .eq('user_id', authStore.user.id)
-        .single()
-      
-      if (!error && data?.announcer_settings) {
-        settings.value = { ...defaultSettings, ...data.announcer_settings }
-        saveToLocal()
-      }
-    } catch (e) {
-      console.error('Error loading announcer settings from cloud:', e)
-    }
-  }
-  
-  // 保存到云端
-  async function saveToCloud(): Promise<void> {
-    if (!authStore.user) return
-    
-    try {
-      await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: authStore.user.id,
-          announcer_settings: settings.value,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        })
-    } catch (e) {
-      console.error('Error saving announcer settings to cloud:', e)
-    }
-  }
-  
-  // 保存设置
+  // 保存设置（仅本地存储，不同步云端）
   async function saveSettings(): Promise<void> {
     saveToLocal()
-    if (authStore.user) {
-      await saveToCloud()
-    }
   }
   
   // 更新设置
