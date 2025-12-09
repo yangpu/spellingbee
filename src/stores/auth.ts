@@ -25,12 +25,24 @@ export const useAuthStore = defineStore('auth', () => {
     
     loading.value = true
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      user.value = toUser(session?.user)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      // 如果获取 session 失败（如 refresh token 无效），清除本地状态
+      if (sessionError) {
+        console.error('Session error:', sessionError)
+        user.value = null
+        profile.value = null
+        // 尝试登出以清除无效的本地存储
+        try {
+          await supabase.auth.signOut({ scope: 'local' })
+        } catch {}
+      } else {
+        user.value = toUser(session?.user)
 
-      // Load profile if user is logged in
-      if (user.value) {
-        await loadProfile()
+        // Load profile if user is logged in
+        if (user.value) {
+          await loadProfile()
+        }
       }
 
       // Listen for auth changes
@@ -43,6 +55,10 @@ export const useAuthStore = defineStore('auth', () => {
           await loadProfile()
         } else if (event === 'SIGNED_OUT') {
           profile.value = null
+        } else if (event === 'TOKEN_REFRESHED' && !session) {
+          // Token 刷新失败，清除状态
+          user.value = null
+          profile.value = null
         }
         
         // Emit custom event for other stores to react
@@ -54,8 +70,16 @@ export const useAuthStore = defineStore('auth', () => {
       })
       
       initialized.value = true
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auth init error:', error)
+      // 如果是 refresh token 相关错误，清除本地状态
+      if (error?.message?.includes('Refresh Token') || error?.code === 'invalid_grant') {
+        user.value = null
+        profile.value = null
+        try {
+          await supabase.auth.signOut({ scope: 'local' })
+        } catch {}
+      }
     } finally {
       loading.value = false
     }

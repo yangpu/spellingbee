@@ -45,6 +45,7 @@ export const useChallengeStore = defineStore('challenge', () => {
   const roundResults = ref<ChallengeWordResult[]>([])
   const myAnswer = ref('')
   const hasSubmitted = ref(false)
+  const roundEnded = ref(false) // 标记当前轮是否已结束，防止竞态条件
 
   // Computed
   const isCreator = computed(() => {
@@ -155,12 +156,16 @@ export const useChallengeStore = defineStore('challenge', () => {
           connectionStatus.value = 'connected'
           
           // 发送 Presence 状态
+          // 根据当前用户在 currentChallenge 中的状态来设置 is_ready
+          const myParticipant = currentChallenge.value?.participants.find(
+            p => p.user_id === authStore.user!.id
+          )
           await channel.value?.track({
             user_id: authStore.user!.id,
             nickname: authStore.profile?.nickname || authStore.user!.email?.split('@')[0],
             avatar_url: authStore.profile?.avatar_url,
-            is_ready: false,
-            score: 0,
+            is_ready: myParticipant?.is_ready ?? false,
+            score: myParticipant?.score ?? 0,
             online_at: new Date().toISOString()
           })
           
@@ -230,11 +235,18 @@ export const useChallengeStore = defineStore('challenge', () => {
     const participant = currentChallenge.value.participants.find(p => p.user_id === userId)
     if (participant) {
       participant.is_online = false
+      participant.is_ready = false // 离开时重置准备状态
     }
     
-    // 如果是主机，处理玩家离开逻辑
-    if (isHost.value && gameStatus.value === 'playing') {
-      handleExitGameAsHost(userId)
+    // 主机负责广播同步消息和同步到数据库
+    if (isHost.value) {
+      broadcastSync()
+      syncParticipantsToDb()
+      
+      // 如果游戏正在进行中，处理玩家离开逻辑
+      if (gameStatus.value === 'playing') {
+        handleExitGameAsHost(userId)
+      }
     }
   }
   
@@ -406,10 +418,13 @@ export const useChallengeStore = defineStore('challenge', () => {
     const participant = currentChallenge.value.participants.find(p => p.user_id === userId)
     if (participant) {
       participant.is_online = false
+      participant.is_ready = false // 离开时重置准备状态
     }
 
+    // 主机负责广播同步消息和同步到数据库
     if (isHost.value) {
       broadcastSync()
+      syncParticipantsToDb()
     }
   }
 
@@ -472,6 +487,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     hasSubmitted.value = false
     myAnswer.value = ''
     roundResults.value = []
+    roundEnded.value = false // 重置轮次结束标志
     gameStatus.value = 'playing'
     
     // 启动倒计时
@@ -484,6 +500,19 @@ export const useChallengeStore = defineStore('challenge', () => {
     const data = message.data as {
       answer: string
       time_taken: number
+      round: number // 答案对应的轮次
+    }
+
+    // 验证轮次：忽略过期的答案（来自上一轮的延迟消息）
+    if (data.round !== currentRound.value) {
+      console.log(`[handleAnswerMessage] 忽略过期答案: 收到轮次 ${data.round}, 当前轮次 ${currentRound.value}`)
+      return
+    }
+
+    // 如果当前轮已经结束，忽略后续答案
+    if (roundEnded.value) {
+      console.log(`[handleAnswerMessage] 当前轮已结束，忽略答案`)
+      return
     }
 
     const result: ChallengeWordResult = {
@@ -604,9 +633,36 @@ export const useChallengeStore = defineStore('challenge', () => {
   function handleSyncMessage(message: ChallengeMessage): void {
     const data = message.data as Challenge
     
-    // 保留当前用户的本地状态（如 is_ready），但更新其他信息
-    if (currentChallenge.value && authStore.user) {
+    if (!currentChallenge.value || !authStore.user) {
       currentChallenge.value = data
+      return
+    }
+    
+    // 智能合并：保留当前用户刚刚更新的状态，避免被旧的同步消息覆盖
+    // 检查同步消息的时间戳，如果消息太旧则忽略当前用户的状态更新
+    const myCurrentParticipant = currentChallenge.value.participants.find(
+      p => p.user_id === authStore.user!.id
+    )
+    const myIncomingParticipant = data.participants.find(
+      p => p.user_id === authStore.user!.id
+    )
+    
+    // 更新 currentChallenge，但保留当前用户的本地状态
+    if (myCurrentParticipant && myIncomingParticipant) {
+      // 保留当前用户的 is_ready 和 is_online 状态（因为本地状态更准确）
+      const preservedIsReady = myCurrentParticipant.is_ready
+      const preservedIsOnline = myCurrentParticipant.is_online
+      
+      currentChallenge.value = data
+      
+      // 恢复当前用户的状态
+      const myParticipantInNew = currentChallenge.value.participants.find(
+        p => p.user_id === authStore.user!.id
+      )
+      if (myParticipantInNew) {
+        myParticipantInNew.is_ready = preservedIsReady
+        myParticipantInNew.is_online = preservedIsOnline
+      }
     } else {
       currentChallenge.value = data
     }
@@ -673,6 +729,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     hasSubmitted.value = false
     myAnswer.value = ''
     roundResults.value = []
+    roundEnded.value = false // 重置轮次结束标志
     gameStatus.value = 'playing'
 
     // 广播当前单词
@@ -769,6 +826,13 @@ export const useChallengeStore = defineStore('challenge', () => {
 
   function endRound(winnerId: string | null): void {
     if (!isHost.value || !currentChallenge.value || !currentWord.value) return
+
+    // 防止同一轮多次结束（竞态条件保护）
+    if (roundEnded.value) {
+      console.log(`[endRound] 当前轮已结束，忽略重复调用`)
+      return
+    }
+    roundEnded.value = true
 
     stopRoundTimer()
 
@@ -894,8 +958,12 @@ export const useChallengeStore = defineStore('challenge', () => {
     myAnswer.value = answer
 
     const timeTaken = Date.now() - roundStartTime.value
+    const answerRound = currentRound.value // 记录提交时的轮次
 
     if (isHost.value) {
+      // 如果当前轮已经结束，忽略
+      if (roundEnded.value) return
+
       // 主机直接处理
       const result: ChallengeWordResult = {
         user_id: authStore.user!.id,
@@ -913,12 +981,13 @@ export const useChallengeStore = defineStore('challenge', () => {
         endRound(null)
       }
     } else {
-      // 非主机：通过 Supabase Realtime 广播答案
+      // 非主机：通过 Supabase Realtime 广播答案，带上轮次信息
       broadcast({
         type: 'answer',
         data: {
           answer,
-          time_taken: timeTaken
+          time_taken: timeTaken,
+          round: answerRound // 带上轮次，让主机验证
         },
         sender_id: authStore.user!.id,
         timestamp: Date.now()
@@ -1205,6 +1274,9 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     // 创建挑战赛后初始化 Realtime Channel
     await initRealtimeChannel(newChallenge.id)
+    
+    // 确保房主的准备状态正确同步到 Presence
+    updatePresence({ is_ready: true })
 
     return newChallenge
   }
@@ -1309,6 +1381,8 @@ export const useChallengeStore = defineStore('challenge', () => {
         gameStatus.value = 'playing'
         // 启动状态检查定时器
         startStatusCheckTimer()
+        // 房主进入后广播同步消息，让其他用户同步状态
+        setTimeout(() => broadcastSync(), 500)
       } else {
         gameStatus.value = 'waiting'
         // 房主进入后广播同步消息，让其他用户同步状态
@@ -1322,6 +1396,10 @@ export const useChallengeStore = defineStore('challenge', () => {
     if (existingParticipant) {
       // 已经加入，更新在线状态
       existingParticipant.is_online = true
+      // 如果比赛还没开始，重置准备状态，需要用户重新确认
+      if (challenge.status !== 'in_progress') {
+        existingParticipant.is_ready = false
+      }
       
       // 更新数据库
       await supabase
@@ -1343,6 +1421,16 @@ export const useChallengeStore = defineStore('challenge', () => {
       } else {
         gameStatus.value = 'waiting'
       }
+      
+      // 广播 join 消息，让主机同步状态给所有人
+      setTimeout(() => {
+        broadcast({
+          type: 'join',
+          data: { user_id: authStore.user!.id },
+          sender_id: authStore.user!.id,
+          timestamp: Date.now()
+        })
+      }, 500)
       return
     }
 
@@ -1415,11 +1503,12 @@ export const useChallengeStore = defineStore('challenge', () => {
       })
     } catch {}
 
-    // 不管是创建者还是参与者，退出时只更新在线状态，不取消比赛
-    // 只有明确点击"取消挑战赛"按钮才会取消
+    // 不管是创建者还是参与者，退出时更新在线状态和准备状态
+    // 离开时重置 is_ready 为 false，因为用户需要重新确认准备状态
+    // 只有明确点击"取消挑战赛"按钮才会取消比赛
     const updatedParticipants = currentChallenge.value.participants.map(p => {
       if (p.user_id === authStore.user!.id) {
-        return { ...p, is_online: false }
+        return { ...p, is_online: false, is_ready: false }
       }
       return p
     })
@@ -1799,6 +1888,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     gameStatus.value = 'waiting'
     hasSubmitted.value = false
     myAnswer.value = ''
+    roundEnded.value = false
   }
 
   // 清除缓存，强制下次加载时重新获取数据

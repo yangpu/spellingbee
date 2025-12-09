@@ -357,8 +357,8 @@ const initNotificationService = async () => {
               dialogInstance = null;
             }
             
-            // 显示加载提示
-            MessagePlugin.loading('正在加入挑战赛...', 0);
+            // 显示加载提示（使用 5 秒超时自动关闭，防止卡住）
+            const loadingInstance = MessagePlugin.loading('正在加入挑战赛...', 5000);
             
             try {
               // 重置所有状态，确保可以正常加入
@@ -379,14 +379,14 @@ const initNotificationService = async () => {
               ]);
               
               // 关闭加载提示
-              MessagePlugin.close();
+              MessagePlugin.closeAll();
               
               // 跳转到挑战赛房间
               router.push(`/challenge/${challenge.id}`);
               MessagePlugin.success('加入成功');
             } catch (error) {
               // 关闭加载提示
-              MessagePlugin.close();
+              MessagePlugin.closeAll();
               
               console.error('[App] Failed to join challenge from notification:', error);
               MessagePlugin.error(error.message || '加入失败，请稍后重试');

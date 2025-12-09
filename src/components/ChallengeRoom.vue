@@ -431,26 +431,17 @@ const showRecords = ref(false) // 是否显示比赛记录
 
 const challenge = computed(() => challengeStore.currentChallenge)
 
-// 判断参与者是否在线（房主在房间内总是在线）
+// 判断参与者是否在线
 function isParticipantOnline(participant) {
-  // 如果是当前用户自己，肯定在线
-  if (participant.user_id === authStore.user?.id) {
-    return true
-  }
-  // 房主如果连接状态是 connected，则在线
-  if (participant.user_id === challenge.value?.creator_id && challengeStore.connectionStatus === 'connected') {
-    return participant.is_online
-  }
-  return participant.is_online
+  // 直接使用数据库中的 is_online 状态，确保所有人看到的状态一致
+  return participant.is_online === true
 }
 
-// 判断参与者是否已准备（房主总是已准备）
+// 判断参与者是否已准备
 function isParticipantReady(participant) {
-  // 房主总是已准备状态
-  if (participant.user_id === challenge.value?.creator_id) {
-    return true
-  }
-  return participant.is_ready
+  // 直接使用数据库中的 is_ready 状态，确保所有人看到的状态一致
+  // 注意：房主的 is_ready 在进入房间时会自动设置为 true
+  return participant.is_ready === true
 }
 
 // 判断当前用户是否是胜利者

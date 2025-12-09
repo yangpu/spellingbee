@@ -288,11 +288,9 @@ export const useSpeechStore = defineStore('speech', () => {
         .from('user_settings')
         .select('speech_settings')
         .eq('user_id', authStore.user.id)
-        .single()
+        .maybeSingle()
       
       if (error) {
-        // 如果是没有记录的错误，不算失败
-        if (error.code === 'PGRST116') return false
         throw error
       }
       
