@@ -89,16 +89,26 @@ export const useChallengeStore = defineStore('challenge', () => {
   async function initRealtimeChannel(challengeId: string): Promise<string> {
     if (!authStore.user) throw new Error('请先登录')
     
-    // 如果已有 channel，先清理
+    // 如果已有 channel，先清理（不等待，避免卡住）
     if (channel.value) {
-      await channel.value.unsubscribe()
+      const oldChannel = channel.value
       channel.value = null
+      connectionStatus.value = 'disconnected'
+      // 使用 Promise.race 添加超时，避免 unsubscribe 卡住
+      Promise.race([
+        oldChannel.unsubscribe(),
+        new Promise(resolve => setTimeout(resolve, 2000))
+      ]).catch(() => {})
     }
+    
+    // 先尝试移除可能存在的同名 channel（防止重复订阅）
+    const channelName = `challenge:${challengeId}`
+    try {
+      await supabase.removeChannel(supabase.channel(channelName))
+    } catch {}
     
     connectionStatus.value = 'connecting'
     connectionId.value = authStore.user.id
-    
-    const channelName = `challenge:${challengeId}`
     
     channel.value = supabase.channel(channelName, {
       config: {
@@ -1023,70 +1033,76 @@ export const useChallengeStore = defineStore('challenge', () => {
       return
     }
     
-    // 防止并发请求
+    // 防止并发请求，但添加超时保护
     if (loading.value) {
       if (!force) {
         //console.log('[loadChallenges] 正在加载中，跳过')
         return
       }
-      // 强制刷新时，等待当前加载完成
-      //console.log('[loadChallenges] 等待当前加载完成...')
-      await new Promise<void>(resolve => {
-        const checkLoading = setInterval(() => {
-          if (!loading.value) {
-            clearInterval(checkLoading)
-            resolve()
-          }
-        }, 50)
-      })
+      // 强制刷新时，直接重置 loading 状态
+      loading.value = false
     }
     
     //console.log('[loadChallenges] 开始从数据库加载, force:', force)
     loading.value = true
+    
     try {
-      // 第一次请求：正常请求（可能返回 SW 缓存数据）
-      const { data, error } = await supabase
-        .from('challenges')
-        .select('*')
-        .in('status', ['waiting', 'ready', 'in_progress', 'finished'])
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      if (error) throw error
-      
-      //console.log('[loadChallenges] 首次返回数量:', data?.length)
-      challenges.value = (data || []).map(c => ({
-        ...c,
-        participants: c.participants || []
-      }))
-      lastLoadTime.value = Date.now()
-      
-      // 强制刷新时，在后台发起第二次请求绕过缓存，获取最新数据
+      // 强制刷新时，直接使用 fetch API 绕过缓存获取最新数据
       if (force) {
-        // 使用 setTimeout 确保先渲染缓存数据
-        setTimeout(() => {
-          fetchFreshChallenges()
-        }, 100)
+        await fetchFreshChallenges()
+      } else {
+        // 非强制刷新，使用 supabase 客户端（可能有缓存）
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        })
+        
+        const queryPromise = supabase
+          .from('challenges')
+          .select('*')
+          .in('status', ['waiting', 'ready', 'in_progress', 'finished'])
+          .order('created_at', { ascending: false })
+          .limit(50)
+        
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise])
+
+        if (error) throw error
+        
+        challenges.value = (data || []).map(c => ({
+          ...c,
+          participants: c.participants || []
+        }))
+        lastLoadTime.value = Date.now()
       }
     } catch (error) {
       console.error('Error loading challenges:', error)
+      // 如果 supabase 客户端失败，尝试用 fetch 直接请求
+      if (!force) {
+        try {
+          await fetchFreshChallenges()
+        } catch (e) {
+          console.error('Fallback fetch also failed:', e)
+        }
+      }
     } finally {
       loading.value = false
     }
   }
   
-  // 绕过缓存获取最新数据
+  // 绕过缓存获取最新数据（使用 fetch API 直接请求）
   async function fetchFreshChallenges(): Promise<void> {
+    //console.log('[fetchFreshChallenges] 绕过缓存获取最新数据')
+    
+    // 使用 fetch API 直接请求，添加 Cache-Control 头绕过 SW 缓存
+    const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
+    
+    const url = `${supabaseUrl}/rest/v1/challenges?select=*&status=in.(waiting,ready,in_progress,finished)&order=created_at.desc&limit=50`
+    
+    // 创建 AbortController 用于超时控制
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 8000) // 8秒超时
+    
     try {
-      //console.log('[fetchFreshChallenges] 绕过缓存获取最新数据')
-      
-      // 使用 fetch API 直接请求，添加 Cache-Control 头绕过 SW 缓存
-      // 从 supabase 客户端获取配置，避免环境变量未定义
-      const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
-      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
-      
-      const url = `${supabaseUrl}/rest/v1/challenges?select=*&status=in.(waiting,ready,in_progress,finished)&order=created_at.desc&limit=50`
-      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -1096,8 +1112,11 @@ export const useChallengeStore = defineStore('challenge', () => {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         },
-        cache: 'no-store' // 强制绕过缓存
+        cache: 'no-store', // 强制绕过缓存
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -1112,8 +1131,14 @@ export const useChallengeStore = defineStore('challenge', () => {
         participants: c.participants || []
       }))
       lastLoadTime.value = Date.now()
-    } catch (error) {
-      console.error('[fetchFreshChallenges] 获取最新数据失败:', error)
+    } catch (error: any) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        console.error('[fetchFreshChallenges] 请求超时')
+      } else {
+        console.error('[fetchFreshChallenges] 获取最新数据失败:', error)
+      }
+      throw error
     }
   }
 
@@ -1187,12 +1212,45 @@ export const useChallengeStore = defineStore('challenge', () => {
   async function joinChallenge(challengeId: string): Promise<void> {
     if (!authStore.user) throw new Error('请先登录')
 
-    // 获取挑战赛最新信息（强制从数据库获取）
-    const { data: challenge, error } = await supabase
-      .from('challenges')
-      .select('*')
-      .eq('id', challengeId)
-      .single()
+    // 使用 fetch API 直接获取挑战赛信息，绕过可能断开的 supabase 客户端
+    const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
+    
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+    
+    let challenge: any
+    let error: any
+    
+    try {
+      const url = `${supabaseUrl}/rest/v1/challenges?id=eq.${challengeId}&select=*`
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        },
+        cache: 'no-store',
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      challenge = data?.[0]
+    } catch (e: any) {
+      clearTimeout(timeoutId)
+      if (e.name === 'AbortError') {
+        throw new Error('获取挑战赛信息超时，请检查网络后重试')
+      }
+      error = e
+    }
 
     if (error) throw error
     if (!challenge) throw new Error('挑战赛不存在')
@@ -1205,8 +1263,19 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     let participants = challenge.participants || []
 
-    // 初始化 Supabase Realtime Channel
-    await initRealtimeChannel(challengeId)
+    // 初始化 Supabase Realtime Channel（带超时保护）
+    try {
+      await Promise.race([
+        initRealtimeChannel(challengeId),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('连接超时，请重试')), 15000)
+        })
+      ])
+    } catch (e) {
+      // 如果连接失败，清理状态
+      connectionStatus.value = 'disconnected'
+      throw e
+    }
 
     // 检查是否是房主
     if (challenge.creator_id === authStore.user.id) {
@@ -1336,13 +1405,15 @@ export const useChallengeStore = defineStore('challenge', () => {
       return
     }
 
-    // 发送离开消息（通过 Supabase Realtime）
-    broadcast({
-      type: 'leave',
-      data: {},
-      sender_id: authStore.user.id,
-      timestamp: Date.now()
-    })
+    // 发送离开消息（通过 Supabase Realtime，非阻塞）
+    try {
+      broadcast({
+        type: 'leave',
+        data: {},
+        sender_id: authStore.user.id,
+        timestamp: Date.now()
+      })
+    } catch {}
 
     // 不管是创建者还是参与者，退出时只更新在线状态，不取消比赛
     // 只有明确点击"取消挑战赛"按钮才会取消
@@ -1353,10 +1424,30 @@ export const useChallengeStore = defineStore('challenge', () => {
       return p
     })
 
-    await supabase
-      .from('challenges')
-      .update({ participants: updatedParticipants })
-      .eq('id', currentChallenge.value.id)
+    // 使用 fetch API 直接更新，绕过可能断开的 supabase 客户端
+    const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
+    
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3000) // 3秒超时
+    
+    try {
+      await fetch(`${supabaseUrl}/rest/v1/challenges?id=eq.${currentChallenge.value.id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ participants: updatedParticipants }),
+        signal: controller.signal
+      })
+    } catch {
+      // 忽略错误，继续清理
+    } finally {
+      clearTimeout(timeoutId)
+    }
 
     // 清理连接
     await cleanup()
@@ -1674,11 +1765,21 @@ export const useChallengeStore = defineStore('challenge', () => {
     stopRoundTimer()
     stopStatusCheckTimer()
     
-    // 清理 Supabase Realtime Channel
+    // 清理 Supabase Realtime Channel（添加超时保护，避免卡住）
     if (channel.value) {
-      await channel.value.untrack()
-      await channel.value.unsubscribe()
+      const oldChannel = channel.value
       channel.value = null
+      
+      // 使用 Promise.race 添加超时，避免 untrack/unsubscribe 卡住
+      try {
+        await Promise.race([
+          (async () => {
+            try { await oldChannel.untrack() } catch {}
+            try { await oldChannel.unsubscribe() } catch {}
+          })(),
+          new Promise(resolve => setTimeout(resolve, 3000)) // 3秒超时
+        ])
+      } catch {}
     }
     
     // 清理旧的 PeerJS 相关（兼容）
@@ -1698,6 +1799,11 @@ export const useChallengeStore = defineStore('challenge', () => {
     gameStatus.value = 'waiting'
     hasSubmitted.value = false
     myAnswer.value = ''
+  }
+
+  // 清除缓存，强制下次加载时重新获取数据
+  function clearCache(): void {
+    lastLoadTime.value = 0
   }
 
   return {
@@ -1740,6 +1846,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     startGame,
     submitAnswer,
     exitGame,
-    cleanup
+    cleanup,
+    clearCache
   }
 })

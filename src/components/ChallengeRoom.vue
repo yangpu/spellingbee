@@ -399,6 +399,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useChallengeStore } from '@/stores/challenge'
@@ -408,6 +409,7 @@ import LetterInput from '@/components/LetterInput.vue'
 const baseUrl = import.meta.env.BASE_URL
 const defaultCoverUrl = `${baseUrl}challenge-default.svg`
 
+const router = useRouter()
 const authStore = useAuthStore()
 const challengeStore = useChallengeStore()
 const speechStore = useSpeechStore()
@@ -597,52 +599,149 @@ async function handleStart() {
 }
 
 function handleLeave() {
-  const dialog = DialogPlugin.confirm({
+  let dialogInstance = null;
+  dialogInstance = DialogPlugin.confirm({
     header: '确认离开',
     body: '确定要离开挑战赛吗？',
     confirmBtn: { content: '确认', theme: 'danger' },
     onConfirm: async () => {
-      await challengeStore.leaveChallenge()
-      dialog.destroy()
+      // 先关闭对话框，避免操作卡住时对话框不消失
+      if (dialogInstance) {
+        dialogInstance.destroy()
+        dialogInstance = null
+      }
+      
+      try {
+        // 添加超时保护，避免 leaveChallenge 卡住
+        await Promise.race([
+          challengeStore.leaveChallenge(),
+          new Promise(resolve => setTimeout(resolve, 3000)) // 3秒超时
+        ])
+      } catch (e) {
+        console.error('[ChallengeRoom] Leave failed:', e)
+      }
+      
+      // 无论成功失败，都强制清理状态
+      try {
+        await Promise.race([
+          challengeStore.cleanup(),
+          new Promise(resolve => setTimeout(resolve, 2000)) // 2秒超时
+        ])
+      } catch {}
+      
+      // 强制跳转到列表页（不依赖 watch）
+      router.replace({ name: 'Challenge' })
     },
-    onClose: () => dialog.destroy()
+    onClose: () => {
+      if (dialogInstance) {
+        dialogInstance.destroy()
+        dialogInstance = null
+      }
+    }
   })
 }
 
 // 比赛结束后直接离开，不需要确认
 async function handleLeaveFinished() {
-  await challengeStore.leaveChallenge(true)
+  try {
+    // 添加超时保护
+    await Promise.race([
+      challengeStore.leaveChallenge(true),
+      new Promise(resolve => setTimeout(resolve, 3000)) // 3秒超时
+    ])
+  } catch (e) {
+    console.error('[ChallengeRoom] Leave finished failed:', e)
+  }
+  
+  // 无论成功失败，都强制清理状态
+  try {
+    await Promise.race([
+      challengeStore.cleanup(),
+      new Promise(resolve => setTimeout(resolve, 2000))
+    ])
+  } catch {}
+  
+  // 强制跳转到列表页
+  router.replace({ name: 'Challenge' })
 }
 
 function handleCancel() {
-  const dialog = DialogPlugin.confirm({
+  let dialogInstance = null;
+  dialogInstance = DialogPlugin.confirm({
     header: '确认取消',
     body: '确定要取消这场挑战赛吗？所有参与者都将被移出。',
     confirmBtn: { content: '确认取消', theme: 'danger' },
     onConfirm: async () => {
-      await challengeStore.cancelChallenge()
-      dialog.destroy()
+      if (dialogInstance) {
+        dialogInstance.destroy()
+        dialogInstance = null
+      }
+      try {
+        await Promise.race([
+          challengeStore.cancelChallenge(),
+          new Promise(resolve => setTimeout(resolve, 3000))
+        ])
+      } catch (e) {
+        console.error('[ChallengeRoom] Cancel failed:', e)
+      }
+      // 强制清理并跳转
+      try {
+        await Promise.race([
+          challengeStore.cleanup(),
+          new Promise(resolve => setTimeout(resolve, 2000))
+        ])
+      } catch {}
+      router.replace({ name: 'Challenge' })
     },
-    onClose: () => dialog.destroy()
+    onClose: () => {
+      if (dialogInstance) {
+        dialogInstance.destroy()
+        dialogInstance = null
+      }
+    }
   })
 }
 
 // 比赛进行中退出
 function handleExitGame() {
-  const dialog = DialogPlugin.confirm({
+  let dialogInstance = null;
+  dialogInstance = DialogPlugin.confirm({
     header: '确认退出比赛',
     body: '退出比赛后，您将无法获得冠军奖励。确定要退出吗？',
     confirmBtn: { content: '确认退出', theme: 'danger' },
     onConfirm: async () => {
-      await challengeStore.exitGame()
-      dialog.destroy()
+      if (dialogInstance) {
+        dialogInstance.destroy()
+        dialogInstance = null
+      }
+      try {
+        await Promise.race([
+          challengeStore.exitGame(),
+          new Promise(resolve => setTimeout(resolve, 3000))
+        ])
+      } catch (e) {
+        console.error('[ChallengeRoom] Exit game failed:', e)
+      }
+      // 强制清理并跳转
+      try {
+        await Promise.race([
+          challengeStore.cleanup(),
+          new Promise(resolve => setTimeout(resolve, 2000))
+        ])
+      } catch {}
+      router.replace({ name: 'Challenge' })
     },
-    onClose: () => dialog.destroy()
+    onClose: () => {
+      if (dialogInstance) {
+        dialogInstance.destroy()
+        dialogInstance = null
+      }
+    }
   })
 }
 
 function handleToggleReady() {
-  console.log('handleToggleReady called')
+  // console.log('handleToggleReady called')
   challengeStore.toggleReady()
 }
 
@@ -1106,7 +1205,7 @@ onUnmounted(() => {
 
 // 比赛结束
 .room-finished {
-  padding: 1rem 0;
+  padding: 0 0 1rem 0;
 
   .finish-nav {
     margin-bottom: 1rem;

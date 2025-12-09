@@ -83,10 +83,15 @@
         </div>
       </div>
 
-      <!-- 加载中 -->
-      <div class="loading-container" v-if="challengeStore.loading">
-        <t-loading />
-        <span>加载挑战赛列表...</span>
+      <!-- 加载中（只在没有数据时显示） -->
+      <div class="loading-container" v-if="challengeStore.loading && challengeStore.challenges.length === 0">
+        <t-loading v-if="!isLoadingTimeout" />
+        <span v-if="!isLoadingTimeout">加载挑战赛列表...</span>
+        <template v-else>
+          <t-icon name="error-circle" size="48px" />
+          <span>加载超时</span>
+          <t-button theme="primary" @click="forceReload">重新加载</t-button>
+        </template>
       </div>
 
       <!-- 空状态 -->
@@ -438,7 +443,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, h, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, h, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { SearchIcon } from 'tdesign-icons-vue-next'
@@ -463,6 +468,74 @@ const connectingId = ref(null) // 正在连接的挑战赛ID
 const coverFiles = ref([])
 const uploadingCover = ref(false)
 const uploadRef = ref(null) // 上传组件引用
+
+// 页面可见性变化处理
+let lastHiddenTime = 0
+const VISIBILITY_RELOAD_THRESHOLD = 3000 // 3秒
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    const hiddenDuration = Date.now() - lastHiddenTime
+    
+    // 应用从后台恢复时，立即重置 loading 状态
+    if (challengeStore.loading) {
+      challengeStore.loading = false
+      isLoadingTimeout.value = false
+    }
+    // 清除超时定时器
+    if (loadingTimeoutTimer) {
+      clearTimeout(loadingTimeoutTimer)
+      loadingTimeoutTimer = null
+    }
+    // 重置 connectingId，避免卡在"正在建立连接"状态
+    connectingId.value = null
+    
+    // 如果隐藏时间超过阈值，且不在房间内，自动刷新列表
+    if (hiddenDuration > VISIBILITY_RELOAD_THRESHOLD && !challengeStore.currentChallenge) {
+      // 清除缓存并强制刷新
+      challengeStore.clearCache()
+      challengeStore.loadChallenges(true).catch(() => {})
+    }
+  } else {
+    lastHiddenTime = Date.now()
+  }
+}
+
+// 加载超时检测
+const loadingStartTime = ref(0)
+const isLoadingTimeout = ref(false)
+const LOADING_TIMEOUT = 10000 // 10秒超时
+let loadingTimeoutTimer = null
+
+// 监听 loading 状态变化，记录开始时间
+watch(() => challengeStore.loading, (newVal) => {
+  if (newVal) {
+    loadingStartTime.value = Date.now()
+    isLoadingTimeout.value = false
+    // 设置超时检测定时器
+    if (loadingTimeoutTimer) clearTimeout(loadingTimeoutTimer)
+    loadingTimeoutTimer = setTimeout(() => {
+      if (challengeStore.loading) {
+        isLoadingTimeout.value = true
+      }
+    }, LOADING_TIMEOUT)
+  } else {
+    loadingStartTime.value = 0
+    isLoadingTimeout.value = false
+    if (loadingTimeoutTimer) {
+      clearTimeout(loadingTimeoutTimer)
+      loadingTimeoutTimer = null
+    }
+  }
+})
+
+// 强制重新加载（用于超时后手动重试）
+async function forceReload() {
+  isLoadingTimeout.value = false
+  challengeStore.loading = false
+  challengeStore.clearCache()
+  await challengeStore.loadChallenges(true)
+}
 
 // 封面类型：none, default, random, custom
 const coverType = ref('default')
@@ -1209,6 +1282,29 @@ onMounted(async () => {
   const challengeId = route.params.id
   if (challengeId) {
     await joinChallengeById(challengeId)
+  }
+  
+  // 监听页面可见性变化
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  lastHiddenTime = Date.now()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  if (loadingTimeoutTimer) {
+    clearTimeout(loadingTimeoutTimer)
+    loadingTimeoutTimer = null
+  }
+})
+
+// 监听路由变化，当进入挑战赛页面时检查是否需要刷新
+watch(() => route.path, async (newPath) => {
+  if (newPath === '/challenge' && !challengeStore.currentChallenge) {
+    // 如果 loading 状态异常或没有数据，强制重新加载
+    if (challengeStore.loading || challengeStore.challenges.length === 0) {
+      challengeStore.loading = false
+      await challengeStore.loadChallenges(true)
+    }
   }
 })
 </script>

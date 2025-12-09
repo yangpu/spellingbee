@@ -58,8 +58,62 @@
 
     <footer class="app-footer">
       <span>©️版权所有({{ new Date().getFullYear()}})：杨若即 · yangruoji@outlook.com</span>
-      <span class="version" @click="forceRefresh" title="点击刷新应用">v{{ appVersion }}</span>
+      <t-button variant="text" size="small" class="version-btn" @click="showUpgradeConfirm">
+        v{{ appVersion }}
+      </t-button>
+      <t-button variant="text" size="small" class="status-btn" @click="showNetworkStatus = true">
+        <span 
+          class="connection-dot" 
+          :class="{ connected: supabaseConnected }"
+        ></span>
+      </t-button>
     </footer>
+
+    <!-- Network Status Dialog -->
+    <t-dialog
+      v-model:visible="showNetworkStatus"
+      header="网络状态"
+      :footer="false"
+      width="320px"
+    >
+      <div class="network-status-content">
+        <div class="status-item">
+          <template v-if="supabaseReconnecting">
+            <t-loading size="small" />
+          </template>
+          <template v-else>
+            <t-icon :name="supabaseConnected ? 'check-circle-filled' : 'close-circle-filled'" :class="supabaseConnected ? 'status-ok' : 'status-error'" />
+          </template>
+          <span>Supabase 实时服务</span>
+          <span class="status-text" :class="supabaseConnected ? 'text-ok' : supabaseReconnecting ? 'text-reconnecting' : 'text-error'">
+            {{ supabaseConnected ? '已连接' : supabaseReconnecting ? '连接中' : '未连接' }}
+          </span>
+        </div>
+        <div class="status-item">
+          <t-icon :name="isOnline ? 'check-circle-filled' : 'close-circle-filled'" :class="isOnline ? 'status-ok' : 'status-error'" />
+          <span>网络连接</span>
+          <span class="status-text" :class="isOnline ? 'text-ok' : 'text-error'">
+            {{ isOnline ? '在线' : '离线' }}
+          </span>
+        </div>
+        <div v-if="!authStore.user" class="login-hint-small">
+          <t-icon name="info-circle" />
+          <span>登录后才能连接实时服务</span>
+        </div>
+        <t-button 
+          v-else-if="!supabaseConnected && isOnline" 
+          theme="primary" 
+          block 
+          style="margin-top: 16px;" 
+          :loading="manualReconnecting"
+          :disabled="manualReconnecting"
+          @click="handleReconnect"
+        >
+          <template #icon><t-icon name="refresh" /></template>
+          立即重连
+        </t-button>
+      </div>
+    </t-dialog>
 
     <!-- Auth Dialog -->
     <t-dialog
@@ -129,11 +183,20 @@ import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
-import { notificationService } from '@/lib/network';
+import { useChallengeStore } from '@/stores/challenge';
+import { notificationService, useChallengeNotifications } from '@/lib/network';
 import UserProfile from '@/components/UserProfile.vue';
 
 const baseUrl = import.meta.env.BASE_URL;
 const appVersion = __APP_VERSION__;
+
+// Supabase 连接状态
+const { isConnected: supabaseConnected, isReconnecting: supabaseReconnecting } = useChallengeNotifications();
+
+// 网络状态
+const isOnline = ref(navigator.onLine);
+const showNetworkStatus = ref(false);
+const manualReconnecting = ref(false); // 手动重连状态
 
 const route = useRoute();
 const router = useRouter();
@@ -142,6 +205,7 @@ const wordsStore = useWordsStore();
 const competitionStore = useCompetitionStore();
 const learningStore = useLearningStore();
 const speechStore = useSpeechStore();
+const challengeStore = useChallengeStore();
 
 // 挑战赛通知取消订阅函数
 let unsubscribeNotification = null;
@@ -280,28 +344,64 @@ const initNotificationService = async () => {
         const challenge = notification.challenge;
         const creatorName = notification.fromUser?.nickname || '未知用户';
         
-        const dialog = DialogPlugin.confirm({
+        let dialogInstance = null;
+        dialogInstance = DialogPlugin.confirm({
           header: '新的挑战赛',
           body: `${creatorName} 创建了挑战赛「${challenge.name}」\n参赛费：${challenge.entry_fee} 积分 | 人数：${challenge.max_participants}人\n是否立即加入？`,
           confirmBtn: '加入挑战',
           cancelBtn: '稍后再说',
           onConfirm: async () => {
-            dialog.destroy();
+            // 先关闭对话框
+            if (dialogInstance) {
+              dialogInstance.destroy();
+              dialogInstance = null;
+            }
+            
+            // 显示加载提示
+            MessagePlugin.loading('正在加入挑战赛...', 0);
+            
             try {
-              // 先导入 challengeStore
-              const { useChallengeStore } = await import('@/stores/challenge');
-              const challengeStore = useChallengeStore();
-              // 加入挑战赛
-              await challengeStore.joinChallenge(challenge.id);
+              // 重置所有状态，确保可以正常加入
+              challengeStore.loading = false;
+              
+              // 如果当前在房间内，先清理（带超时保护）
+              if (challengeStore.currentChallenge) {
+                await Promise.race([
+                  challengeStore.cleanup(),
+                  new Promise(resolve => setTimeout(resolve, 2000))
+                ]).catch(() => {});
+              }
+              
+              // 加入挑战赛（带超时保护）
+              await Promise.race([
+                challengeStore.joinChallenge(challenge.id),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('加入超时，请检查网络后重试')), 15000))
+              ]);
+              
+              // 关闭加载提示
+              MessagePlugin.close();
+              
               // 跳转到挑战赛房间
               router.push(`/challenge/${challenge.id}`);
               MessagePlugin.success('加入成功');
             } catch (error) {
-              MessagePlugin.error(error.message || '加入失败');
+              // 关闭加载提示
+              MessagePlugin.close();
+              
+              console.error('[App] Failed to join challenge from notification:', error);
+              MessagePlugin.error(error.message || '加入失败，请稍后重试');
+              // 刷新列表，让用户可以手动加入
+              challengeStore.clearCache();
+              challengeStore.loadChallenges(true).catch(() => {});
+              // 跳转到挑战赛列表页
+              router.push('/challenge');
             }
           },
           onClose: () => {
-            dialog.destroy();
+            if (dialogInstance) {
+              dialogInstance.destroy();
+              dialogInstance = null;
+            }
           }
         });
       }
@@ -324,6 +424,68 @@ const destroyNotificationService = async () => {
   notificationInitialized = false; // 重置初始化标志
 };
 
+// 处理页面可见性变化（应用从后台恢复）
+const handleVisibilityChange = async () => {
+  if (document.visibilityState === 'visible') {
+    console.log('[App] Visibility changed to visible');
+    
+    // 立即强制重置所有 store 的 loading 状态
+    wordsStore.loading = false;
+    challengeStore.loading = false;
+    
+    // 清除缓存时间，强制下次加载时重新获取数据
+    challengeStore.clearCache();
+    
+    // 更新网络状态
+    isOnline.value = navigator.onLine;
+    
+    // notification-service 内部会自动处理可见性变化和重连
+    // 这里不需要手动调用 forceReconnect
+  }
+};
+
+// 处理网络状态变化
+const handleOnline = () => {
+  isOnline.value = true;
+  // notification-service 内部会自动处理网络恢复和重连
+};
+
+const handleOffline = () => {
+  isOnline.value = false;
+  // notification-service 内部会自动更新连接状态
+};
+
+// 显示升级确认对话框
+const showUpgradeConfirm = () => {
+  const dialog = DialogPlugin.confirm({
+    header: '检查更新',
+    body: `当前版本：v${appVersion}\n是否安装最新版本并更新应用？`,
+    confirmBtn: '立即安装',
+    cancelBtn: '取消',
+    onConfirm: () => {
+      dialog.destroy();
+      forceRefresh();
+    },
+    onClose: () => {
+      dialog.destroy();
+    }
+  });
+};
+
+// 手动重连
+const handleReconnect = async () => {
+  if (authStore.user && !manualReconnecting.value) {
+    manualReconnecting.value = true;
+    try {
+      await notificationService.forceReconnect();
+    } catch (e) {
+      console.error('[App] Reconnect error:', e);
+    } finally {
+      manualReconnecting.value = false;
+    }
+  }
+};
+
 // Initialize
 onMounted(async () => {
   await authStore.init();
@@ -336,11 +498,20 @@ onMounted(async () => {
   if (authStore.user) {
     await initNotificationService();
   }
+  
+  // 监听页面可见性变化（处理应用从后台恢复）
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  // 监听网络状态变化
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
 });
 
 // Cleanup
 onUnmounted(async () => {
   await destroyNotificationService();
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  window.removeEventListener('online', handleOnline);
+  window.removeEventListener('offline', handleOffline);
 });
 
 // Watch for auth changes
@@ -484,30 +655,93 @@ const forceRefresh = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
   padding: 1.5rem;
   color: var(--text-muted);
   font-size: 0.85rem;
   border-top: 1px solid var(--border-color);
   background: var(--bg-card);
   
-  .version {
-    padding: 0.15rem 0.5rem;
-    background: var(--hover-bg);
-    border-radius: 4px;
+  .version-btn {
     font-family: 'SF Mono', Monaco, monospace;
     font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.2s;
-
+    color: var(--text-muted);
+    padding: 0.15rem 0.5rem;
+    
     &:hover {
-      background: var(--accent-bg);
       color: var(--accent-color);
     }
-
-    &:active {
-      transform: scale(0.95);
+  }
+  
+  .status-btn {
+    padding: 0.15rem 0.4rem;
+    min-width: auto;
+    
+    .connection-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      transition: background-color 0.3s;
+      
+      &.connected {
+        background: #22c55e;
+      }
     }
+  }
+}
+
+.network-status-content {
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+    
+    &:last-of-type {
+      border-bottom: none;
+    }
+    
+    .status-ok {
+      color: #22c55e;
+      font-size: 1.25rem;
+    }
+    
+    .status-error {
+      color: #ef4444;
+      font-size: 1.25rem;
+    }
+    
+    .status-text {
+      margin-left: auto;
+      font-weight: 500;
+      
+      &.text-ok {
+        color: #22c55e;
+      }
+      
+      &.text-error {
+        color: #ef4444;
+      }
+      
+      &.text-reconnecting {
+        color: #f59e0b;
+      }
+    }
+  }
+  
+  .login-hint-small {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--warning-light, #fef3c7);
+    border-radius: 8px;
+    color: var(--warning, #d97706);
+    font-size: 0.875rem;
   }
 }
 

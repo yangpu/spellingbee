@@ -96,7 +96,7 @@
       <t-table
         :data="filteredWords"
         :columns="columns"
-        :loading="wordsStore.loading"
+        :loading="wordsStore.loading && wordsStore.words.length === 0"
         :pagination="pagination"
         row-key="id"
         hover

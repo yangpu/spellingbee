@@ -257,7 +257,7 @@ export class PeerJSConnector implements NetworkConnector {
     }
     
     // 连接到主机
-    await this.connectToHost(hostPeerId)
+    await this.connectToHost(hostPeerId!)
     
     // 更新数据库中的 peer_id
     await this.updatePeerIdInDb()

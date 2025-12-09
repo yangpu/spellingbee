@@ -79,6 +79,26 @@ export const useWordsStore = defineStore('words', () => {
 
   // Initialize words
   async function init(): Promise<void> {
+    // 如果已经在加载中，等待完成（最多等待5秒）
+    if (loading.value) {
+      await new Promise<void>(resolve => {
+        let elapsed = 0
+        const checkLoading = setInterval(() => {
+          elapsed += 50
+          if (!loading.value || elapsed >= 5000) {
+            clearInterval(checkLoading)
+            // 超时时强制重置 loading 状态
+            if (elapsed >= 5000 && loading.value) {
+              loading.value = false
+            }
+            resolve()
+          }
+        }, 50)
+      })
+      // 如果已有数据，直接返回
+      if (words.value.length > 0) return
+    }
+    
     loading.value = true
     try {
       // Try to load from Supabase first

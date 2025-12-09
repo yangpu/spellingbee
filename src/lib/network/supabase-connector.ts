@@ -188,7 +188,7 @@ export class SupabaseConnector implements NetworkConnector {
     // 遍历所有在线用户
     Object.entries(state).forEach(([userId, presences]) => {
       if (userId !== this.userId && presences.length > 0) {
-        const presence = presences[0]
+        const presence = presences[0] as any
         this.notifyParticipantChange('update', {
           user_id: userId,
           nickname: presence.nickname,
