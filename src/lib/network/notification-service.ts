@@ -29,8 +29,10 @@ class ChallengeNotificationService {
   // 重连相关
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectAttempts = 0
-  private readonly MAX_RECONNECT_ATTEMPTS = 5
-  private readonly BASE_RECONNECT_DELAY = 3000
+  private readonly MAX_RECONNECT_ATTEMPTS = 3 // 软重连最多尝试3次
+  private readonly BASE_RECONNECT_DELAY = 2000
+  private hardReconnectAttempts = 0 // 硬重连尝试次数
+  private readonly MAX_HARD_RECONNECT_ATTEMPTS = 10 // 硬重连最多尝试10次
   
   // 事件监听器是否已添加
   private listenersAdded = false
@@ -116,16 +118,16 @@ class ChallengeNotificationService {
    * 处理网络上线
    */
   private handleOnline = (): void => {
-    //this.log('Network online, scheduling reconnect')
     // 网络刚恢复时，先彻底清理旧连接，再延迟重连
     this.clearReconnectTimer()
     this.reconnectAttempts = 0
+    this.hardReconnectAttempts = 0 // 重置硬重连计数
     this._isConnected.value = false
     
     // 彻底清理旧 channel，防止 Supabase 内部 rejoin 干扰
     this.forceCleanupAllChannels()
     
-    // 延迟 2 秒再重连，让网络稳定
+    // 立即开始重连
     this.scheduleReconnect(100)
   }
   
@@ -147,13 +149,16 @@ class ChallengeNotificationService {
    */
   private handleVisibilityChange = (): void => {
     if (document.visibilityState === 'visible') {
-      //this.log('Page visible, checking connection')
-      // 检查当前连接状态
+      // 页面恢复可见时，检查连接状态
       if (this.userId && navigator.onLine && !this._isConnected.value && !this.isConnecting) {
+        this.log('Page visible, connection lost, triggering reconnect')
+        // 重置重连计数，给予新的机会
+        this.reconnectAttempts = 0
+        this.hardReconnectAttempts = 0
         // 先清理旧连接
         this.forceCleanupAllChannels()
-        // 延迟重连
-        this.scheduleReconnect(0)
+        // 触发硬重连，因为页面长时间后台后软重连往往无效
+        this.hardReconnect()
       }
     }
   }
@@ -177,19 +182,29 @@ class ChallengeNotificationService {
       return
     }
     
+    // 软重连达到上限，触发硬重连
     if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      //this.log('Max reconnect attempts reached, stopping')
-      this._isReconnecting.value = false
       this.reconnectAttempts = 0
+      this._isReconnecting.value = false
+      
+      // 如果硬重连也达到上限，停止
+      if (this.hardReconnectAttempts >= this.MAX_HARD_RECONNECT_ATTEMPTS) {
+        this.warn('Max hard reconnect attempts reached, stopping')
+        this.hardReconnectAttempts = 0
+        return
+      }
+      
+      // 触发硬重连
+      this.hardReconnectAttempts++
+      this.log(`Soft reconnect failed, triggering hard reconnect (attempt ${this.hardReconnectAttempts}/${this.MAX_HARD_RECONNECT_ATTEMPTS})`)
+      this.hardReconnect()
       return
     }
     
     // 计算延迟：使用指数退避
     const actualDelay = this.reconnectAttempts === 0 
       ? delay 
-      : Math.min(this.BASE_RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts - 1), 30000)
-    
-    //this.log(`Scheduling reconnect in ${actualDelay}ms (attempt ${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS})`)
+      : Math.min(this.BASE_RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts - 1), 15000)
     
     this._isReconnecting.value = true
     
@@ -211,9 +226,9 @@ class ChallengeNotificationService {
       
       try {
         await this.connect()
-        // 连接成功，重置计数
-        //this.log('Reconnect successful')
+        // 连接成功，重置所有计数
         this.reconnectAttempts = 0
+        this.hardReconnectAttempts = 0
         this._isReconnecting.value = false
       } catch (error) {
         this.warn('Reconnect attempt failed:', error)
@@ -439,57 +454,100 @@ class ChallengeNotificationService {
    * 强制重连（外部调用）
    */
   async forceReconnect(): Promise<void> {
+    // 直接调用硬重连
+    await this.hardReconnect()
+  }
+  
+  /**
+   * 硬重连 - 完全销毁并重新初始化连接
+   * 当软重连多次失败时自动调用，或者用户手动点击"立即重连"时调用
+   */
+  private async hardReconnect(): Promise<void> {
     if (!this.userId) {
-      //this.log('forceReconnect: no userId')
       return
     }
 
     if (!navigator.onLine) {
-      //this.log('forceReconnect: offline')
       this._isConnected.value = false
       this._isReconnecting.value = false
       return
     }
 
-    //this.log('Force reconnecting...')
+    this.log('Hard reconnecting - destroying all connections...')
     
-    // 清除定时器和重置状态
+    // 清除所有定时器和状态
     this.clearReconnectTimer()
     this.reconnectAttempts = 0
     this._isReconnecting.value = true
     this._isConnected.value = false
+    this.isConnecting = false // 强制重置连接中状态
     
-    // 先彻底清理所有旧连接
+    // 增加 channel ID，使旧的回调失效
+    this.channelId++
+    
+    // 彻底清理所有 channel
     this.forceCleanupAllChannels()
+    await this.cleanupChannel()
     
-    // 如果正在连接中，等待完成
-    if (this.isConnecting) {
-      //this.log('Waiting for current connect to finish...')
-      const startTime = Date.now()
-      while (this.isConnecting && Date.now() - startTime < 20000) {
-        await new Promise(resolve => setTimeout(resolve, 200))
+    // 清理 Supabase 内部所有 channel
+    try {
+      const allChannels = supabase.getChannels()
+      for (const ch of allChannels) {
+        try {
+          await ch.unsubscribe()
+          await supabase.removeChannel(ch)
+        } catch (e) {
+          // 忽略
+        }
       }
-      
-      // 如果连接成功了，直接返回
-      if (this._isConnected.value) {
-        //this.log('Already connected')
-        this._isReconnecting.value = false
-        return
-      }
-      
-      // 再次清理
-      this.forceCleanupAllChannels()
+    } catch (e) {
+      // 忽略
     }
     
-    // 等待一小段时间，确保清理完成
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // 刷新 Supabase session token（解决 JWT 过期问题）
+    try {
+      this.log('Refreshing session token...')
+      const { data, error } = await supabase.auth.refreshSession()
+      if (error) {
+        this.warn('Failed to refresh session:', error.message)
+        // 如果刷新失败，尝试获取当前 session
+        const { data: sessionData } = await supabase.auth.getSession()
+        if (!sessionData.session) {
+          this.error('No valid session, cannot reconnect')
+          this._isReconnecting.value = false
+          return
+        }
+      } else {
+        this.log('Session refreshed successfully')
+      }
+    } catch (e) {
+      this.warn('Error refreshing session:', e)
+    }
+    
+    // 等待足够时间，确保所有清理完成
+    await new Promise(resolve => setTimeout(resolve, 500))
     
     try {
       await this.connect()
-      //this.log('Force reconnect completed')
-    } catch (error) {
-      this.error('Force reconnect failed:', error)
+      this.log('Hard reconnect successful')
+      this.reconnectAttempts = 0
+      this.hardReconnectAttempts = 0
       this._isReconnecting.value = false
+    } catch (error) {
+      this.error('Hard reconnect failed:', error)
+      this._isReconnecting.value = false
+      
+      // 如果还有硬重连次数，继续尝试
+      if (this.hardReconnectAttempts < this.MAX_HARD_RECONNECT_ATTEMPTS && navigator.onLine) {
+        this.hardReconnectAttempts++
+        const delay = Math.min(2000 * Math.pow(2, this.hardReconnectAttempts - 1), 30000)
+        this.log(`Scheduling next hard reconnect in ${delay}ms (attempt ${this.hardReconnectAttempts}/${this.MAX_HARD_RECONNECT_ATTEMPTS})`)
+        setTimeout(() => {
+          if (navigator.onLine && !this._isConnected.value && !this.isConnecting) {
+            this.hardReconnect()
+          }
+        }, delay)
+      }
     }
   }
   
@@ -621,6 +679,7 @@ class ChallengeNotificationService {
     this._isReconnecting.value = false
     this.userId = null
     this.reconnectAttempts = 0
+    this.hardReconnectAttempts = 0
     this.isConnecting = false
   }
   

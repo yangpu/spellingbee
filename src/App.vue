@@ -464,12 +464,16 @@ const handleOffline = () => {
 const showUpgradeConfirm = async () => {
   const dialog = DialogPlugin.confirm({
     header: '版本信息',
-    body: `当前版本：v${appVersion}\n\n是否检测最新版本？`,
+    body: `当前版本：v${appVersion}\n\n是否检测最新版本？\n\n如遇到更新问题，可点击"立即升级"强制刷新。`,
     confirmBtn: '检测更新',
-    cancelBtn: '取消',
+    cancelBtn: '立即升级',
     onConfirm: async () => {
       dialog.destroy();
       await checkAndPromptUpdate();
+    },
+    onCancel: () => {
+      dialog.destroy();
+      startUpgrade();
     },
     onClose: () => {
       dialog.destroy();
