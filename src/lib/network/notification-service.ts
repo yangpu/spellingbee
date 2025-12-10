@@ -3,8 +3,8 @@
  * 订阅 Supabase Realtime 服务，监听新挑战赛创建等事件
  * 
  * 设计原则：
- * 1. 简单可靠 - 只管理 channel，不干预底层 socket
- * 2. 自动恢复 - 网络恢复、应用激活时自动重连
+ * 1. 彻底清理 - 重连前完全销毁旧连接，避免 Supabase 内部 rejoin 干扰
+ * 2. 延迟重连 - 网络恢复后等待足够时间再重连
  * 3. 状态准确 - 连接状态始终反映真实情况
  */
 
@@ -29,17 +29,36 @@ class ChallengeNotificationService {
   // 重连相关
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectAttempts = 0
-  private readonly MAX_RECONNECT_ATTEMPTS = 10
-  private readonly BASE_RECONNECT_DELAY = 2000
+  private readonly MAX_RECONNECT_ATTEMPTS = 5
+  private readonly BASE_RECONNECT_DELAY = 3000
   
   // 事件监听器是否已添加
   private listenersAdded = false
   
-  // 连接超时（秒）
-  private readonly CONNECTION_TIMEOUT = 5000
+  // 连接超时（毫秒）- 增加到 15 秒
+  private readonly CONNECTION_TIMEOUT = 15000
   
   // 是否正在连接中
   private isConnecting = false
+  
+  // channel 唯一标识，用于区分不同的连接实例
+  private channelId = 0
+  
+  // 日志辅助方法
+  private log(message: string, ...args: any[]): void {
+    const timestamp = new Date().toISOString().slice(11, 23) // HH:mm:ss.SSS
+    console.log(`[${timestamp}] [NotificationService] ${message}`, ...args)
+  }
+  
+  private warn(message: string, ...args: any[]): void {
+    const timestamp = new Date().toISOString().slice(11, 23)
+    console.warn(`[${timestamp}] [NotificationService] ${message}`, ...args)
+  }
+  
+  private error(message: string, ...args: any[]): void {
+    const timestamp = new Date().toISOString().slice(11, 23)
+    console.error(`[${timestamp}] [NotificationService] ${message}`, ...args)
+  }
   
   get isConnected() {
     return this._isConnected.value
@@ -97,22 +116,30 @@ class ChallengeNotificationService {
    * 处理网络上线
    */
   private handleOnline = (): void => {
-    //console.log('[NotificationService] Network online')
-    // 网络刚恢复时延迟再连接，让底层网络稳定
-    this.scheduleReconnect(500)
+    //this.log('Network online, scheduling reconnect')
+    // 网络刚恢复时，先彻底清理旧连接，再延迟重连
+    this.clearReconnectTimer()
+    this.reconnectAttempts = 0
+    this._isConnected.value = false
+    
+    // 彻底清理旧 channel，防止 Supabase 内部 rejoin 干扰
+    this.forceCleanupAllChannels()
+    
+    // 延迟 2 秒再重连，让网络稳定
+    this.scheduleReconnect(100)
   }
   
   /**
    * 处理网络离线
    */
   private handleOffline = (): void => {
-    //console.log('[NotificationService] Network offline')
+    //this.log('Network offline')
     this._isConnected.value = false
     this._isReconnecting.value = false
     this.clearReconnectTimer()
     
-    // 立即清理 channel，防止网络恢复时旧 channel 的 rejoin 干扰新连接
-    this.cleanupChannel()
+    // 立即彻底清理所有 channel
+    this.forceCleanupAllChannels()
   }
   
   /**
@@ -120,10 +147,13 @@ class ChallengeNotificationService {
    */
   private handleVisibilityChange = (): void => {
     if (document.visibilityState === 'visible') {
-      //console.log('[NotificationService] Page visible')
+      //this.log('Page visible, checking connection')
       // 检查当前连接状态
       if (this.userId && navigator.onLine && !this._isConnected.value && !this.isConnecting) {
-        this.scheduleReconnect(500)
+        // 先清理旧连接
+        this.forceCleanupAllChannels()
+        // 延迟重连
+        this.scheduleReconnect(0)
       }
     }
   }
@@ -148,18 +178,18 @@ class ChallengeNotificationService {
     }
     
     if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      //console.log('[NotificationService] Max reconnect attempts reached, stopping')
+      //this.log('Max reconnect attempts reached, stopping')
       this._isReconnecting.value = false
       this.reconnectAttempts = 0
       return
     }
     
-    // 计算延迟：使用指数退避，但第一次使用传入的 delay
+    // 计算延迟：使用指数退避
     const actualDelay = this.reconnectAttempts === 0 
       ? delay 
-      : Math.min(this.BASE_RECONNECT_DELAY * Math.pow(1.5, this.reconnectAttempts - 1), 30000)
+      : Math.min(this.BASE_RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts - 1), 30000)
     
-    //console.log(`[NotificationService] Scheduling reconnect in ${actualDelay}ms (attempt ${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS})`)
+    //this.log(`Scheduling reconnect in ${actualDelay}ms (attempt ${this.reconnectAttempts + 1}/${this.MAX_RECONNECT_ATTEMPTS})`)
     
     this._isReconnecting.value = true
     
@@ -182,10 +212,11 @@ class ChallengeNotificationService {
       try {
         await this.connect()
         // 连接成功，重置计数
+        //this.log('Reconnect successful')
         this.reconnectAttempts = 0
         this._isReconnecting.value = false
       } catch (error) {
-        console.warn('[NotificationService] Reconnect attempt failed:', error)
+        this.warn('Reconnect attempt failed:', error)
         // 继续尝试
         this.scheduleReconnect(0)
       }
@@ -216,27 +247,39 @@ class ChallengeNotificationService {
     }
     
     if (this.isConnecting) {
-      //console.log('[NotificationService] Already connecting, skip')
+      //this.log('Already connecting, skip')
       return
     }
     
     this.isConnecting = true
     
+    // 生成新的 channel ID
+    this.channelId++
+    const currentChannelId = this.channelId
+    
     try {
-      // 先清理旧 channel
-      await this.cleanupChannel()
+      // 先彻底清理所有旧 channel
+      this.forceCleanupAllChannels()
+      
+      // 等待一小段时间，确保清理完成
+      await new Promise(resolve => setTimeout(resolve, 100))
       
       await new Promise<void>((resolve, reject) => {
         const timeoutId = setTimeout(() => {
-          //console.log('[NotificationService] Connection timeout')
+          //this.log('Connection timeout')
           this._isConnected.value = false
+          // 清理这个超时的 channel
+          this.forceCleanupAllChannels()
           reject(new Error('Connection timeout'))
         }, this.CONNECTION_TIMEOUT)
         
         try {
+          // 使用唯一的 channel 名称，避免冲突
+          const channelName = `challenge-notifications-${currentChannelId}`
+          
           // 创建新的 channel
           this.channel = supabase
-            .channel('challenge-notifications', {
+            .channel(channelName, {
               config: {
                 broadcast: { self: false },
                 presence: { key: this.userId! }
@@ -250,6 +293,8 @@ class ChallengeNotificationService {
                 table: 'challenges'
               },
               (payload: RealtimePostgresChangesPayload<Challenge>) => {
+                // 检查是否是当前 channel
+                if (this.channelId !== currentChannelId) return
                 this.handleNewChallenge(payload.new as Challenge)
               }
             )
@@ -261,37 +306,47 @@ class ChallengeNotificationService {
                 table: 'challenges'
               },
               (payload: RealtimePostgresChangesPayload<Challenge>) => {
+                // 检查是否是当前 channel
+                if (this.channelId !== currentChannelId) return
                 this.handleChallengeUpdate(payload.new as Challenge, payload.old as Challenge)
               }
             )
           
           // 订阅并监听状态
           this.channel.subscribe((status, err) => {
-            //console.log('[NotificationService] Channel status:', status, err || '')
+            // 检查是否是当前 channel
+            if (this.channelId !== currentChannelId) {
+              //this.log('Ignoring status from old channel:', status)
+              return
+            }
+            
+            //this.log('Channel status:', status, err || '')
             
             if (status === 'SUBSCRIBED') {
               clearTimeout(timeoutId)
               this._isConnected.value = true
               this._isReconnecting.value = false
-              //console.log('[NotificationService] Connected successfully')
+              //this.log('Connected successfully')
               resolve()
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
               clearTimeout(timeoutId)
               this._isConnected.value = false
-              console.warn('[NotificationService] Channel error:', status, err)
+              this.warn('Channel error:', status, err)
               reject(new Error(`Channel ${status}: ${err}`))
             } else if (status === 'CLOSED') {
               // channel 被关闭，尝试重连
-              if (this.userId && navigator.onLine) {
-                //console.log('[NotificationService] Channel closed, will reconnect')
+              if (this.userId && navigator.onLine && this.channelId === currentChannelId) {
+                //this.log('Channel closed, will reconnect')
                 this._isConnected.value = false
-                this.scheduleReconnect(2000)
+                // 先清理再重连
+                this.forceCleanupAllChannels()
+                this.scheduleReconnect(1000)
               }
             }
           })
         } catch (error) {
           clearTimeout(timeoutId)
-          console.error('[NotificationService] Error creating channel:', error)
+          this.error('Error creating channel:', error)
           this._isConnected.value = false
           reject(error)
         }
@@ -302,7 +357,45 @@ class ChallengeNotificationService {
   }
   
   /**
-   * 清理 channel
+   * 彻底清理所有 channel（同步方法，不等待）
+   * 用于网络断开等需要立即清理的场景
+   */
+  private forceCleanupAllChannels(): void {
+    // 清理当前 channel 引用
+    const channelToClean = this.channel
+    this.channel = null
+    
+    if (channelToClean) {
+      try {
+        // 不等待，直接调用
+        channelToClean.unsubscribe().catch(() => {})
+        supabase.removeChannel(channelToClean).catch(() => {})
+      } catch (e) {
+        // 忽略
+      }
+    }
+    
+    // 清理所有可能残留的 notification channel
+    try {
+      const channels = supabase.getChannels()
+      for (const ch of channels) {
+        // 匹配所有 challenge-notifications 开头的 channel
+        if (ch.topic && ch.topic.includes('challenge-notifications')) {
+          try {
+            ch.unsubscribe().catch(() => {})
+            supabase.removeChannel(ch).catch(() => {})
+          } catch (e) {
+            // 忽略
+          }
+        }
+      }
+    } catch (e) {
+      // 忽略
+    }
+  }
+  
+  /**
+   * 清理 channel（异步方法，等待完成）
    * 先 unsubscribe 停止 rejoin，再 removeChannel 彻底清理
    */
   private async cleanupChannel(): Promise<void> {
@@ -328,7 +421,7 @@ class ChallengeNotificationService {
     try {
       const channels = supabase.getChannels()
       for (const ch of channels) {
-        if (ch.topic === 'realtime:challenge-notifications') {
+        if (ch.topic && ch.topic.includes('challenge-notifications')) {
           try {
             await ch.unsubscribe()
           } catch (e) {
@@ -347,45 +440,55 @@ class ChallengeNotificationService {
    */
   async forceReconnect(): Promise<void> {
     if (!this.userId) {
-      //console.log('[NotificationService] forceReconnect: no userId')
+      //this.log('forceReconnect: no userId')
       return
     }
 
     if (!navigator.onLine) {
-      //console.log('[NotificationService] forceReconnect: offline')
+      //this.log('forceReconnect: offline')
       this._isConnected.value = false
       this._isReconnecting.value = false
       return
     }
 
-    //console.log('[NotificationService] Force reconnecting...')
+    //this.log('Force reconnecting...')
     
     // 清除定时器和重置状态
     this.clearReconnectTimer()
     this.reconnectAttempts = 0
     this._isReconnecting.value = true
+    this._isConnected.value = false
+    
+    // 先彻底清理所有旧连接
+    this.forceCleanupAllChannels()
     
     // 如果正在连接中，等待完成
     if (this.isConnecting) {
-      //console.log('[NotificationService] Waiting for current connect...')
+      //this.log('Waiting for current connect to finish...')
       const startTime = Date.now()
-      while (this.isConnecting && Date.now() - startTime < 25000) {
+      while (this.isConnecting && Date.now() - startTime < 20000) {
         await new Promise(resolve => setTimeout(resolve, 200))
       }
       
       // 如果连接成功了，直接返回
       if (this._isConnected.value) {
-        //console.log('[NotificationService] Already connected')
+        //this.log('Already connected')
         this._isReconnecting.value = false
         return
       }
+      
+      // 再次清理
+      this.forceCleanupAllChannels()
     }
+    
+    // 等待一小段时间，确保清理完成
+    await new Promise(resolve => setTimeout(resolve, 300))
     
     try {
       await this.connect()
-      //console.log('[NotificationService] Force reconnect completed')
+      //this.log('Force reconnect completed')
     } catch (error) {
-      console.error('[NotificationService] Force reconnect failed:', error)
+      this.error('Force reconnect failed:', error)
       this._isReconnecting.value = false
     }
   }
@@ -472,7 +575,7 @@ class ChallengeNotificationService {
       try {
         handler(notification)
       } catch (error) {
-        console.error('[NotificationService] Handler error:', error)
+        this.error('Handler error:', error)
       }
     })
   }
@@ -505,10 +608,13 @@ class ChallengeNotificationService {
    * 断开连接
    */
   async disconnect(): Promise<void> {
-    //console.log('[NotificationService] Disconnecting...')
+    //this.log('Disconnecting...')
     
     this.clearReconnectTimer()
     this.removeEventListeners()
+    
+    // 彻底清理所有 channel
+    this.forceCleanupAllChannels()
     await this.cleanupChannel()
     
     this._isConnected.value = false

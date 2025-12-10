@@ -151,8 +151,32 @@ export const useChallengeStore = defineStore('challenge', () => {
     
     // 订阅频道
     return new Promise((resolve, reject) => {
+      let resolved = false
+      let timeoutId: ReturnType<typeof setTimeout> | null = null
+      
+      // 超时处理
+      timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          connectionStatus.value = 'disconnected'
+          // 清理超时的 channel
+          if (channel.value) {
+            const oldChannel = channel.value
+            channel.value = null
+            oldChannel.unsubscribe().catch(() => {})
+            supabase.removeChannel(oldChannel as any).catch(() => {})
+          }
+          reject(new Error('连接超时，请检查网络后重试'))
+        }
+      }, 15000)
+      
       channel.value!.subscribe(async (status) => {
+        console.log('[Challenge] Channel status:', status)
+        
         if (status === 'SUBSCRIBED') {
+          if (resolved) return
+          resolved = true
+          if (timeoutId) clearTimeout(timeoutId)
           connectionStatus.value = 'connected'
           
           // 发送 Presence 状态
@@ -171,17 +195,17 @@ export const useChallengeStore = defineStore('challenge', () => {
           
           resolve(connectionId.value)
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          if (resolved) return
+          resolved = true
+          if (timeoutId) clearTimeout(timeoutId)
           connectionStatus.value = 'disconnected'
           reject(new Error('Channel subscription failed'))
+        } else if (status === 'CLOSED') {
+          // Channel 被关闭，更新状态
+          console.log('[Challenge] Channel closed')
+          connectionStatus.value = 'disconnected'
         }
       })
-      
-      // 超时处理
-      setTimeout(() => {
-        if (connectionStatus.value === 'connecting') {
-          reject(new Error('Connection timeout'))
-        }
-      }, 15000)
     })
   }
   

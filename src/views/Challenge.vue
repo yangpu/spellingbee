@@ -537,12 +537,113 @@ async function forceReload() {
   await challengeStore.loadChallenges(true)
 }
 
-// 封面类型：none, default, random, custom
-const coverType = ref('default')
+// 封面类型：none, default, random, custom（默认改为 random）
+const coverType = ref('random')
 const customCoverUrl = ref('')
 const randomCoverUrl = ref('')
 const loadingRandomCover = ref(false)
 const defaultCoverUrl = `${import.meta.env.BASE_URL}challenge-default.svg`
+
+// 图片预缓存机制
+const IMAGE_CACHE_KEY = 'spellingbee_cover_cache'
+const MAX_CACHE_SIZE = 5 // 最多缓存5张图片
+const cachedImages = ref([])
+
+// 加载缓存的图片
+function loadImageCache() {
+  try {
+    const cached = localStorage.getItem(IMAGE_CACHE_KEY)
+    if (cached) {
+      cachedImages.value = JSON.parse(cached)
+    }
+  } catch (e) {
+    console.warn('Failed to load image cache:', e)
+    cachedImages.value = []
+  }
+}
+
+// 保存图片缓存
+function saveImageCache() {
+  try {
+    localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(cachedImages.value))
+  } catch (e) {
+    console.warn('Failed to save image cache:', e)
+  }
+}
+
+// 从缓存获取一张图片
+function getImageFromCache() {
+  if (cachedImages.value.length > 0) {
+    const url = cachedImages.value.shift()
+    saveImageCache()
+    return url
+  }
+  return null
+}
+
+// 添加图片到缓存
+function addImageToCache(url) {
+  if (!url || cachedImages.value.includes(url)) return
+  cachedImages.value.push(url)
+  // 保持缓存大小
+  while (cachedImages.value.length > MAX_CACHE_SIZE) {
+    cachedImages.value.shift()
+  }
+  saveImageCache()
+}
+
+// 后台预加载图片到缓存
+async function prefetchImages() {
+  // 如果缓存已满，不需要预加载
+  if (cachedImages.value.length >= MAX_CACHE_SIZE) return
+  
+  const needCount = MAX_CACHE_SIZE - cachedImages.value.length
+  
+  // 并行获取多张图片
+  const fetchPromises = []
+  for (let i = 0; i < needCount; i++) {
+    fetchPromises.push(fetchSingleImage())
+  }
+  
+  const results = await Promise.allSettled(fetchPromises)
+  results.forEach(result => {
+    if (result.status === 'fulfilled' && result.value) {
+      addImageToCache(result.value)
+    }
+  })
+}
+
+// 获取单张图片（不更新UI状态）
+async function fetchSingleImage() {
+  // 尝试 Unsplash
+  try {
+    const url = await Promise.race([
+      fetchFromUnsplash(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+    ])
+    if (url) return url
+  } catch {}
+  
+  // 尝试 Picsum
+  try {
+    const url = await Promise.race([
+      fetchFromPicsum(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+    ])
+    if (url) return url
+  } catch {}
+  
+  // 尝试 LoremFlickr（第三备选）
+  try {
+    const url = await Promise.race([
+      fetchFromLoremFlickr(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+    ])
+    if (url) return url
+  } catch {}
+  
+  return null
+}
 
 // 获取封面图片URL（处理默认封面和旧数据兼容）
 function getCoverUrl(challenge) {
@@ -661,8 +762,8 @@ async function loadSettings() {
         show_chinese: settings.show_chinese ?? true,
         show_english: settings.show_english ?? true
       })
-      // 恢复封面类型
-      coverType.value = settings.coverType ?? 'default'
+      // 恢复封面类型（默认改为 random）
+      coverType.value = settings.coverType ?? 'random'
     }
   } catch (e) {
     console.error('Error loading challenge settings:', e)
@@ -723,10 +824,10 @@ async function openCreateDialog() {
     createData.image_url = ''
     fetchRandomCover()
   } else if (coverType.value === 'custom') {
-    // 自定义封面：需要重新上传
+    // 自定义封面：需要重新上传，回退到随机
     createData.image_url = ''
-    coverType.value = 'default'
-    createData.image_url = 'default'
+    coverType.value = 'random'
+    fetchRandomCover()
   }
   
   showCreateDialog.value = true
@@ -932,57 +1033,122 @@ const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY
 // 随机封面主题列表
 const randomCoverTopics = ['technology', 'artificial-intelligence', 'sports', 'nature']
 
-// 获取随机封面图片
+// 获取随机封面图片（优先使用缓存）
 async function fetchRandomCover() {
-  if (loadingRandomCover.value) return // 防止重复请求
+  // 如果正在加载，允许重新点击（取消当前加载）
+  if (loadingRandomCover.value) {
+    loadingRandomCover.value = false
+    // 短暂延迟后重新开始
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
   
   loadingRandomCover.value = true
   
   try {
-    // 随机选择一个主题
-    const topic = randomCoverTopics[Math.floor(Math.random() * randomCoverTopics.length)]
-    // 使用 Unsplash API 获取随机图片
-    const response = await fetch(
-      `https://api.unsplash.com/photos/random?query=${topic}&orientation=landscape&w=800&h=400`,
-      {
-        headers: {
-          'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}`
-        }
-      }
-    )
-    
-    if (!response.ok) {
-      throw new Error(`Unsplash API error: ${response.status}`)
+    // 优先从缓存获取
+    const cachedUrl = getImageFromCache()
+    if (cachedUrl) {
+      randomCoverUrl.value = cachedUrl
+      createData.image_url = cachedUrl
+      loadingRandomCover.value = false
+      // 后台补充缓存
+      prefetchImages()
+      return
     }
     
-    const data = await response.json()
-    // 使用 regular 尺寸的图片URL（约 1080px 宽）
-    const imageUrl = data.urls?.regular || data.urls?.small
+    // 缓存为空，实时获取（总超时6秒）
+    const imageUrl = await Promise.race([
+      fetchSingleImage(),
+      new Promise((resolve) => setTimeout(() => resolve(null), 6000))
+    ])
     
-    if (!imageUrl) {
-      throw new Error('No image URL in response')
+    if (imageUrl) {
+      randomCoverUrl.value = imageUrl
+      createData.image_url = imageUrl
+      // 后台补充缓存
+      prefetchImages()
+    } else {
+      // 获取失败，保持 random 状态，允许用户重新点击
+      randomCoverUrl.value = ''
+      // 不改变 coverType，用户可以再次点击尝试
     }
-    
-    // 预加载图片确保可用
-    await new Promise((resolve, reject) => {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        randomCoverUrl.value = imageUrl
-        createData.image_url = imageUrl
-        resolve()
-      }
-      img.onerror = () => reject(new Error('Image load failed'))
-      img.src = imageUrl
-      // 设置超时
-      setTimeout(() => reject(new Error('timeout')), 15000)
-    })
-  } catch (error) {
-    console.error('Failed to fetch random cover:', error)
-    MessagePlugin.error('获取随机图片失败，请重试')
+  } catch (e) {
+    console.warn('fetchRandomCover failed:', e)
+    randomCoverUrl.value = ''
   } finally {
     loadingRandomCover.value = false
   }
+}
+
+// 从 Unsplash 获取图片
+async function fetchFromUnsplash() {
+  const topic = randomCoverTopics[Math.floor(Math.random() * randomCoverTopics.length)]
+  const response = await fetch(
+    `https://api.unsplash.com/photos/random?query=${topic}&orientation=landscape&w=800&h=400`,
+    {
+      headers: {
+        'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}`
+      }
+    }
+  )
+  
+  if (!response.ok) {
+    throw new Error(`Unsplash API error: ${response.status}`)
+  }
+  
+  const data = await response.json()
+  const imageUrl = data.urls?.regular || data.urls?.small
+  
+  if (!imageUrl) {
+    throw new Error('No image URL in response')
+  }
+  
+  // 预加载图片（3秒超时）
+  await preloadImage(imageUrl, 3000)
+  return imageUrl
+}
+
+// 从 Picsum 获取图片（备用服务1）
+async function fetchFromPicsum() {
+  // Picsum 提供随机图片，添加时间戳避免缓存
+  const imageUrl = `https://picsum.photos/800/400?random=${Date.now()}`
+  
+  // 预加载图片（2秒超时）
+  await preloadImage(imageUrl, 2000)
+  return imageUrl
+}
+
+// 从 LoremFlickr 获取图片（备用服务2）
+async function fetchFromLoremFlickr() {
+  const topic = randomCoverTopics[Math.floor(Math.random() * randomCoverTopics.length)]
+  const imageUrl = `https://loremflickr.com/800/400/${topic}?random=${Date.now()}`
+  
+  // 预加载图片（2秒超时）
+  await preloadImage(imageUrl, 2000)
+  return imageUrl
+}
+
+// 预加载图片（不再修改 loadingRandomCover 状态）
+function preloadImage(url, timeout = 3000) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    
+    const timeoutId = setTimeout(() => {
+      img.src = ''
+      reject(new Error('Image preload timeout'))
+    }, timeout)
+    
+    img.onload = () => {
+      clearTimeout(timeoutId)
+      resolve()
+    }
+    img.onerror = () => {
+      clearTimeout(timeoutId)
+      reject(new Error('Image load failed'))
+    }
+    img.src = url
+  })
 }
 
 // 触发上传
@@ -1149,34 +1315,50 @@ async function quickCreate(playerCount) {
     // 保存设置
     saveSettings()
     
-    // 确定封面URL
-    let imageUrl = 'default'
+    // 确定封面URL：创建时不等待图片加载，如果没有加载成功则留空
+    let imageUrl = ''
     if (coverType.value === 'none') {
       imageUrl = ''
-    } else if (coverType.value === 'random' && randomCoverUrl.value) {
-      imageUrl = randomCoverUrl.value
+    } else if (coverType.value === 'default') {
+      imageUrl = 'default'
+    } else if (coverType.value === 'random') {
+      // 随机封面：只使用已加载成功的图片，否则留空
+      imageUrl = randomCoverUrl.value || ''
     } else if (coverType.value === 'custom' && customCoverUrl.value) {
       imageUrl = customCoverUrl.value
     }
     
-    await challengeStore.createChallenge({
-      name: finalName,
-      description: undefined,
-      image_url: imageUrl || undefined,
-      max_participants: playerCount,
-      entry_fee: createData.entry_fee,
-      word_count: createData.word_count,
-      time_limit: createData.time_limit,
-      difficulty: createData.difficulty,
-      word_mode: createData.word_mode,
-      show_chinese: createData.show_chinese,
-      show_english: createData.show_english
-    })
+    // 添加超时保护，避免卡住
+    await Promise.race([
+      challengeStore.createChallenge({
+        name: finalName,
+        description: undefined,
+        image_url: imageUrl || undefined,
+        max_participants: playerCount,
+        entry_fee: createData.entry_fee,
+        word_count: createData.word_count,
+        time_limit: createData.time_limit,
+        difficulty: createData.difficulty,
+        word_mode: createData.word_mode,
+        show_chinese: createData.show_chinese,
+        show_english: createData.show_english
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 20000))
+    ])
     
     showCreateDialog.value = false
     MessagePlugin.success(`${playerCount}人对战创建成功`)
+    
+    // 创建成功后手动跳转到房间（带上房间ID）
+    if (challengeStore.currentChallenge) {
+      router.push({ name: 'ChallengeRoom', params: { id: challengeStore.currentChallenge.id } })
+    }
   } catch (error) {
     MessagePlugin.error(error.message || '创建失败')
+    // 超时或失败时清理可能的残留状态
+    if (challengeStore.currentChallenge) {
+      challengeStore.cleanup().catch(() => {})
+    }
   } finally {
     quickCreating.value = null
   }
@@ -1203,22 +1385,37 @@ async function handleCreate({ validateResult }) {
     // 保存设置
     saveSettings()
 
-    await challengeStore.createChallenge({
-      name: createData.name,
-      description: createData.description || undefined,
-      image_url: createData.image_url || undefined,
-      max_participants: createData.max_participants,
-      entry_fee: createData.entry_fee,
-      word_count: createData.word_count,
-      time_limit: createData.time_limit,
-      difficulty: createData.difficulty,
-      word_mode: createData.word_mode,
-      show_chinese: createData.show_chinese,
-      show_english: createData.show_english
-    })
+    // 确定封面URL（默认使用随机封面）
+    let imageUrl = createData.image_url
+    if (!imageUrl && coverType.value === 'random' && randomCoverUrl.value) {
+      imageUrl = randomCoverUrl.value
+    }
+
+    // 添加超时保护，避免卡住
+    await Promise.race([
+      challengeStore.createChallenge({
+        name: createData.name,
+        description: createData.description || undefined,
+        image_url: imageUrl || undefined,
+        max_participants: createData.max_participants,
+        entry_fee: createData.entry_fee,
+        word_count: createData.word_count,
+        time_limit: createData.time_limit,
+        difficulty: createData.difficulty,
+        word_mode: createData.word_mode,
+        show_chinese: createData.show_chinese,
+        show_english: createData.show_english
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 20000))
+    ])
     
     showCreateDialog.value = false
     MessagePlugin.success('挑战赛创建成功')
+    
+    // 创建成功后手动跳转到房间（带上房间ID）
+    if (challengeStore.currentChallenge) {
+      router.push({ name: 'ChallengeRoom', params: { id: challengeStore.currentChallenge.id } })
+    }
     
     // 重置名称和封面，保留其他设置
     createData.name = ''
@@ -1227,9 +1424,13 @@ async function handleCreate({ validateResult }) {
     coverFiles.value = []
     customCoverUrl.value = ''
     randomCoverUrl.value = ''
-    coverType.value = 'default'
+    coverType.value = 'random'
   } catch (error) {
     MessagePlugin.error(error.message || '创建失败')
+    // 超时或失败时清理可能的残留状态
+    if (challengeStore.currentChallenge) {
+      challengeStore.cleanup().catch(() => {})
+    }
   } finally {
     creating.value = false
   }
@@ -1262,12 +1463,10 @@ async function joinChallengeById(challengeId) {
 }
 
 // 监听 currentChallenge 变化，同步 URL
+// 注意：只处理离开房间的情况，进入房间由具体操作函数处理（避免重复 push）
 watch(() => challengeStore.currentChallenge, (newVal, oldVal) => {
-  if (newVal && route.params.id !== newVal.id) {
-    // 进入挑战赛，更新 URL
-    router.replace({ name: 'ChallengeRoom', params: { id: newVal.id } })
-  } else if (!newVal && oldVal && route.params.id) {
-    // 离开挑战赛，返回列表
+  if (!newVal && oldVal && route.params.id) {
+    // 离开挑战赛，返回列表（使用 replace 避免重复历史记录）
     router.replace({ name: 'Challenge' })
     // 恢复滚动位置
     restoreScrollPosition()
@@ -1276,6 +1475,11 @@ watch(() => challengeStore.currentChallenge, (newVal, oldVal) => {
 
 onMounted(async () => {
   await loadSettings()
+  
+  // 加载图片缓存并在后台预加载图片
+  loadImageCache()
+  prefetchImages()
+  
   await challengeStore.loadChallenges()
   
   // 如果 URL 中有挑战赛 ID，尝试加入
@@ -1297,9 +1501,39 @@ onUnmounted(() => {
   }
 })
 
-// 监听路由变化，当进入挑战赛页面时检查是否需要刷新
-watch(() => route.path, async (newPath) => {
-  if (newPath === '/challenge' && !challengeStore.currentChallenge) {
+// 监听路由变化，处理浏览器前进后退
+// 使用 route.params.id 而非 route.path，更可靠
+watch(() => route.params.id, async (newId, oldId) => {
+  // 用户从房间回退到列表页（浏览器回退按钮）
+  // newId 为 undefined 表示回到了 /challenge 列表页
+  if (!newId && oldId && challengeStore.currentChallenge) {
+    // 清理当前房间状态，返回列表
+    try {
+      await Promise.race([
+        challengeStore.leaveChallenge(true),
+        new Promise(resolve => setTimeout(resolve, 2000))
+      ])
+    } catch {}
+    try {
+      await Promise.race([
+        challengeStore.cleanup(),
+        new Promise(resolve => setTimeout(resolve, 1000))
+      ])
+    } catch {}
+    // 恢复滚动位置
+    restoreScrollPosition()
+    return
+  }
+  
+  // 用户从列表前进到房间页（浏览器前进按钮）
+  // newId 有值但 currentChallenge 为空，需要加入房间
+  if (newId && !challengeStore.currentChallenge) {
+    await joinChallengeById(newId)
+    return
+  }
+  
+  // 回到列表页且没有当前挑战赛
+  if (!newId && !challengeStore.currentChallenge) {
     // 如果 loading 状态异常或没有数据，强制重新加载
     if (challengeStore.loading || challengeStore.challenges.length === 0) {
       challengeStore.loading = false
