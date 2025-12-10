@@ -42,8 +42,10 @@ export const useCompetitionStore = defineStore('competition', () => {
   })
 
   // 保存当前比赛状态
-  function saveSession(): void {
-    if (!isActive.value || words.value.length === 0) return
+  function saveSession(userInput?: string): void {
+    if (!isActive.value || words.value.length === 0) {
+      return
+    }
     
     const session: CompetitionSession = {
       words: words.value,
@@ -55,10 +57,32 @@ export const useCompetitionStore = defineStore('competition', () => {
       totalTime: totalTime.value,
       startTime: startTime.value,
       streak: streak.value,
-      savedAt: Date.now()
+      savedAt: Date.now(),
+      userInput: userInput || ''
     }
     
     localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  }
+
+  // 获取保存的会话数据（不恢复状态）
+  function getSavedSession(): CompetitionSession | null {
+    try {
+      const saved = localStorage.getItem(SESSION_KEY)
+      if (!saved) return null
+      
+      const session = JSON.parse(saved) as CompetitionSession
+      
+      // 检查会话是否过期（超过24小时）
+      if (Date.now() - session.savedAt > 24 * 60 * 60 * 1000) {
+        clearSession()
+        return null
+      }
+      
+      return session
+    } catch (e) {
+      console.error('Error getting saved session:', e)
+      return null
+    }
   }
 
   // 恢复未完成的比赛
@@ -81,7 +105,7 @@ export const useCompetitionStore = defineStore('competition', () => {
       score.value = session.score
       correctWords.value = session.correctWords || []
       incorrectWords.value = session.incorrectWords || []
-      timeRemaining.value = session.totalTime // 重置时间，给用户完整时间
+      timeRemaining.value = session.timeRemaining
       totalTime.value = session.totalTime
       startTime.value = Date.now()
       streak.value = session.streak || 0
@@ -264,9 +288,9 @@ export const useCompetitionStore = defineStore('competition', () => {
   }
 
   // Pause competition (exit without clearing session)
-  function pauseCompetition(): void {
-    // 先保存当前进度
-    saveSession()
+  function pauseCompetition(userInput?: string): void {
+    // 先保存当前进度（带用户输入）
+    saveSession(userInput)
     // 只设置 isActive 为 false，保留其他状态和会话数据
     isActive.value = false
   }
@@ -413,6 +437,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     resetCompetition,
     loadRecords,
     saveSession,
+    getSavedSession,
     restoreSession,
     clearSession,
     clearAllRecords

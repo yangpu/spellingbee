@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '@/lib/supabase'
+import { supabase, reconnectRealtime } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { useWordsStore } from './words'
 import { useAnnouncerStore } from './announcer'
@@ -87,10 +87,11 @@ export const useChallengeStore = defineStore('challenge', () => {
   })
 
   // 初始化 Supabase Realtime Channel（替代 PeerJS）
-  async function initRealtimeChannel(challengeId: string): Promise<string> {
+  async function initRealtimeChannel(challengeId: string, retryCount = 0): Promise<string> {
     if (!authStore.user) throw new Error('请先登录')
     
     const channelName = `challenge:${challengeId}`
+    const maxRetries = 2
     
     // 如果已有 channel，先清理
     if (channel.value) {
@@ -112,7 +113,6 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
     
     // 移除所有可能存在的同名 channel（防止重复订阅）
-    // 获取所有 channels 并移除同名的
     const existingChannels = supabase.getChannels()
     for (const ch of existingChannels) {
       if ((ch as any).topic === `realtime:${channelName}`) {
@@ -122,42 +122,51 @@ export const useChallengeStore = defineStore('challenge', () => {
       }
     }
     
+    // 如果是重试，先重新连接 Realtime
+    if (retryCount > 0) {
+      console.log(`[Challenge] Retry ${retryCount}/${maxRetries}, reconnecting realtime...`)
+      await reconnectRealtime()
+      // 等待连接稳定
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+    
     connectionStatus.value = 'connecting'
     connectionId.value = authStore.user.id
     
-    channel.value = supabase.channel(channelName, {
+    // 创建新 channel（不立即赋值给 channel.value）
+    const newChannel = supabase.channel(channelName, {
       config: {
-        broadcast: { self: false }, // 不接收自己发送的消息
+        broadcast: { self: false },
         presence: { key: authStore.user.id }
       }
     })
     
     // 监听广播消息
-    channel.value.on('broadcast', { event: 'message' }, (payload) => {
+    newChannel.on('broadcast', { event: 'message' }, (payload) => {
       const message = payload.payload as ChallengeMessage
       if (message.sender_id !== authStore.user?.id) {
         handleMessage(message, message.sender_id)
       }
     })
     
-    // 监听定向消息（发给特定用户）
-    channel.value.on('broadcast', { event: `message:${authStore.user.id}` }, (payload) => {
+    // 监听定向消息
+    newChannel.on('broadcast', { event: `message:${authStore.user.id}` }, (payload) => {
       const message = payload.payload as ChallengeMessage
       handleMessage(message, message.sender_id)
     })
     
     // 监听 Presence 状态变化
-    channel.value.on('presence', { event: 'sync' }, () => {
+    newChannel.on('presence', { event: 'sync' }, () => {
       handlePresenceSync()
     })
     
-    channel.value.on('presence', { event: 'join' }, ({ key, newPresences }) => {
+    newChannel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
       if (key !== authStore.user?.id && newPresences.length > 0) {
         handlePresenceJoin(key, newPresences[0] as any)
       }
     })
     
-    channel.value.on('presence', { event: 'leave' }, ({ key }) => {
+    newChannel.on('presence', { event: 'leave' }, ({ key }) => {
       if (key !== authStore.user?.id) {
         handlePresenceLeave(key)
       }
@@ -168,37 +177,44 @@ export const useChallengeStore = defineStore('challenge', () => {
       let resolved = false
       let timeoutId: ReturnType<typeof setTimeout> | null = null
       
-      // 超时处理
+      // 超时处理（单次 10 秒）
       timeoutId = setTimeout(() => {
         if (!resolved) {
           resolved = true
           connectionStatus.value = 'disconnected'
           // 清理超时的 channel
-          if (channel.value) {
-            const oldChannel = channel.value
-            channel.value = null
-            oldChannel.unsubscribe().catch(() => {})
-            supabase.removeChannel(oldChannel as any).catch(() => {})
+          newChannel.unsubscribe().catch(() => {})
+          supabase.removeChannel(newChannel as any).catch(() => {})
+          
+          // 如果还有重试次数，尝试重试
+          if (retryCount < maxRetries) {
+            console.log(`[Challenge] Connection timeout, retrying...`)
+            initRealtimeChannel(challengeId, retryCount + 1)
+              .then(resolve)
+              .catch(reject)
+          } else {
+            reject(new Error('连接超时，请检查网络后重试'))
           }
-          reject(new Error('连接超时，请检查网络后重试'))
         }
-      }, 15000)
+      }, 10000)
       
-      channel.value!.subscribe(async (status) => {
-        //console.log('[Challenge] Channel status:', status)
+      newChannel.subscribe(async (status) => {
+        console.log('[Challenge] Channel status:', status)
         
         if (status === 'SUBSCRIBED') {
           if (resolved) return
           resolved = true
           if (timeoutId) clearTimeout(timeoutId)
+          
+          // 订阅成功后才设置 channel.value
+          channel.value = newChannel
           connectionStatus.value = 'connected'
           
           // 发送 Presence 状态
-          // 根据当前用户在 currentChallenge 中的状态来设置 is_ready
           const myParticipant = currentChallenge.value?.participants.find(
             p => p.user_id === authStore.user!.id
           )
-          await channel.value?.track({
+          await newChannel.track({
             user_id: authStore.user!.id,
             nickname: authStore.profile?.nickname || authStore.user!.email?.split('@')[0],
             avatar_url: authStore.profile?.avatar_url,
@@ -209,23 +225,26 @@ export const useChallengeStore = defineStore('challenge', () => {
           
           resolve(connectionId.value)
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          // CLOSED 状态也应该触发失败，不应该继续等待
-          //console.log('[Challenge] Channel failed with status:', status)
+          console.log('[Challenge] Channel failed with status:', status)
           if (resolved) return
           resolved = true
           if (timeoutId) clearTimeout(timeoutId)
           connectionStatus.value = 'disconnected'
           
           // 清理失败的 channel
-          if (channel.value) {
-            const failedChannel = channel.value
-            channel.value = null
-            try {
-              await supabase.removeChannel(failedChannel as any)
-            } catch {}
-          }
+          try {
+            await supabase.removeChannel(newChannel as any)
+          } catch {}
           
-          reject(new Error(`连接失败 (${status})，请重试`))
+          // 如果还有重试次数，尝试重试
+          if (retryCount < maxRetries) {
+            console.log(`[Challenge] Connection failed (${status}), retrying...`)
+            initRealtimeChannel(challengeId, retryCount + 1)
+              .then(resolve)
+              .catch(reject)
+          } else {
+            reject(new Error(`连接失败 (${status})，请重试`))
+          }
         }
       })
     })

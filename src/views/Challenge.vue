@@ -450,7 +450,7 @@ import { SearchIcon } from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useChallengeStore } from '@/stores/challenge'
 import { useWordsStore } from '@/stores/words'
-import { supabase } from '@/lib/supabase'
+import { supabase, reconnectRealtime } from '@/lib/supabase'
 import ChallengeRoom from '@/components/ChallengeRoom.vue'
 
 const baseUrl = import.meta.env.BASE_URL
@@ -473,7 +473,7 @@ const uploadRef = ref(null) // 上传组件引用
 let lastHiddenTime = 0
 const VISIBILITY_RELOAD_THRESHOLD = 3000 // 3秒
 
-function handleVisibilityChange() {
+async function handleVisibilityChange() {
   if (document.visibilityState === 'visible') {
     const hiddenDuration = Date.now() - lastHiddenTime
     
@@ -490,11 +490,16 @@ function handleVisibilityChange() {
     // 重置 connectingId，避免卡在"正在建立连接"状态
     connectingId.value = null
     
-    // 如果隐藏时间超过阈值，且不在房间内，自动刷新列表
-    if (hiddenDuration > VISIBILITY_RELOAD_THRESHOLD && !challengeStore.currentChallenge) {
-      // 清除缓存并强制刷新
-      challengeStore.clearCache()
-      challengeStore.loadChallenges(true).catch(() => {})
+    // 如果隐藏时间超过阈值
+    if (hiddenDuration > VISIBILITY_RELOAD_THRESHOLD) {
+      // 先重新连接 Realtime（移动端后台切换可能导致 WebSocket 断开）
+      await reconnectRealtime()
+      
+      // 如果不在房间内，自动刷新列表
+      if (!challengeStore.currentChallenge) {
+        challengeStore.clearCache()
+        challengeStore.loadChallenges(true).catch(() => {})
+      }
     }
   } else {
     lastHiddenTime = Date.now()
@@ -1737,9 +1742,10 @@ watch(() => route.params.id, async (newId, oldId) => {
 
   &.finished {
     opacity: 0.9;
+    //background: linear-gradient(135deg, var(--honey-50) 0%, var(--honey-100) 100%);
     
     .card-image {
-      background: linear-gradient(135deg, var(--success-light, #d1fae5) 0%, var(--success, #10b981) 100%);
+      background: linear-gradient(135deg, var(--honey-300) 0%, var(--honey-500) 100%);
     }
   }
 

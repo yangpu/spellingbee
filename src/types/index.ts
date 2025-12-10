@@ -90,6 +90,7 @@ export interface CompetitionSession {
   startTime: number | null
   streak: number
   savedAt: number
+  userInput?: string  // 当前单词用户已输入的字母
 }
 
 // Speech types

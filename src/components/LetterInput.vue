@@ -61,10 +61,15 @@ const props = defineProps({
   autoSubmit: {
     type: Boolean,
     default: true
+  },
+  // 外部传入的字母数组，用于恢复状态
+  letters: {
+    type: String,
+    default: ''
   }
 })
 
-const emit = defineEmits(['submit', 'change'])
+const emit = defineEmits(['submit', 'change', 'update:letters'])
 
 // 检测移动端
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
@@ -85,9 +90,35 @@ const isAllFilled = computed(() => letterSlots.value.every(slot => slot.value))
 const currentAnswer = computed(() => letterSlots.value.map(s => s.value).join(''))
 
 // 监听单词变化，重置输入框
-watch(() => props.word, (newWord) => {
+watch(() => props.word, (newWord, oldWord) => {
   if (newWord) {
-    resetSlots()
+    // 单词变化时重置
+    if (newWord !== oldWord) {
+      resetSlots()
+    }
+  }
+}, { immediate: true })
+
+// 监听外部 letters 变化，同步到内部
+// 使用 immediate: true 确保初始值也能被处理
+watch(() => props.letters, (newLetters) => {
+  if (newLetters) {
+    // 如果 letterSlots 还没初始化，等待下一个 tick
+    if (letterSlots.value.length === 0) {
+      nextTick(() => {
+        if (letterSlots.value.length > 0 && props.letters) {
+          const currentValue = currentAnswer.value
+          if (props.letters !== currentValue) {
+            setValueInternal(props.letters)
+          }
+        }
+      })
+    } else {
+      const currentValue = currentAnswer.value
+      if (newLetters !== currentValue) {
+        setValueInternal(newLetters)
+      }
+    }
   }
 }, { immediate: true })
 
@@ -147,7 +178,9 @@ function processLetterInput(value, index, inputElement) {
   const correctLetter = props.word[index]?.toLowerCase()
   letterSlots.value[index].status = value === correctLetter ? 'correct' : 'wrong'
   
-  emit('change', currentAnswer.value)
+  const answer = currentAnswer.value
+  emit('change', answer)
+  emit('update:letters', answer)
   
   // 取消之前的待执行移动操作
   if (pendingMoveToNext.value) {
@@ -230,7 +263,9 @@ function handleKeydown(event, index) {
       if (inputRefs.value[index]) {
         inputRefs.value[index].value = ''
       }
-      emit('change', currentAnswer.value)
+      const answer = currentAnswer.value
+      emit('change', answer)
+      emit('update:letters', answer)
     } else if (index > 0) {
       currentLetterIndex.value = index - 1
       letterSlots.value[index - 1].value = ''
@@ -243,7 +278,9 @@ function handleKeydown(event, index) {
         }
         setTimeout(() => { handledByKeydown.value = false }, 50)
       })
-      emit('change', currentAnswer.value)
+      const answer = currentAnswer.value
+      emit('change', answer)
+      emit('update:letters', answer)
       return
     }
     
@@ -442,9 +479,49 @@ function focusInput(index) {
 defineExpose({
   reset: resetSlots,
   getAnswer: () => currentAnswer.value,
+  getValue: () => currentAnswer.value,
+  setValue: (value) => {
+    if (!value || typeof value !== 'string') return
+    if (letterSlots.value.length === 0) {
+      nextTick(() => {
+        if (letterSlots.value.length > 0) {
+          setValueInternal(value)
+        }
+      })
+      return
+    }
+    setValueInternal(value)
+  },
   isFilled: () => isAllFilled.value,
   focus: () => inputRefs.value[0]?.focus()
 })
+
+// 内部设置值的方法
+function setValueInternal(value) {
+  if (!value || letterSlots.value.length === 0) return
+  const letters = value.toLowerCase().split('')
+  letters.forEach((letter, i) => {
+    if (i < letterSlots.value.length && /^[a-z]$/.test(letter)) {
+      letterSlots.value[i].value = letter
+      const correctLetter = props.word[i]?.toLowerCase()
+      letterSlots.value[i].status = letter === correctLetter ? 'correct' : 'wrong'
+      if (inputRefs.value[i]) {
+        inputRefs.value[i].value = letter
+      }
+    }
+  })
+  // 聚焦到下一个空位
+  const nextEmptyIndex = letterSlots.value.findIndex(slot => !slot.value)
+  if (nextEmptyIndex !== -1) {
+    currentLetterIndex.value = nextEmptyIndex
+    nextTick(() => {
+      inputRefs.value[nextEmptyIndex]?.focus()
+    })
+  } else {
+    currentLetterIndex.value = letterSlots.value.length - 1
+  }
+  emit('change', currentAnswer.value)
+}
 </script>
 
 <style lang="scss" scoped>

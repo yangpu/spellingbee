@@ -43,9 +43,9 @@
             <label>答题时间（秒）</label>
             <t-slider
               v-model="settings.timeLimit"
-              :min="30"
-              :max="120"
-              :step="15"
+              :min="10"
+              :max="90"
+              :step="5"
               :marks="timeLimitMarks"
             />
           </div>
@@ -93,9 +93,9 @@
             <template #icon><t-icon name="user-talk" /></template>
             播音员
           </t-button>
-          <t-button theme="primary" size="large" @click="startCompetition">
+          <t-button theme="primary" size="large" @click="startCompetition" :loading="isStarting" :disabled="isStarting">
             <template #icon><t-icon name="play-circle" /></template>
-            开始比赛
+            {{ isStarting ? '加载中...' : '开始比赛' }}
           </t-button>
         </div>
 
@@ -178,6 +178,7 @@
           :word="currentWord?.word || ''"
           :disabled="isAnswerSubmitted"
           :auto-submit="true"
+          v-model:letters="currentLetters"
           @submit="submitAnswer"
           @change="handleLetterChange"
         />
@@ -526,11 +527,11 @@ const wordCountMarks = {
 }
 
 const timeLimitMarks = {
+  10: '10s',
   30: '30s',
   45: '45s',
   60: '60s',
   90: '90s',
-  120: '120s',
 };
 
 // State
@@ -540,10 +541,14 @@ const timerInterval = ref(null);
 const announcerMessage = ref('准备好了吗？让我们开始吧！');
 const showResultAnimal = ref(null); // 'cat' for success, 'dog' for failure
 const showDefinitionHint = ref(false); // 显示中文释义
+const isStarting = ref(false); // 开始比赛按钮加载状态
+const isPaused = ref(false); // 比赛是否因页面切换而暂停
 
 // Letter input state
 const letterInputRef = ref(null);
 const isAnswerSubmitted = ref(false); // 是否已提交答案
+const currentLetters = ref(''); // 当前输入的字母，用于保存/恢复
+const isRestoring = ref(false); // 是否正在恢复比赛
 
 // Voice input state
 const isListening = ref(false);
@@ -593,8 +598,11 @@ watch(
   (word) => {
     if (word) {
       isAnswerSubmitted.value = false;
+      // 恢复比赛时不清空输入
+      if (!isRestoring.value) {
+        currentLetters.value = '';
+      }
       nextTick(() => {
-        letterInputRef.value?.reset();
         letterInputRef.value?.focus();
       });
     }
@@ -602,9 +610,9 @@ watch(
   { immediate: true }
 );
 
-// 处理字母变化（用于语音输入）
+// 处理字母变化（用于语音输入和保存状态）
 function handleLetterChange(answer) {
-  // 可以在这里添加语音输入相关的处理
+  currentLetters.value = answer;
 }
 
 // 恢复未完成的比赛 - 检查语音权限，但不等待用户点击
@@ -628,18 +636,49 @@ async function resumeCompetition() {
 
 // 实际执行恢复比赛
 async function doResumeCompetition() {
+  // 先获取保存的 session 数据（不恢复状态）
+  const savedSession = competitionStore.getSavedSession();
+  
+  if (!savedSession) {
+    MessagePlugin.warning('无法恢复比赛，请开始新比赛');
+    return;
+  }
+  
+  // 保存要恢复的用户输入
+  const userInputToRestore = savedSession.userInput || '';
+  
+  // 设置恢复标志
+  isRestoring.value = true;
+  
+  // 恢复比赛状态（这会触发 currentWord 变化和 LetterInput 重置）
   const session = competitionStore.restoreSession();
+  
   if (!session) {
+    isRestoring.value = false;
+    currentLetters.value = '';
     MessagePlugin.warning('无法恢复比赛，请开始新比赛');
     return;
   }
   
   showResults.value = false;
   lastResult.value = null;
+  isPaused.value = false;
   
   // Reset state
   resetAskedQuestions();
-  initLetterSlots();
+  
+  // 等待 LetterInput 组件完成重置（word watch -> resetSlots -> nextTick）
+  await nextTick();
+  await nextTick(); // 双重 nextTick 确保 LetterInput 的 resetSlots 完成
+  
+  // 现在设置用户输入并直接调用 setValue
+  if (userInputToRestore) {
+    currentLetters.value = userInputToRestore;
+    letterInputRef.value?.setValue(userInputToRestore);
+  }
+  
+  // 清除恢复标志
+  isRestoring.value = false;
   
   // Start with word announcement
   announceWord();
@@ -651,66 +690,85 @@ async function doResumeCompetition() {
   if (settings.voiceInput) {
     initVoiceRecognition();
   }
-  
-
 }
 
 // Methods
 async function startCompetition() {
-  await wordsStore.init();
+  // 防止重复点击
+  if (isStarting.value) return;
+  isStarting.value = true;
   
-  // 保存设置
-  saveSettings();
+  // 设置超时
+  const timeoutId = setTimeout(() => {
+    if (isStarting.value) {
+      isStarting.value = false;
+      MessagePlugin.error('加载超时，请重试');
+    }
+  }, 10000);
   
-  let words = [];
-  
-  // Get words based on selected mode
-  switch (settings.wordMode) {
-    case 'simulate':
-      // Simulate mode: simulate real competition, progressive difficulty
-      words = getWordsNaturalMode(settings.wordCount, settings.difficulty);
-      break;
-    case 'new':
-      // New mode: prioritize words not tested before
-      words = getWordsNewMode(settings.wordCount, settings.difficulty);
-      break;
-    case 'random':
-      // Random mode: completely random
-      words = wordsStore.getRandomWords(settings.wordCount, settings.difficulty);
-      break;
-    case 'sequential':
-      // Sequential mode: in order from word list
-      words = getWordsSequentialMode(settings.wordCount, settings.difficulty);
-      break;
-    case 'reverse':
-      // Reverse mode: reverse order from word list
-      words = getWordsReverseMode(settings.wordCount, settings.difficulty);
-      break;
-    default:
-      words = wordsStore.getRandomWords(settings.wordCount, settings.difficulty);
-  }
+  try {
+    await wordsStore.init();
+    
+    // 保存设置
+    saveSettings();
+    
+    let words = [];
+    
+    // Get words based on selected mode
+    switch (settings.wordMode) {
+      case 'simulate':
+        // Simulate mode: simulate real competition, progressive difficulty
+        words = getWordsNaturalMode(settings.wordCount, settings.difficulty);
+        break;
+      case 'new':
+        // New mode: prioritize words not tested before
+        words = getWordsNewMode(settings.wordCount, settings.difficulty);
+        break;
+      case 'random':
+        // Random mode: completely random
+        words = wordsStore.getRandomWords(settings.wordCount, settings.difficulty);
+        break;
+      case 'sequential':
+        // Sequential mode: in order from word list
+        words = getWordsSequentialMode(settings.wordCount, settings.difficulty);
+        break;
+      case 'reverse':
+        // Reverse mode: reverse order from word list
+        words = getWordsReverseMode(settings.wordCount, settings.difficulty);
+        break;
+      default:
+        words = wordsStore.getRandomWords(settings.wordCount, settings.difficulty);
+    }
 
-  if (words.length === 0) {
-    MessagePlugin.warning('词库中没有符合条件的单词');
-    return;
-  }
+    if (words.length === 0) {
+      MessagePlugin.warning('词库中没有符合条件的单词');
+      return;
+    }
 
-  showResults.value = false;
-  lastResult.value = null;
-  competitionStore.startCompetition(words, settings.timeLimit);
+    showResults.value = false;
+    lastResult.value = null;
+    isPaused.value = false;
+    competitionStore.startCompetition(words, settings.timeLimit);
 
-  // Reset state
-  resetAskedQuestions();
+    // Reset state
+    resetAskedQuestions();
 
-  // Start with word announcement
-  announceWord();
+    // Start with word announcement
+    announceWord();
 
-  // Start timer
-  startTimer();
+    // Start timer
+    startTimer();
 
-  // Initialize voice recognition if enabled
-  if (settings.voiceInput) {
-    initVoiceRecognition();
+    // Initialize voice recognition if enabled
+    if (settings.voiceInput) {
+      initVoiceRecognition();
+    }
+  } catch (error) {
+    console.error('Error starting competition:', error);
+    MessagePlugin.error('开始比赛失败，请重试');
+  } finally {
+    clearTimeout(timeoutId);
+    isStarting.value = false;
   }
 }
 
@@ -1912,7 +1970,8 @@ function exitCompetition() {
   stopVoiceInput();
   speechSynthesis.cancel();
   // 暂停比赛，保留会话数据以便恢复
-  competitionStore.pauseCompetition();
+  console.log('[Competition] exitCompetition: currentLetters=', currentLetters.value, 'timeRemaining=', competitionStore.timeRemaining);
+  competitionStore.pauseCompetition(currentLetters.value);
   showResults.value = false;
   lastResult.value = null;
 }
@@ -2282,12 +2341,60 @@ function formatDuration(seconds) {
   return mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
 }
 
+// 页面可见性变化处理 - 切换页面时暂停比赛
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    // 页面切换到后台，暂停比赛
+    if (competitionStore.isActive && !isPaused.value) {
+      isPaused.value = true;
+      stopTimer();
+      stopVoiceInput();
+      clearWordPhaseTimer();
+      speechSynthesis.cancel();
+      // 保存当前进度
+      competitionStore.saveSession(currentLetters.value);
+    }
+  } else if (document.visibilityState === 'visible') {
+    // 页面恢复到前台，恢复比赛
+    if (competitionStore.isActive && isPaused.value) {
+      isPaused.value = false;
+      
+      // 恢复计时器（继续上次剩余时间）
+      startTimer();
+      
+      // 重置输入状态，允许用户继续输入
+      isAnswerSubmitted.value = false;
+      
+      // 重新朗读当前单词
+      if (currentWord.value) {
+        announcerMessage.value = '比赛继续，请拼写单词...';
+        setTimeout(() => {
+          speakWord(currentWord.value.word);
+        }, 500);
+      }
+      
+      // 恢复语音识别
+      if (settings.voiceInput) {
+        initVoiceRecognition();
+        setTimeout(() => {
+          if (settings.voiceInput && competitionStore.isActive && !isSpeaking.value) {
+            startVoiceInput();
+          }
+        }, 2000);
+      }
+    }
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   await wordsStore.init();
   speechStore.init(); // 初始化语音配置
   announcerStore.init(); // 初始化播音员配置
   loadSettings(); // 加载保存的设置
+  
+  // 监听页面可见性变化
+  document.addEventListener('visibilitychange', handleVisibilityChange);
   
   // 自动恢复未完成的比赛
   if (competitionStore.hasUnfinishedSession) {
@@ -2296,10 +2403,17 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  // 如果比赛正在进行中，保存当前进度（用于 Vue Router 页面切换）
+  if (competitionStore.isActive) {
+    competitionStore.saveSession(currentLetters.value);
+  }
+  
   stopTimer();
   stopVoiceInput();
   clearWordPhaseTimer();
   speechSynthesis.cancel();
+  // 移除可见性监听
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 
 // Watch for competition end
