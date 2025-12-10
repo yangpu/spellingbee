@@ -1,6 +1,6 @@
 <template>
   <div class="learn-page" @click="onPageClick">
-    <div class="page-header">
+    <div class="page-header" v-if="!isLearning">
       <h1>单词学习</h1>
       <p>通过卡片学习单词，掌握拼写、发音和释义</p>
       <div class="header-actions">
@@ -54,6 +54,7 @@
           <t-option value="sequential" label="顺序" />
           <t-option value="reverse" label="倒序" />
           <t-option value="random" label="随机" />
+          <t-option value="new" label="新题" />
           <t-option value="review" label="备考" />
         </t-select>
       </div>
@@ -86,10 +87,6 @@
           {{ isAutoLearning ? '停止自动学习' : '自动学习' }}
         </t-button>
         <span v-if="isAutoLearning" class="auto-status">自动学习中...</span>
-        <t-button variant="outline" theme="default" @click="exitLearning" class="exit-btn">
-          <template #icon><t-icon name="close" /></template>
-          退出
-        </t-button>
       </div>
 
       <!-- Card -->
@@ -156,6 +153,18 @@
         <span><kbd>←</kbd> 需要复习</span>
         <span><kbd>→</kbd> 已经掌握</span>
         <span><kbd>Enter</kbd> 朗读</span>
+      </div>
+
+      <!-- 退出学习按钮 -->
+      <div class="exit-learning-section">
+        <t-button
+          variant="text"
+          theme="danger"
+          @click="exitLearning"
+        >
+          <template #icon><t-icon name="logout" /></template>
+          退出学习
+        </t-button>
       </div>
     </div>
 
@@ -307,6 +316,8 @@ const learningModeHint = computed(() => {
       return '按当前词库倒序进行学习'
     case 'random':
       return '随机选取单词进行学习'
+    case 'new':
+      return '只选择从未学习过的新单词'
     case 'review':
       return '结合比赛记录，重点复习容易出错的单词'
     default:
@@ -334,6 +345,9 @@ function startLearning() {
       break
     case 'random':
       words = wordsStore.getRandomWords(settings.count, settings.difficulty)
+      break
+    case 'new':
+      words = getWordsNewMode(settings.count, settings.difficulty)
       break
     case 'review':
       words = getWordsReviewMode(settings.count, settings.difficulty)
@@ -473,6 +487,32 @@ function getWordsReverseMode(count, difficulty) {
   localStorage.setItem(storageKey, nextPos.toString())
   
   return result
+}
+
+// 新题模式：只选择从未学习过的单词
+function getWordsNewMode(count, difficulty) {
+  let filtered = [...wordsStore.words]
+  
+  if (difficulty !== null) {
+    filtered = filtered.filter(w => w.difficulty === difficulty)
+  }
+  
+  if (filtered.length === 0) return []
+  
+  // 筛选出没有学习记录的单词
+  const notLearned = filtered.filter(word => {
+    const progress = learningStore.getWordProgress(word.word)
+    return !progress // 没有学习记录
+  })
+  
+  if (notLearned.length === 0) {
+    MessagePlugin.warning('没有新单词了，所有单词都已学习过')
+    return []
+  }
+  
+  // 随机打乱并返回指定数量
+  const shuffled = shuffleArray([...notLearned])
+  return shuffled.slice(0, count)
 }
 
 // 备考模式：重点复习容易出错的单词
@@ -1091,10 +1131,12 @@ onUnmounted(() => {
         font-weight: 500;
         animation: pulse 1.5s ease-in-out infinite;
       }
+    }
 
-      .exit-btn {
-        margin-left: auto;
-      }
+    .exit-learning-section {
+      display: flex;
+      justify-content: center;
+      margin-top: 2rem;
     }
   }
 

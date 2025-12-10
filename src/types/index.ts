@@ -152,6 +152,7 @@ export interface Challenge {
   challenge_number?: number // 比赛序号
   show_chinese?: boolean // 显示中文词义，默认 true
   show_english?: boolean // 显示英文释义，默认 true
+  assisted_input?: boolean // 辅助输入模式，默认 true
   network_mode?: NetworkConnectionType // 网络连接模式
   status: 'waiting' | 'ready' | 'in_progress' | 'finished' | 'cancelled'
   participants: ChallengeParticipant[]

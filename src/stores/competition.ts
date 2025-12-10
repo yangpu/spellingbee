@@ -35,11 +35,9 @@ export const useCompetitionStore = defineStore('competition', () => {
     return total > 0 ? Math.round((correctWords.value.length / total) * 100) : 0
   })
   
-  // 是否有未完成的比赛
-  const hasUnfinishedSession = computed(() => {
-    const saved = localStorage.getItem(SESSION_KEY)
-    return !!saved
-  })
+  // 是否有未完成的比赛（使用响应式变量追踪）
+  const _hasSession = ref(!!localStorage.getItem(SESSION_KEY))
+  const hasUnfinishedSession = computed(() => _hasSession.value)
 
   // 保存当前比赛状态
   function saveSession(userInput?: string): void {
@@ -62,6 +60,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     }
     
     localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+    _hasSession.value = true
   }
 
   // 获取保存的会话数据（不恢复状态）
@@ -122,6 +121,7 @@ export const useCompetitionStore = defineStore('competition', () => {
   // 清除保存的会话
   function clearSession(): void {
     localStorage.removeItem(SESSION_KEY)
+    _hasSession.value = false
   }
 
   // Start competition

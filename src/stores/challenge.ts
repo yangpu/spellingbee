@@ -347,30 +347,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     throw new Error('请先登录')
   }
 
-  // 兼容旧代码：handleIncomingConnection 不再需要，但保留空实现
-  function handleIncomingConnection(conn: any) {
-    // Supabase Realtime 模式下不需要此函数
-    //console.log('[Deprecated] handleIncomingConnection called in Supabase mode')
-  }
 
-  // 兼容旧代码：connectToHost 在 Supabase 模式下不需要，直接返回成功
-  async function connectToHost(hostPeerId: string): Promise<void> {
-    // Supabase Realtime 模式下，所有用户通过 channel 通信，不需要点对点连接
-    //console.log('[Supabase Mode] connectToHost called, using channel instead')
-    return Promise.resolve()
-  }
-
-  // Send message - 使用 Supabase Realtime broadcast
-  function sendMessage(conn: any, message: ChallengeMessage): void {
-    // 在 Supabase 模式下，使用 channel broadcast
-    if (channel.value) {
-      channel.value.send({
-        type: 'broadcast',
-        event: 'message',
-        payload: message
-      })
-    }
-  }
 
   // Broadcast message to all connections - 使用 Supabase Realtime broadcast
   function broadcast(message: ChallengeMessage): void {
@@ -383,22 +360,11 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
   }
   
-  // 发送消息给指定用户
-  function sendToUser(userId: string, message: ChallengeMessage): void {
-    if (channel.value) {
-      channel.value.send({
-        type: 'broadcast',
-        event: `message:${userId}`,
-        payload: message
-      })
-    }
-  }
-
   // Handle incoming message
-  function handleMessage(message: ChallengeMessage, fromUserId: string): void {
+  function handleMessage(message: ChallengeMessage, _fromUserId: string): void {
     switch (message.type) {
       case 'join':
-        handleJoinMessage(message, fromUserId)
+        handleJoinMessage(message)
         break
       case 'leave':
         handleLeaveMessage(message)
@@ -434,7 +400,7 @@ export const useChallengeStore = defineStore('challenge', () => {
   }
 
   // Message handlers
-  function handleJoinMessage(message: ChallengeMessage, fromPeerId: string): void {
+  function handleJoinMessage(message: ChallengeMessage): void {
     if (!isHost.value || !currentChallenge.value) return
 
     const data = message.data as {
@@ -751,34 +717,6 @@ export const useChallengeStore = defineStore('challenge', () => {
       sender_id: authStore.user!.id,
       timestamp: Date.now()
     })
-  }
-
-  // Handle participant disconnect
-  function handleParticipantDisconnect(peerId: string): void {
-    if (!currentChallenge.value) return
-
-    const participant = currentChallenge.value.participants.find(p => p.peer_id === peerId)
-    if (participant) {
-      participant.is_online = false
-      
-      if (isHost.value) {
-        broadcastSync()
-      }
-    }
-  }
-
-  // Handle host disconnect
-  function handleHostDisconnect(): void {
-    // 如果比赛已经正常结束，不要改变状态
-    if (currentChallenge.value?.status === 'finished' || gameStatus.value === 'finished') {
-      return
-    }
-    
-    // 主机异常断开，游戏取消
-    gameStatus.value = 'finished'
-    if (currentChallenge.value) {
-      currentChallenge.value.status = 'cancelled'
-    }
   }
 
   // Game control functions
@@ -1289,6 +1227,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     challenge_number?: number
     show_chinese?: boolean
     show_english?: boolean
+    assisted_input?: boolean
   }): Promise<Challenge> {
     if (!authStore.user) throw new Error('请先登录')
 
@@ -1299,6 +1238,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       ...data,
       show_chinese: data.show_chinese ?? true,
       show_english: data.show_english ?? true,
+      assisted_input: data.assisted_input ?? true,
       creator_id: authStore.user.id,
       creator_name: authStore.profile?.nickname || authStore.user.email?.split('@')[0],
       creator_avatar: authStore.profile?.avatar_url,
@@ -1549,7 +1489,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     })
   }
 
-  async function leaveChallenge(skipConfirm = false): Promise<void> {
+  async function leaveChallenge(): Promise<void> {
     if (!currentChallenge.value || !authStore.user) return
 
     // 如果比赛已结束，直接清理不需要其他操作

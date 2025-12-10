@@ -425,6 +425,10 @@
                 <t-checkbox v-model="createData.show_english">英文释义</t-checkbox>
               </div>
             </t-form-item>
+            <t-form-item name="assisted_input" label="辅助输入">
+              <t-switch v-model="createData.assisted_input" />
+              <span class="form-hint">{{ createData.assisted_input ? '显示所有字母框和颜色提示' : '逐个显示字母框，无颜色提示' }}</span>
+            </t-form-item>
             <div class="form-actions">
               <t-button variant="outline" @click="showCreateDialog = false">
                 <template #icon><t-icon name="close" /></template>
@@ -463,7 +467,7 @@ const wordsStore = useWordsStore()
 const showCreateDialog = ref(false)
 const creating = ref(false)
 const quickCreating = ref(null) // 快速创建状态：null, 2, 3
-const showCustomCreate = ref(false) // 定制挑战赛展开状态，默认不展开
+const showCustomCreate = ref(true) // 定制挑战赛展开状态，默认展开
 const connectingId = ref(null) // 正在连接的挑战赛ID
 const coverFiles = ref([])
 const uploadingCover = ref(false)
@@ -748,7 +752,8 @@ const createData = reactive({
   difficulty: null,
   word_mode: 'simulate', // 比赛模式：simulate, new, random, sequential, reverse
   show_chinese: true, // 显示中文词义
-  show_english: true // 显示英文释义
+  show_english: true, // 显示英文释义
+  assisted_input: true // 辅助输入：true显示所有字母框和颜色提示，false逐个显示无颜色提示
 })
 
 // 加载保存的设置
@@ -765,7 +770,8 @@ async function loadSettings() {
         difficulty: settings.difficulty ?? null,
         word_mode: settings.word_mode ?? 'simulate',
         show_chinese: settings.show_chinese ?? true,
-        show_english: settings.show_english ?? true
+        show_english: settings.show_english ?? true,
+        assisted_input: settings.assisted_input ?? true
       })
       // 恢复封面类型（默认改为 random）
       coverType.value = settings.coverType ?? 'random'
@@ -787,6 +793,7 @@ function saveSettings() {
       word_mode: createData.word_mode,
       show_chinese: createData.show_chinese,
       show_english: createData.show_english,
+      assisted_input: createData.assisted_input,
       coverType: coverType.value
     }))
   } catch (e) {
@@ -1346,7 +1353,8 @@ async function quickCreate(playerCount) {
         difficulty: createData.difficulty,
         word_mode: createData.word_mode,
         show_chinese: createData.show_chinese,
-        show_english: createData.show_english
+        show_english: createData.show_english,
+        assisted_input: createData.assisted_input
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 20000))
     ])
@@ -1409,7 +1417,8 @@ async function handleCreate({ validateResult }) {
         difficulty: createData.difficulty,
         word_mode: createData.word_mode,
         show_chinese: createData.show_chinese,
-        show_english: createData.show_english
+        show_english: createData.show_english,
+        assisted_input: createData.assisted_input
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 20000))
     ])
@@ -2087,7 +2096,7 @@ watch(() => route.params.id, async (newId, oldId) => {
     }
     
     &.expanded {
-      max-height: 1000px;
+      // max-height: 1000px;
       opacity: 1;
       padding-top: 1rem;
     }

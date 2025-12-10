@@ -45,6 +45,26 @@
           <div class="info-label">奖池</div>
           <div class="info-value prize">{{ challenge?.prize_pool }} <t-icon name="gift" /></div>
         </div>
+        <div class="info-card">
+          <div class="info-label">难度</div>
+          <div class="info-value">{{ getDifficultyText(challenge?.difficulty) }}</div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">出题模式</div>
+          <div class="info-value">{{ getWordModeText(challenge?.word_mode) }}</div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">提示选项</div>
+          <div class="info-value hints">
+            <span v-if="challenge?.show_chinese !== false">中文</span>
+            <span v-if="challenge?.show_english !== false">英文</span>
+            <span v-if="challenge?.show_chinese === false && challenge?.show_english === false">无</span>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">辅助输入</div>
+          <div class="info-value">{{ challenge?.assisted_input !== false ? '开启' : '关闭' }}</div>
+        </div>
       </div>
 
       <div class="participants-section">
@@ -152,11 +172,39 @@
           :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-leader': index === 0 }"
         >
           <div class="score-rank">{{ index + 1 }}</div>
-          <t-avatar :image="p.avatar_url" size="small">{{ p.nickname?.charAt(0) }}</t-avatar>
+          <div class="score-avatar">
+            <t-avatar :image="p.avatar_url" size="small">{{ p.nickname?.charAt(0) }}</t-avatar>
+            <div class="online-dot" :class="{ online: isParticipantOnline(p) }"></div>
+          </div>
           <span class="score-name">{{ p.nickname }}</span>
           <span class="score-value">{{ p.score }}</span>
         </div>
       </div>
+
+      <!-- 房主离线提示 -->
+      <t-dialog
+        v-model:visible="showHostOfflineDialog"
+        header="主持人已离线"
+        :close-on-overlay-click="false"
+        :close-btn="false"
+        :footer="false"
+      >
+        <div class="host-offline-content">
+          <t-icon name="wifi-off" size="48px" class="offline-icon" />
+          <p>主持人（房主）已断开连接，比赛可能无法正常进行。</p>
+          <p class="hint">您可以选择继续等待主持人恢复连接，或者退出比赛。</p>
+        </div>
+        <div class="host-offline-actions">
+          <t-button variant="outline" @click="handleContinueWait">
+            <template #icon><t-icon name="time" /></template>
+            继续等待
+          </t-button>
+          <t-button theme="danger" @click="handleExitDueToHostOffline">
+            <template #icon><t-icon name="logout" /></template>
+            退出挑战
+          </t-button>
+        </div>
+      </t-dialog>
 
       <!-- 单词区域 -->
       <div class="word-section" v-if="challengeStore.gameStatus === 'playing'">
@@ -192,6 +240,7 @@
             :word="challengeStore.currentWord?.word || ''"
             :disabled="challengeStore.hasSubmitted"
             :auto-submit="true"
+            :assisted-mode="challenge?.assisted_input !== false"
             @submit="handleSubmit"
           />
 
@@ -274,35 +323,62 @@
         </div>
       </div>
 
-      <!-- 非胜利者显示 -->
-      <div class="result-header" v-else>
-        <div class="result-icon">{{ challenge?.status === 'cancelled' ? '❌' : '🎮' }}</div>
-        <h2 class="result-title">{{ challenge?.status === 'cancelled' ? '比赛已取消' : '比赛结束' }}</h2>
-        <p class="result-subtitle" v-if="challenge?.winner_name">
-          冠军是 <strong>{{ challenge?.winner_name }}</strong>
-        </p>
+      <!-- 比赛取消时显示 -->
+      <div class="result-header" v-else-if="challenge?.status === 'cancelled'">
+        <div class="result-icon">❌</div>
+        <h2 class="result-title">比赛已取消</h2>
       </div>
 
       <!-- 比赛信息卡片 -->
       <div class="finish-card">
-        <div class="finish-card-header">
-          <div class="challenge-cover" v-if="getCoverUrl(challenge?.image_url)">
+        <div class="finish-card-header" :class="{ 'has-cover': getCoverUrl(challenge?.image_url) }">
+          <!-- 背景图片 -->
+          <div class="header-background" v-if="getCoverUrl(challenge?.image_url)">
             <img :src="getCoverUrl(challenge?.image_url)" alt="" />
+            <div class="header-overlay"></div>
           </div>
-          <div class="challenge-cover placeholder" v-else>
-            <t-icon name="trophy" size="40px" />
+          <div class="header-background placeholder" v-else>
+            <div class="header-overlay"></div>
           </div>
-          <div class="challenge-info">
+          
+          <!-- 比赛信息内容 -->
+          <div class="header-content">
             <h3 class="challenge-name">{{ challenge?.name }}</h3>
-            <div class="challenge-tags">
-              <t-tag size="small" variant="light">{{ challenge?.word_count }} 词</t-tag>
-              <t-tag size="small" variant="light">{{ challenge?.time_limit }}s/题</t-tag>
-              <t-tag size="small" variant="light" v-if="challenge?.difficulty">难度 {{ getDifficultyText(challenge?.difficulty) }}</t-tag>
-              <t-tag size="small" variant="light" theme="warning">{{ challenge?.entry_fee }} 积分</t-tag>
+            <div class="challenge-stats">
+              <div class="stat-item">
+                <t-icon name="layers" />
+                <span>{{ challenge?.word_count }} 词</span>
+              </div>
+              <div class="stat-item">
+                <t-icon name="time" />
+                <span>{{ challenge?.time_limit }}s/题</span>
+              </div>
+              <div class="stat-item">
+                <t-icon name="chart-bar" />
+                <span>{{ getDifficultyText(challenge?.difficulty) }}</span>
+              </div>
+              <div class="stat-item">
+                <t-icon name="setting" />
+                <span>{{ getWordModeText(challenge?.word_mode) }}</span>
+              </div>
+            </div>
+            <div class="challenge-config">
+              <t-tag size="small" variant="light" theme="warning">
+                <t-icon name="star" /> {{ challenge?.entry_fee }} 积分
+              </t-tag>
+              <t-tag size="small" variant="light" v-if="challenge?.show_chinese !== false">
+                中文提示
+              </t-tag>
+              <t-tag size="small" variant="light" v-if="challenge?.show_english !== false">
+                英文提示
+              </t-tag>
+              <t-tag size="small" variant="light" :theme="challenge?.assisted_input !== false ? 'primary' : 'default'">
+                {{ challenge?.assisted_input !== false ? '辅助输入' : '无辅助' }}
+              </t-tag>
             </div>
             <div class="challenge-time">
-              <span><t-icon name="time" /> {{ formatDateTime(challenge?.created_at) }} 创建</span>
-              <span v-if="challenge?.finished_at"><t-icon name="check-circle" /> {{ formatDateTime(challenge?.finished_at) }} 结束</span>
+              <span><t-icon name="calendar" /> {{ formatDateTime(challenge?.created_at) }}</span>
+              <span v-if="challenge?.finished_at"> → {{ formatDateTime(challenge?.finished_at) }}</span>
             </div>
           </div>
         </div>
@@ -427,7 +503,9 @@ function getCoverUrl(imageUrl) {
 
 const starting = ref(false)
 const letterInputRef = ref(null)
-const showRecords = ref(false) // 是否显示比赛记录
+const showRecords = ref(true) // 是否显示比赛记录（默认展开）
+const showHostOfflineDialog = ref(false) // 房主离线提示对话框
+const hostOfflineDialogDismissed = ref(false) // 用户是否已关闭过对话框
 
 const challenge = computed(() => challengeStore.currentChallenge)
 
@@ -442,6 +520,54 @@ function isParticipantReady(participant) {
   // 直接使用数据库中的 is_ready 状态，确保所有人看到的状态一致
   // 注意：房主的 is_ready 在进入房间时会自动设置为 true
   return participant.is_ready === true
+}
+
+// 判断房主是否在线
+const isHostOnline = computed(() => {
+  if (!challenge.value) return true
+  const host = challenge.value.participants?.find(p => p.user_id === challenge.value.creator_id)
+  return host?.is_online === true
+})
+
+// 判断当前用户是否是房主
+const isCurrentUserHost = computed(() => {
+  if (!challenge.value || !authStore.user) return false
+  return challenge.value.creator_id === authStore.user.id
+})
+
+// 监听房主在线状态变化（仅在比赛进行中时生效）
+watch([isHostOnline, () => challengeStore.gameStatus], ([hostOnline, gameStatus]) => {
+  // 只在比赛进行中且当前用户不是房主时检测
+  if (gameStatus === 'playing' || gameStatus === 'round_result') {
+    if (!isCurrentUserHost.value) {
+      if (!hostOnline && !hostOfflineDialogDismissed.value) {
+        // 房主离线，显示提示
+        showHostOfflineDialog.value = true
+      } else if (hostOnline && showHostOfflineDialog.value) {
+        // 房主恢复在线，自动关闭提示
+        showHostOfflineDialog.value = false
+        hostOfflineDialogDismissed.value = false
+        MessagePlugin.success('主持人已恢复连接')
+      }
+    }
+  } else {
+    // 比赛结束或其他状态，重置对话框状态
+    showHostOfflineDialog.value = false
+    hostOfflineDialogDismissed.value = false
+  }
+}, { immediate: true })
+
+// 继续等待房主
+function handleContinueWait() {
+  showHostOfflineDialog.value = false
+  hostOfflineDialogDismissed.value = true
+  MessagePlugin.info('正在等待主持人恢复连接...')
+}
+
+// 因房主离线退出比赛
+async function handleExitDueToHostOffline() {
+  showHostOfflineDialog.value = false
+  await handleExitGame()
 }
 
 // 判断当前用户是否是胜利者
@@ -552,6 +678,18 @@ function getDifficultyText(difficulty) {
   if (!difficulty) return '全部'
   const map = { 1: '简单', 2: '较易', 3: '中等', 4: '较难', 5: '困难' }
   return map[difficulty] || '全部'
+}
+
+// 获取出题模式文本
+function getWordModeText(mode) {
+  const map = {
+    simulate: '模拟',
+    new: '新题',
+    random: '随机',
+    sequential: '顺序',
+    reverse: '倒序'
+  }
+  return map[mode] || '模拟'
 }
 
 // 格式化日期时间
@@ -803,23 +941,23 @@ onUnmounted(() => {
   .room-info {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1rem;
+    gap: 0.75rem;
     margin-bottom: 2rem;
 
     .info-card {
       background: var(--bg-card);
       border-radius: 12px;
-      padding: 1rem;
+      padding: 0.75rem;
       text-align: center;
 
       .info-label {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
         color: var(--text-secondary);
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.25rem;
       }
 
       .info-value {
-        font-size: 1.25rem;
+        font-size: 1rem;
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -828,6 +966,18 @@ onUnmounted(() => {
 
         &.prize {
           color: var(--honey-600);
+        }
+
+        &.hints {
+          font-size: 0.85rem;
+          gap: 0.5rem;
+          
+          span {
+            padding: 0.125rem 0.5rem;
+            background: var(--honey-100);
+            border-radius: 4px;
+            color: var(--honey-700);
+          }
         }
       }
     }
@@ -1057,6 +1207,25 @@ onUnmounted(() => {
         font-weight: 600;
       }
 
+      .score-avatar {
+        position: relative;
+        
+        .online-dot {
+          position: absolute;
+          bottom: -2px;
+          right: -2px;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: var(--charcoal-300);
+          border: 2px solid white;
+          
+          &.online {
+            background: var(--success);
+          }
+        }
+      }
+
       .score-name {
         font-weight: 500;
       }
@@ -1066,6 +1235,34 @@ onUnmounted(() => {
         color: var(--honey-600);
       }
     }
+  }
+
+  // 房主离线提示对话框
+  .host-offline-content {
+    text-align: center;
+    padding: 1rem 0;
+    
+    .offline-icon {
+      color: var(--charcoal-400);
+      margin-bottom: 1rem;
+    }
+    
+    p {
+      margin: 0.5rem 0;
+      color: var(--text-primary);
+      
+      &.hint {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+    }
+  }
+  
+  .host-offline-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
   }
 
   .word-section {
@@ -1345,62 +1542,103 @@ onUnmounted(() => {
     margin-bottom: 1rem;
 
     .finish-card-header {
-      display: flex;
-      gap: 1rem;
-      padding: 1.25rem;
-      border-bottom: 1px solid var(--charcoal-100);
+      position: relative;
+      min-height: 160px;
+      overflow: hidden;
 
-      .challenge-cover {
-        width: 100px;
-        height: 70px;
-        border-radius: 8px;
-        overflow: hidden;
-        flex-shrink: 0;
-        background: linear-gradient(135deg, var(--honey-400) 0%, var(--honey-500) 100%);
-
-        &.placeholder {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-        }
+      .header-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
 
         img {
           width: 100%;
           height: 100%;
           object-fit: cover;
         }
-      }
 
-      .challenge-info {
-        flex: 1;
-        min-width: 0;
-
-        .challenge-name {
-          margin: 0 0 0.5rem;
-          font-size: 1.1rem;
-          font-weight: 700;
-          color: var(--text-primary);
+        &.placeholder {
+          background: linear-gradient(135deg, var(--honey-400) 0%, var(--honey-600) 100%);
         }
 
-        .challenge-tags {
+        .header-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.2) 0%,
+            rgba(0, 0, 0, 0.6) 100%
+          );
+        }
+      }
+
+      .header-content {
+        position: relative;
+        z-index: 1;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        min-height: 160px;
+        color: white;
+
+        .challenge-name {
+          margin: 0 0 0.75rem;
+          font-size: 1.25rem;
+          font-weight: 700;
+          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .challenge-stats {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+          margin-bottom: 0.75rem;
+
+          .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.9rem;
+            opacity: 0.95;
+
+            .t-icon {
+              font-size: 1rem;
+            }
+          }
+        }
+
+        .challenge-config {
           display: flex;
           flex-wrap: wrap;
           gap: 0.5rem;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.75rem;
         }
 
         .challenge-time {
           display: flex;
           flex-wrap: wrap;
-          gap: 1rem;
+          gap: 0.75rem;
           font-size: 0.8rem;
-          color: var(--text-muted);
+          opacity: 0.85;
 
           span {
             display: flex;
             align-items: center;
             gap: 0.25rem;
+          }
+        }
+      }
+
+      &.has-cover {
+        .header-content {
+          .challenge-name {
+            color: white;
           }
         }
       }

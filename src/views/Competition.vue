@@ -82,6 +82,11 @@
             <t-switch v-model="settings.voiceInput" />
             <span class="setting-hint">开启后可通过语音拼读单词</span>
           </div>
+          <div class="form-group">
+            <label>辅助输入</label>
+            <t-switch v-model="settings.assistedInput" />
+            <span class="setting-hint">{{ settings.assistedInput ? '显示所有字母框，实时颜色反馈' : '逐个显示字母框，无颜色提示，需手动提交' }}</span>
+          </div>
         </div>
 
         <div class="setup-actions">
@@ -177,7 +182,8 @@
           ref="letterInputRef"
           :word="currentWord?.word || ''"
           :disabled="isAnswerSubmitted"
-          :auto-submit="true"
+          :auto-submit="settings.assistedInput"
+          :assisted-mode="settings.assistedInput"
           v-model:letters="currentLetters"
           @submit="submitAnswer"
           @change="handleLetterChange"
@@ -271,16 +277,6 @@
       <!-- Action buttons -->
       <div class="answer-section">
         <div class="action-buttons">
-          <t-button
-            variant="outline"
-            size="large"
-            theme="danger"
-            @click="exitCompetition"
-          >
-          <template #icon><t-icon name="close" /></template>
-
-            退出比赛
-          </t-button>
           <t-button variant="outline" size="large" @click="skipWord">
             <template #icon><t-icon name="next" /></template>
             跳过单词
@@ -300,6 +296,18 @@
       <!-- Keyboard hint -->
       <div class="keyboard-hint">
         直接输入字母，按 <kbd>Backspace</kbd> 删除，<kbd>Enter</kbd> 提交
+      </div>
+
+      <!-- 退出比赛按钮 -->
+      <div class="exit-competition-section">
+        <t-button
+          variant="text"
+          theme="danger"
+          @click="exitCompetition"
+        >
+          <template #icon><t-icon name="logout" /></template>
+          退出比赛
+        </t-button>
       </div>
     </div>
 
@@ -467,6 +475,7 @@ const settings = reactive({
   difficulty: null,
   voiceInput: false,
   wordMode: 'simulate', // simulate, new, random, sequential, reverse
+  assistedInput: true, // 辅助输入：true显示所有字母框和颜色提示，false逐个显示无颜色提示
 });
 
 // 设置存储键
@@ -494,6 +503,7 @@ function saveSettings() {
       difficulty: settings.difficulty,
       voiceInput: settings.voiceInput,
       wordMode: settings.wordMode,
+      assistedInput: settings.assistedInput,
     }));
   } catch (e) {
     console.error('Error saving competition settings:', e);
@@ -1970,7 +1980,6 @@ function exitCompetition() {
   stopVoiceInput();
   speechSynthesis.cancel();
   // 暂停比赛，保留会话数据以便恢复
-  console.log('[Competition] exitCompetition: currentLetters=', currentLetters.value, 'timeRemaining=', competitionStore.timeRemaining);
   competitionStore.pauseCompetition(currentLetters.value);
   showResults.value = false;
   lastResult.value = null;
@@ -2177,6 +2186,11 @@ async function submitAnswer() {
   
   // 标记已提交，禁止修改
   isAnswerSubmitted.value = true;
+  
+  // 非辅助模式：提交后显示颜色对比
+  if (!settings.assistedInput) {
+    letterInputRef.value?.showResult();
+  }
   
   const isCorrect = competitionStore.checkAnswer(userAnswer);
 
@@ -2983,6 +2997,12 @@ watch(
       border-radius: 4px;
       font-family: monospace;
     }
+  }
+
+  .exit-competition-section {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
   }
 }
 
