@@ -2218,9 +2218,11 @@ watch(() => route.params.id, async (newId, oldId) => {
     }
   }
 }
+</style>
 
-// Dark mode styles
-:global([data-theme="dark"]) {
+<style lang="scss">
+// Dark mode styles - 非 scoped 样式
+[data-theme="dark"] {
   .challenge-page {
     .page-header {
       h1 {
@@ -2235,7 +2237,6 @@ watch(() => route.params.id, async (newId, oldId) => {
     .login-hint {
       background: rgba(251, 191, 36, 0.15);
       color: var(--accent-color);
-      border: 1px solid rgba(251, 191, 36, 0.3);
     }
 
     // 状态筛选标签 dark mode
@@ -2412,26 +2413,6 @@ watch(() => route.params.id, async (newId, oldId) => {
 
         &:hover {
           color: var(--text-primary);
-        }
-      }
-
-      // 难度选择和出题模式 radio-group dark mode
-      :deep(.t-radio-group) {
-        .t-radio-button {
-          background: rgba(30, 30, 35, 0.9) !important;
-          border-color: #3a3a40 !important;
-          color: var(--text-secondary) !important;
-
-          &:hover {
-            color: var(--text-primary) !important;
-            background: rgba(50, 50, 55, 0.9) !important;
-          }
-
-          &.t-is-checked {
-            background: var(--accent-bg) !important;
-            border-color: var(--accent-color) !important;
-            color: var(--accent-color) !important;
-          }
         }
       }
     }

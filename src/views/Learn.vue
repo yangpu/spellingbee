@@ -1636,9 +1636,11 @@ onUnmounted(() => {
     }
   }
 }
+</style>
 
-// Dark mode styles
-:global([data-theme="dark"]) {
+<style lang="scss">
+// Dark mode styles - 非 scoped 样式
+[data-theme="dark"] {
   .learn-page {
     .page-header {
       h1 {

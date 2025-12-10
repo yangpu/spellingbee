@@ -979,7 +979,7 @@ onMounted(() => {
 
       &.is-winner {
         border-color: var(--honey-400);
-        border-width: 2px;
+        border-width: 1px;
       }
 
       .challenge-record-header {
@@ -1872,9 +1872,11 @@ onMounted(() => {
     }
   }
 }
+</style>
 
-// Dark mode styles
-:global([data-theme="dark"]) {
+<style lang="scss">
+// Dark mode styles - 非 scoped 样式
+[data-theme="dark"] {
   .stats-page {
     .page-header {
       h1 {
