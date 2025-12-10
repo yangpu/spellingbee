@@ -1757,7 +1757,7 @@ watch(() => route.params.id, async (newId, oldId) => {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.5);
     display: flex;
     flex-direction: column;
     align-items: center;

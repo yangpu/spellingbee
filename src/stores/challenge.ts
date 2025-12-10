@@ -90,23 +90,37 @@ export const useChallengeStore = defineStore('challenge', () => {
   async function initRealtimeChannel(challengeId: string): Promise<string> {
     if (!authStore.user) throw new Error('请先登录')
     
-    // 如果已有 channel，先清理（不等待，避免卡住）
+    const channelName = `challenge:${challengeId}`
+    
+    // 如果已有 channel，先清理
     if (channel.value) {
       const oldChannel = channel.value
       channel.value = null
       connectionStatus.value = 'disconnected'
-      // 使用 Promise.race 添加超时，避免 unsubscribe 卡住
-      Promise.race([
-        oldChannel.unsubscribe(),
-        new Promise(resolve => setTimeout(resolve, 2000))
-      ]).catch(() => {})
+      
+      // 同步清理：先 untrack，再 unsubscribe，最后 removeChannel
+      try {
+        await Promise.race([
+          (async () => {
+            try { await oldChannel.untrack() } catch {}
+            try { await oldChannel.unsubscribe() } catch {}
+            try { await supabase.removeChannel(oldChannel as any) } catch {}
+          })(),
+          new Promise(resolve => setTimeout(resolve, 2000))
+        ])
+      } catch {}
     }
     
-    // 先尝试移除可能存在的同名 channel（防止重复订阅）
-    const channelName = `challenge:${challengeId}`
-    try {
-      await supabase.removeChannel(supabase.channel(channelName))
-    } catch {}
+    // 移除所有可能存在的同名 channel（防止重复订阅）
+    // 获取所有 channels 并移除同名的
+    const existingChannels = supabase.getChannels()
+    for (const ch of existingChannels) {
+      if ((ch as any).topic === `realtime:${channelName}`) {
+        try {
+          await supabase.removeChannel(ch)
+        } catch {}
+      }
+    }
     
     connectionStatus.value = 'connecting'
     connectionId.value = authStore.user.id
@@ -171,7 +185,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       }, 15000)
       
       channel.value!.subscribe(async (status) => {
-        console.log('[Challenge] Channel status:', status)
+        //console.log('[Challenge] Channel status:', status)
         
         if (status === 'SUBSCRIBED') {
           if (resolved) return
@@ -194,16 +208,24 @@ export const useChallengeStore = defineStore('challenge', () => {
           })
           
           resolve(connectionId.value)
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          // CLOSED 状态也应该触发失败，不应该继续等待
+          //console.log('[Challenge] Channel failed with status:', status)
           if (resolved) return
           resolved = true
           if (timeoutId) clearTimeout(timeoutId)
           connectionStatus.value = 'disconnected'
-          reject(new Error('Channel subscription failed'))
-        } else if (status === 'CLOSED') {
-          // Channel 被关闭，更新状态
-          console.log('[Challenge] Channel closed')
-          connectionStatus.value = 'disconnected'
+          
+          // 清理失败的 channel
+          if (channel.value) {
+            const failedChannel = channel.value
+            channel.value = null
+            try {
+              await supabase.removeChannel(failedChannel as any)
+            } catch {}
+          }
+          
+          reject(new Error(`连接失败 (${status})，请重试`))
         }
       })
     })
@@ -403,7 +425,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       peer_id: string
     }
 
-    ////console.log('handleJoinMessage: user', data.nickname, 'peer_id', data.peer_id)
+    //console.log('handleJoinMessage: user', data.nickname, 'peer_id', data.peer_id)
 
     // 查找参与者
     let participant = currentChallenge.value.participants.find(p => p.user_id === data.user_id)
@@ -412,7 +434,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       // 更新已存在的参与者状态
       participant.is_online = true
       participant.peer_id = data.peer_id
-      ////console.log('handleJoinMessage: updated existing participant online status')
+      //console.log('handleJoinMessage: updated existing participant online status')
     } else {
       // 添加新参与者
       const newParticipant: ChallengeParticipant = {
@@ -426,7 +448,7 @@ export const useChallengeStore = defineStore('challenge', () => {
         joined_at: new Date().toISOString()
       }
       currentChallenge.value.participants.push(newParticipant)
-      ////console.log('handleJoinMessage: added new participant', data.nickname)
+      //console.log('handleJoinMessage: added new participant', data.nickname)
     }
 
     // 广播同步消息
@@ -529,13 +551,13 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     // 验证轮次：忽略过期的答案（来自上一轮的延迟消息）
     if (data.round !== currentRound.value) {
-      console.log(`[handleAnswerMessage] 忽略过期答案: 收到轮次 ${data.round}, 当前轮次 ${currentRound.value}`)
+      //console.log(`[handleAnswerMessage] 忽略过期答案: 收到轮次 ${data.round}, 当前轮次 ${currentRound.value}`)
       return
     }
 
     // 如果当前轮已经结束，忽略后续答案
     if (roundEnded.value) {
-      console.log(`[handleAnswerMessage] 当前轮已结束，忽略答案`)
+      //console.log(`[handleAnswerMessage] 当前轮已结束，忽略答案`)
       return
     }
 
@@ -853,7 +875,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     // 防止同一轮多次结束（竞态条件保护）
     if (roundEnded.value) {
-      console.log(`[endRound] 当前轮已结束，忽略重复调用`)
+      //console.log(`[endRound] 当前轮已结束，忽略重复调用`)
       return
     }
     roundEnded.value = true
@@ -1146,7 +1168,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       } else {
         // 非强制刷新，使用 supabase 客户端（可能有缓存）
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
+          setTimeout(() => reject(new Error('Request timeout')), 15000)
         })
         
         const queryPromise = supabase
@@ -1796,7 +1818,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     currentChallenge.value.finished_at = finishedAt
     currentChallenge.value.game_words = gameWords.value
 
-    ////console.log('Challenge result saved successfully, status:', currentChallenge.value.status)
+    //console.log('Challenge result saved successfully, status:', currentChallenge.value.status)
 
     // 更新缓存列表中的挑战赛
     updateChallengeInList(currentChallenge.value)

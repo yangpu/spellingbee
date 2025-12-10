@@ -140,7 +140,7 @@ class VersionService {
         },
         (payload) => {
           const versionInfo = payload.new as VersionInfo
-          console.log('[VersionService] New version detected:', versionInfo.version)
+          //console.log('[VersionService] New version detected:', versionInfo.version)
           
           this._latestVersion.value = versionInfo.version
           this._releaseNotes.value = versionInfo.release_notes || null
@@ -163,7 +163,7 @@ class VersionService {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[VersionService] Subscribed to version updates')
+          //console.log('[VersionService] Subscribed to version updates')
         }
       })
   }
