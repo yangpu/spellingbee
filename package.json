@@ -1,6 +1,6 @@
 {
   "name": "spellingbee",
-  "version": "1.6.7",
+  "version": "1.7.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,7 @@
     "prebuild": "node scripts/bump-version.js",
     "build": "vue-tsc --noEmit && vite build",
     "type-check": "vue-tsc --noEmit",
-    "deploy": "npm run build && rsync -avz --delete dist/ root@yangruoji.com:/root/spellingbee && ssh root@yangruoji.com \"docker restart yangruoji-nginx\"",
+    "deploy": "npm run build && rsync -avz --delete dist/ root@yangruoji.com:/root/spellingbee && ssh root@yangruoji.com \"docker restart yangruoji-nginx\" && node scripts/publish-version.js",
     "deploy:dry": "npm run build && rsync -avz --delete --dry-run dist/ root@yangruoji.com:/root/spellingbee/ && ssh root@yangruoji.com \"docker restart yangruoji-nginx\"",
     "preview": "vite preview",
     "convert-words": "node scripts/convert-excel.js",

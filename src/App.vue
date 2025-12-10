@@ -185,10 +185,15 @@ import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
 import { useChallengeStore } from '@/stores/challenge';
 import { notificationService, useChallengeNotifications } from '@/lib/network';
+import { versionService } from '@/lib/version-service';
 import UserProfile from '@/components/UserProfile.vue';
 
 const baseUrl = import.meta.env.BASE_URL;
 const appVersion = __APP_VERSION__;
+
+// 版本更新状态
+const isUpgrading = ref(false);
+let unsubscribeVersionUpdate = null;
 
 // Supabase 连接状态
 const { isConnected: supabaseConnected, isReconnecting: supabaseReconnecting } = useChallengeNotifications();
@@ -455,21 +460,80 @@ const handleOffline = () => {
   // notification-service 内部会自动更新连接状态
 };
 
-// 显示升级确认对话框
-const showUpgradeConfirm = () => {
+// 显示升级确认对话框（手动点击版本号触发）
+const showUpgradeConfirm = async () => {
   const dialog = DialogPlugin.confirm({
-    header: '检查更新',
-    body: `当前版本：v${appVersion}\n是否安装最新版本并更新应用？`,
-    confirmBtn: '立即安装',
+    header: '版本信息',
+    body: `当前版本：v${appVersion}\n\n是否检测最新版本？`,
+    confirmBtn: '检测更新',
     cancelBtn: '取消',
-    onConfirm: () => {
+    onConfirm: async () => {
       dialog.destroy();
-      forceRefresh();
+      await checkAndPromptUpdate();
     },
     onClose: () => {
       dialog.destroy();
     }
   });
+};
+
+// 检测并提示更新
+const checkAndPromptUpdate = async () => {
+  const loadingMsg = MessagePlugin.loading('正在检测最新版本...');
+  
+  try {
+    const result = await versionService.checkVersion();
+    MessagePlugin.closeAll();
+    
+    if (result.hasUpdate && result.latestVersion) {
+      showUpdateDialog(result.latestVersion, result.releaseNotes);
+    } else {
+      MessagePlugin.success('当前已是最新版本');
+    }
+  } catch (error) {
+    MessagePlugin.closeAll();
+    MessagePlugin.error('检测更新失败，请稍后重试');
+  }
+};
+
+// 显示更新对话框
+const showUpdateDialog = (newVersion, releaseNotes) => {
+  let body = `发现新版本：v${newVersion}\n当前版本：v${appVersion}`;
+  if (releaseNotes) {
+    body += `\n\n更新说明：${releaseNotes}`;
+  }
+  body += '\n\n是否立即更新？';
+  
+  const dialog = DialogPlugin.confirm({
+    header: '发现新版本',
+    body,
+    confirmBtn: '立即更新',
+    cancelBtn: '稍后再说',
+    onConfirm: () => {
+      dialog.destroy();
+      startUpgrade();
+    },
+    onClose: () => {
+      dialog.destroy();
+    }
+  });
+};
+
+// 开始升级
+const startUpgrade = () => {
+  isUpgrading.value = true;
+  
+  // 显示升级中的对话框
+  const dialog = DialogPlugin({
+    header: '正在更新',
+    body: '正在清理缓存并刷新页面，请稍候...',
+    footer: false,
+    closeOnOverlayClick: false,
+    closeOnEscKeydown: false
+  });
+  
+  // 执行强制刷新
+  forceRefresh();
 };
 
 // 手动重连
@@ -494,6 +558,23 @@ onMounted(async () => {
   await learningStore.init();
   await competitionStore.loadRecords();
   
+  // 初始化版本服务并检测更新
+  await versionService.init();
+  
+  // 订阅版本更新（实时推送）
+  unsubscribeVersionUpdate = versionService.onUpdate((versionInfo) => {
+    // 收到新版本推送，自动弹出更新提示
+    showUpdateDialog(versionInfo.version, versionInfo.release_notes);
+  });
+  
+  // 如果启动时就检测到有新版本，提示用户
+  if (versionService.hasUpdate && versionService.latestVersion) {
+    // 延迟一点显示，让页面先加载完成
+    setTimeout(() => {
+      showUpdateDialog(versionService.latestVersion, versionService.releaseNotes);
+    }, 2000);
+  }
+  
   // 初始化挑战赛通知服务（用户已登录时）
   if (authStore.user) {
     await initNotificationService();
@@ -509,6 +590,11 @@ onMounted(async () => {
 // Cleanup
 onUnmounted(async () => {
   await destroyNotificationService();
+  if (unsubscribeVersionUpdate) {
+    unsubscribeVersionUpdate();
+    unsubscribeVersionUpdate = null;
+  }
+  await versionService.destroy();
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   window.removeEventListener('online', handleOnline);
   window.removeEventListener('offline', handleOffline);
