@@ -204,6 +204,85 @@
           开始新一轮
         </t-button>
       </div>
+
+      <!-- 本轮学习记录 -->
+      <div class="learning-record">
+        <div class="record-header" @click="showLearningRecord = !showLearningRecord">
+          <span class="record-title">
+            <t-icon name="list" />
+            本轮学习记录
+          </span>
+          <t-icon :name="showLearningRecord ? 'chevron-up' : 'chevron-down'" />
+        </div>
+        <div class="record-content" v-show="showLearningRecord">
+          <div class="record-section" v-if="masteredWords.length > 0">
+            <div class="section-title">
+              <t-icon name="check-circle" class="icon-success" />
+              已掌握 ({{ masteredWords.length }})
+            </div>
+            <div class="word-cards">
+              <div 
+                class="word-card-item mastered" 
+                v-for="(word, index) in masteredWords" 
+                :key="word.word"
+              >
+                <div class="card-header">
+                  <span class="card-index">{{ index + 1 }}</span>
+                  <span class="card-word">{{ word.word }}</span>
+                  <t-button variant="text" size="small" class="speak-btn" @click="speakWordItem(word)">
+                    <template #icon><t-icon name="sound" /></template>
+                  </t-button>
+                  <div class="card-difficulty" v-if="word.difficulty">
+                    <span v-for="n in word.difficulty" :key="n">⭐</span>
+                  </div>
+                </div>
+                <div class="card-pronunciation" v-if="word.pronunciation">{{ word.pronunciation }}</div>
+                <div class="card-definitions">
+                  <div class="definition-cn" v-if="word.definition_cn">{{ word.definition_cn }}</div>
+                  <div class="definition-en" v-if="word.definition">{{ word.definition }}</div>
+                </div>
+                <div class="card-example" v-if="word.example_sentence">
+                  <t-icon name="chat" size="14px" />
+                  <span>{{ word.example_sentence }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="record-section" v-if="reviewWords.length > 0">
+            <div class="section-title">
+              <t-icon name="refresh" class="icon-warning" />
+              待复习 ({{ reviewWords.length }})
+            </div>
+            <div class="word-cards">
+              <div 
+                class="word-card-item review" 
+                v-for="(word, index) in reviewWords" 
+                :key="word.word"
+              >
+                <div class="card-header">
+                  <span class="card-index">{{ index + 1 }}</span>
+                  <span class="card-word">{{ word.word }}</span>
+                  <t-button variant="text" size="small" class="speak-btn" @click="speakWordItem(word)">
+                    <template #icon><t-icon name="sound" /></template>
+                  </t-button>
+                  <div class="card-difficulty" v-if="word.difficulty">
+                    <span v-for="n in word.difficulty" :key="n">⭐</span>
+                  </div>
+                </div>
+                <div class="card-pronunciation" v-if="word.pronunciation">{{ word.pronunciation }}</div>
+                <div class="card-definitions">
+                  <div class="definition-cn" v-if="word.definition_cn">{{ word.definition_cn }}</div>
+                  <div class="definition-en" v-if="word.definition">{{ word.definition }}</div>
+                </div>
+                <div class="card-example" v-if="word.example_sentence">
+                  <t-icon name="chat" size="14px" />
+                  <span>{{ word.example_sentence }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 语音配置弹窗 -->
@@ -291,6 +370,7 @@ const learnWords = ref([])
 const currentIndex = ref(0)
 const masteredWords = ref([])
 const reviewWords = ref([])
+const showLearningRecord = ref(true) // 学习记录折叠状态，默认展开
 
 // Auto learning state
 const isAutoLearning = ref(false)
@@ -652,6 +732,12 @@ function flipCard() {
 function speakWord() {
   if (!currentWord.value) return
   speechStore.speakWord(currentWord.value.word)
+}
+
+// 朗读学习记录中的单词
+function speakWordItem(word) {
+  if (!word) return
+  speechStore.speakWord(word.word)
 }
 
 // 朗读中文释义
@@ -1019,7 +1105,6 @@ onUnmounted(() => {
   .page-header {
     text-align: center;
     margin-bottom: 2rem;
-    position: relative;
 
     h1 {
       font-size: 2rem;
@@ -1031,11 +1116,10 @@ onUnmounted(() => {
     }
 
     .header-actions {
-      position: absolute;
-      right: 0;
-      top: 0;
       display: flex;
+      justify-content: center;
       gap: 0.5rem;
+      margin-top: 1rem;
     }
   }
 
@@ -1352,6 +1436,171 @@ onUnmounted(() => {
       justify-content: center;
       gap: 1rem;
     }
+
+    .learning-record {
+      margin-top: 2rem;
+      border-top: 1px solid var(--charcoal-200);
+      padding-top: 1.5rem;
+      text-align: left;
+
+      .record-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 8px;
+        transition: background 0.2s;
+
+        &:hover {
+          background: var(--hover-bg);
+        }
+
+        .record-title {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-weight: 500;
+          color: var(--text-primary);
+        }
+      }
+
+      .record-content {
+        margin-top: 1rem;
+      }
+
+      .record-section {
+        margin-bottom: 1.5rem;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .section-title {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.9rem;
+          font-weight: 500;
+          margin-bottom: 0.75rem;
+          color: var(--text-secondary);
+
+          .icon-success {
+            color: var(--success);
+          }
+
+          .icon-warning {
+            color: var(--warning);
+          }
+        }
+
+        .word-cards {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .word-card-item {
+          background: var(--charcoal-50);
+          border-radius: 12px;
+          padding: 1rem;
+          transition: all 0.2s;
+
+          &:hover {
+            background: var(--charcoal-100);
+            box-shadow: var(--shadow-sm);
+          }
+
+          &.mastered {
+            border-left: 4px solid var(--success);
+          }
+
+          &.review {
+            border-left: 4px solid var(--warning);
+          }
+
+          .card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+
+            .card-index {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 24px;
+              height: 24px;
+              background: var(--charcoal-200);
+              border-radius: 50%;
+              font-size: 0.8rem;
+              font-weight: 600;
+              color: var(--text-secondary);
+            }
+
+            .card-word {
+              font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+              font-size: 1.25rem;
+              font-weight: 700;
+              color: var(--charcoal-900);
+            }
+
+            .speak-btn {
+              opacity: 0.6;
+              transition: opacity 0.2s;
+
+              &:hover {
+                opacity: 1;
+              }
+            }
+
+            .card-difficulty {
+              margin-left: auto;
+              font-size: 0.75rem;
+            }
+          }
+
+          .card-pronunciation {
+            font-size: 0.9rem;
+            color: var(--honey-600);
+            margin-bottom: 0.5rem;
+            padding-left: 2.5rem;
+          }
+
+          .card-definitions {
+            padding-left: 2.5rem;
+            margin-bottom: 0.5rem;
+
+            .definition-cn {
+              font-size: 0.95rem;
+              color: var(--charcoal-700);
+              margin-bottom: 0.25rem;
+            }
+
+            .definition-en {
+              font-size: 0.85rem;
+              color: var(--text-secondary);
+            }
+          }
+
+          .card-example {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding-left: 2.5rem;
+            font-size: 0.85rem;
+            color: var(--charcoal-500);
+            font-style: italic;
+            line-height: 1.4;
+
+            .t-icon {
+              flex-shrink: 0;
+              margin-top: 2px;
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -1362,14 +1611,6 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .learn-page {
-    .page-header {
-      .header-actions {
-        position: static;
-        margin-top: 1rem;
-        justify-content: center;
-      }
-    }
-
     .word-card {
       height: 350px;
 

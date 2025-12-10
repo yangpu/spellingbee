@@ -3,19 +3,10 @@
     <!-- 挑战赛列表 -->
     <div class="challenge-list" v-if="!challengeStore.currentChallenge">
       <div class="page-header">
-        <div class="header-info">
-          <img :src="`${baseUrl}bee.svg`" alt="Bee" class="header-icon" />
-          <div>
-            <h1>多人挑战赛</h1>
-            <p>创建或加入挑战赛，与其他玩家实时对战</p>
-          </div>
-        </div>
+        <h1>多人挑战赛</h1>
+        <p>创建或加入挑战赛，与其他玩家实时对战</p>
         <div class="header-actions">
-          <t-button variant="outline" @click="refreshList" :loading="challengeStore.loading">
-            <template #icon><t-icon name="refresh" /></template>
-            刷新
-          </t-button>
-          <t-button theme="primary" @click="openCreateDialog" :disabled="!authStore.user">
+          <t-button theme="primary" size="large" @click="openCreateDialog" :disabled="!authStore.user">
             <template #icon><t-icon name="add" /></template>
             创建挑战赛
           </t-button>
@@ -80,6 +71,9 @@
             clearable
             :prefix-icon="() => h(SearchIcon)"
           />
+          <t-button variant="outline" @click="refreshList" :loading="challengeStore.loading" class="refresh-btn">
+            <template #icon><t-icon name="refresh" /></template>
+          </t-button>
         </div>
       </div>
 
@@ -1564,42 +1558,24 @@ watch(() => route.params.id, async (newId, oldId) => {
 }
 
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  text-align: center;
   margin-bottom: 2rem;
 
-  .header-info {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
 
-    .header-icon {
-      width: 60px;
-      height: 60px;
-      animation: float 3s ease-in-out infinite;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 1.75rem;
-    }
-
-    p {
-      margin: 0.25rem 0 0;
-      color: var(--text-secondary);
-    }
+  p {
+    color: var(--text-secondary);
   }
 
   .header-actions {
     display: flex;
-    gap: 0.75rem;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
   }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
 }
 
 .login-hint {
@@ -1682,8 +1658,18 @@ watch(() => route.params.id, async (newId, oldId) => {
   }
 
   .search-box {
-    min-width: 200px;
-    max-width: 280px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    
+    :deep(.t-input) {
+      min-width: 200px;
+      max-width: 280px;
+    }
+    
+    .refresh-btn {
+      flex-shrink: 0;
+    }
   }
 }
 
@@ -2111,21 +2097,6 @@ watch(() => route.params.id, async (newId, oldId) => {
 }
 
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
-
-    .header-info {
-      flex-direction: column;
-    }
-
-    .header-actions {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
   .challenge-cards {
     grid-template-columns: 1fr;
   }

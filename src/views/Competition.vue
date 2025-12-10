@@ -1,5 +1,21 @@
 <template>
   <div class="competition-page" @click="onPageClick">
+    <!-- Page Header - 比赛进行中时隐藏 -->
+    <div class="page-header" v-if="!competitionStore.isActive">
+      <h1>Spelling Bee 比赛</h1>
+      <p>模拟真实比赛场景，挑战你的拼写能力</p>
+      <div class="header-actions">
+        <t-button variant="outline" @click="showSpeechSettings = true" class="speech-btn">
+          <template #icon><t-icon name="sound" /></template>
+          语音配置
+        </t-button>
+        <t-button variant="outline" @click="showAnnouncerSettings = true" class="announcer-btn">
+          <template #icon><t-icon name="user-talk" /></template>
+          播音员
+        </t-button>
+      </div>
+    </div>
+
     <!-- Pre-competition setup -->
     <div
       class="setup-container"
@@ -20,12 +36,6 @@
               继续比赛
             </t-button>
           </div>
-        </div>
-        
-        <div class="setup-header">
-          <img :src="`${baseUrl}bee.svg`" alt="Bee" class="setup-icon" />
-          <h1>Spelling Bee 比赛</h1>
-          <p>模拟真实比赛场景，挑战你的拼写能力</p>
         </div>
 
         <div class="setup-form">
@@ -90,14 +100,6 @@
         </div>
 
         <div class="setup-actions">
-          <t-button variant="outline" @click="showSpeechSettings = true">
-            <template #icon><t-icon name="sound" /></template>
-            语音配置
-          </t-button>
-          <t-button variant="outline" @click="showAnnouncerSettings = true">
-            <template #icon><t-icon name="user-talk" /></template>
-            播音员
-          </t-button>
           <t-button theme="primary" size="large" @click="startCompetition" :loading="isStarting" :disabled="isStarting">
             <template #icon><t-icon name="play-circle" /></template>
             {{ isStarting ? '加载中...' : '开始比赛' }}
@@ -2445,6 +2447,27 @@ watch(
 .competition-page {
   max-width: 800px;
   margin: 0 auto;
+
+  .page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      color: var(--text-secondary);
+    }
+
+    .header-actions {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+  }
 }
 
 .setup-container {

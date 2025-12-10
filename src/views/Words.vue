@@ -442,6 +442,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 .words-page {
   .page-header {
+    text-align: center;
     margin-bottom: 2rem;
 
     h1 {
