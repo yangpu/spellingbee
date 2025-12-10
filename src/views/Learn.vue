@@ -1573,7 +1573,7 @@ onUnmounted(() => {
 
             .definition-cn {
               font-size: 0.95rem;
-              color: var(--charcoal-700);
+              color: var(--text-primary);
               margin-bottom: 0.25rem;
             }
 
@@ -1633,6 +1633,177 @@ onUnmounted(() => {
       .stat .value {
         font-size: 2rem;
       }
+    }
+  }
+}
+
+// Dark mode styles
+:global([data-theme="dark"]) {
+  .learn-page {
+    .page-header {
+      h1 {
+        color: var(--text-primary);
+      }
+
+      p {
+        color: var(--text-secondary);
+      }
+    }
+
+    .settings-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+
+      .setting-item label {
+        color: var(--text-secondary);
+      }
+
+      .resume-banner {
+        background: var(--accent-bg);
+        border-color: rgba(251, 191, 36, 0.3);
+
+        .resume-info {
+          color: var(--accent-color);
+        }
+      }
+
+      .mode-hint {
+        background: rgba(30, 30, 35, 0.8);
+        color: var(--text-secondary);
+      }
+    }
+
+    .word-card {
+      .card-front,
+      .card-back {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+      }
+
+      .word-display {
+        color: var(--text-primary);
+      }
+
+      .word-display-small {
+        color: var(--text-primary);
+      }
+
+      .word-pronunciation {
+        color: var(--accent-color);
+      }
+
+      .word-definition {
+        color: var(--text-primary);
+      }
+
+      .word-definition-cn {
+        color: #e5e5e7;
+      }
+
+      .word-example {
+        color: var(--text-muted);
+      }
+
+      .hint-text {
+        color: var(--text-muted);
+      }
+    }
+
+    .keyboard-hints {
+      color: var(--text-muted);
+
+      kbd {
+        background: rgba(60, 60, 65, 0.8);
+        color: var(--text-secondary);
+      }
+    }
+
+    .completion-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+
+      h2 {
+        color: var(--text-primary);
+      }
+
+      .completion-stats .stat .label {
+        color: var(--text-secondary);
+      }
+
+      .learning-record {
+        border-top-color: var(--border-color);
+
+        .record-header {
+          &:hover {
+            background: var(--hover-bg);
+          }
+
+          .record-title {
+            color: var(--text-primary);
+          }
+        }
+
+        .record-section {
+          .section-title {
+            color: var(--text-secondary);
+          }
+
+          .word-card-item {
+            background: rgba(30, 30, 35, 0.8);
+            border: 1px solid var(--border-color);
+
+            &:hover {
+              background: rgba(40, 40, 45, 0.9);
+            }
+
+            .card-header {
+              .card-index {
+                background: rgba(60, 60, 65, 0.8);
+                color: var(--text-secondary);
+              }
+
+              .card-word {
+                color: var(--text-primary);
+              }
+            }
+
+            .card-pronunciation {
+              color: var(--accent-color);
+            }
+
+            .card-definitions {
+              .definition-cn {
+                color: var(--text-primary);
+                font-weight: 500;
+              }
+
+              .definition-en {
+                color: var(--text-secondary);
+              }
+            }
+
+            .card-example {
+              color: var(--text-muted);
+            }
+          }
+        }
+      }
+    }
+
+    .empty-state {
+      color: var(--text-secondary);
+
+      h3 {
+        color: var(--text-primary);
+      }
+    }
+
+    .progress-bar .progress-info {
+      color: var(--text-secondary);
+    }
+
+    .auto-learn-bar .auto-status {
+      color: var(--accent-color);
     }
   }
 }

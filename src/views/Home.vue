@@ -661,4 +661,128 @@ onUnmounted(() => {
     }
   }
 }
+
+// Dark mode styles
+[data-theme="dark"] {
+  .home-page {
+    .hero {
+      .hero-title {
+        color: var(--text-primary);
+      }
+
+      .hero-subtitle {
+        color: var(--accent-color);
+      }
+
+      .hero-description {
+        color: var(--text-secondary);
+      }
+    }
+
+    .section-title {
+      color: var(--text-primary);
+    }
+
+    .features {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+
+      .feature-card {
+        background: var(--hover-bg);
+
+        &:hover {
+          box-shadow: var(--shadow-md);
+        }
+
+        .feature-icon {
+          background: linear-gradient(135deg, var(--accent-color) 0%, #d97706 100%);
+        }
+
+        h3 {
+          color: var(--text-primary);
+        }
+
+        p {
+          color: var(--text-secondary);
+        }
+      }
+    }
+
+    .rules {
+      .rule-item {
+        background: var(--bg-card);
+        border-color: var(--border-color);
+        border-left-color: var(--accent-color);
+
+        &:hover {
+          box-shadow: var(--shadow-md);
+        }
+
+        .rule-number {
+          background: linear-gradient(135deg, var(--accent-color) 0%, #d97706 100%);
+        }
+
+        .rule-content {
+          h4 {
+            color: var(--text-primary);
+          }
+
+          p {
+            color: var(--text-secondary);
+          }
+        }
+      }
+    }
+
+    .quick-stats {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%);
+      border: 1px solid var(--border-color);
+
+      .stat-card {
+        background: var(--bg-card);
+
+        .stat-value {
+          color: var(--accent-color);
+        }
+
+        .stat-label {
+          color: var(--text-secondary);
+        }
+      }
+    }
+
+    .install-app {
+      background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(217, 119, 6, 0.08) 100%);
+      border-color: rgba(251, 191, 36, 0.3);
+
+      .install-icon {
+        background: linear-gradient(135deg, var(--accent-color) 0%, #d97706 100%);
+      }
+
+      .install-text {
+        h2 {
+          color: var(--text-primary);
+        }
+
+        p {
+          color: var(--text-secondary);
+        }
+      }
+
+      .install-guide {
+        .guide-title {
+          color: var(--text-primary);
+        }
+
+        .guide-step {
+          color: var(--text-secondary);
+
+          strong {
+            color: var(--text-primary);
+          }
+        }
+      }
+    }
+  }
+}
 </style>

@@ -2218,4 +2218,261 @@ watch(() => route.params.id, async (newId, oldId) => {
     }
   }
 }
+
+// Dark mode styles
+:global([data-theme="dark"]) {
+  .challenge-page {
+    .page-header {
+      h1 {
+        color: var(--text-primary);
+      }
+
+      p {
+        color: var(--text-secondary);
+      }
+    }
+
+    .login-hint {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--accent-color);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+
+    // 状态筛选标签 dark mode
+    .filter-section {
+      .status-tabs {
+        .status-tab {
+          background: var(--bg-card);
+          border: 2px solid transparent;
+
+          &:hover {
+            background: var(--hover-bg);
+          }
+
+          &.active {
+            border-color: var(--accent-color);
+            background: var(--accent-bg);
+          }
+
+          .tab-label {
+            color: var(--text-primary);
+          }
+
+          .tab-count {
+            background: rgba(60, 60, 65, 0.8);
+            color: var(--text-secondary);
+
+            &.waiting {
+              background: rgba(52, 211, 153, 0.2);
+              color: var(--success);
+            }
+
+            &.in_progress {
+              background: rgba(59, 130, 246, 0.2);
+              color: #60a5fa;
+            }
+
+            &.finished {
+              background: var(--accent-bg);
+              color: var(--accent-color);
+            }
+
+            &.mine {
+              background: rgba(59, 130, 246, 0.2);
+              color: #60a5fa;
+            }
+          }
+        }
+      }
+    }
+
+    // 挑战赛卡片 dark mode
+    .challenge-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+
+      &:hover {
+        box-shadow: var(--shadow-lg);
+      }
+
+      &.finished {
+        .card-image {
+          background: linear-gradient(135deg, #8b6914 0%, #a67c00 100%);
+        }
+      }
+
+      .connecting-overlay {
+        background: rgba(26, 26, 29, 0.7);
+      }
+
+      .card-image {
+        background: linear-gradient(135deg, #8b6914 0%, #d97706 100%);
+
+        .card-status {
+          background: rgba(45, 45, 50, 0.95);
+          color: var(--text-primary);
+
+          &.waiting {
+            background: rgba(52, 211, 153, 0.2);
+            color: var(--success);
+          }
+
+          &.ready {
+            background: rgba(52, 211, 153, 0.2);
+            color: var(--success);
+          }
+
+          &.in_progress {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+          }
+
+          &.finished {
+            background: var(--accent-bg);
+            color: var(--accent-color);
+          }
+
+          &.cancelled {
+            background: rgba(248, 113, 113, 0.2);
+            color: var(--error);
+          }
+        }
+
+        .delete-btn {
+          background: rgba(45, 45, 50, 0.95);
+
+          &:hover {
+            background: rgba(248, 113, 113, 0.2);
+          }
+        }
+      }
+
+      .card-content {
+        .card-title {
+          color: var(--text-primary);
+        }
+
+        .card-meta .meta-item {
+          color: var(--text-secondary);
+        }
+
+        .card-info-row {
+          border-top-color: var(--border-color);
+          color: var(--text-muted);
+        }
+
+        .card-participants-row {
+          .participant-chip {
+            background: var(--hover-bg);
+
+            .participant-name {
+              color: var(--text-secondary);
+            }
+
+            &.is-winner {
+              background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%);
+
+              .participant-name {
+                color: var(--accent-color);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 空状态 dark mode
+    .empty-state {
+      color: var(--text-secondary);
+
+      h3 {
+        color: var(--text-primary);
+      }
+    }
+
+    .loading-container {
+      color: var(--text-secondary);
+    }
+
+    // 创建挑战赛对话框 dark mode
+    .quick-create-section {
+      .quick-create-buttons {
+        .t-button {
+          &.t-button--theme-primary {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            border-color: #b45309;
+          }
+        }
+      }
+    }
+
+    .custom-create-section {
+      .custom-toggle {
+        color: var(--text-secondary);
+
+        &:hover {
+          color: var(--text-primary);
+        }
+      }
+
+      // 难度选择和出题模式 radio-group dark mode
+      :deep(.t-radio-group) {
+        .t-radio-button {
+          background: rgba(30, 30, 35, 0.9) !important;
+          border-color: #3a3a40 !important;
+          color: var(--text-secondary) !important;
+
+          &:hover {
+            color: var(--text-primary) !important;
+            background: rgba(50, 50, 55, 0.9) !important;
+          }
+
+          &.t-is-checked {
+            background: var(--accent-bg) !important;
+            border-color: var(--accent-color) !important;
+            color: var(--accent-color) !important;
+          }
+        }
+      }
+    }
+
+    // 封面选择 dark mode
+    .cover-selection {
+      .cover-option {
+        .cover-option-preview {
+          border-color: var(--border-color);
+          background: var(--bg-card-solid);
+
+          &.empty {
+            background: rgba(40, 40, 45, 0.8);
+            color: var(--text-secondary);
+          }
+        }
+
+        span {
+          color: var(--text-secondary);
+        }
+
+        &:hover .cover-option-preview {
+          border-color: var(--accent-color);
+        }
+
+        &.active {
+          .cover-option-preview {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2);
+          }
+
+          span {
+            color: var(--accent-color);
+          }
+        }
+      }
+    }
+
+    .form-hint {
+      color: var(--text-muted);
+    }
+  }
+}
 </style>

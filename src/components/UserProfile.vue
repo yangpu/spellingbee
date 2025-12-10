@@ -53,6 +53,14 @@
             退出登录
           </t-button>
         </div>
+
+        <t-divider />
+
+        <!-- 系统配置区域 -->
+        <SystemSettings 
+          @open-speech-settings="showSpeechSettings = true"
+          @open-announcer="showAnnouncer = true"
+        />
       </div>
       
       <!-- 用户信息编辑 -->
@@ -114,6 +122,12 @@
         </div>
       </div>
     </div>
+
+    <!-- 语音配置弹窗 -->
+    <SpeechSettings v-model="showSpeechSettings" />
+    
+    <!-- 播音员弹窗 -->
+    <AnnouncerSettings v-model="showAnnouncer" />
   </t-dialog>
 </template>
 
@@ -126,6 +140,9 @@ import { useCompetitionStore } from '@/stores/competition'
 import { useLearningStore } from '@/stores/learning'
 import { useSpeechStore } from '@/stores/speech'
 import { supabase } from '@/lib/supabase'
+import SystemSettings from './SystemSettings.vue'
+import SpeechSettings from './SpeechSettings.vue'
+import AnnouncerSettings from './AnnouncerSettings.vue'
 
 const props = defineProps<{
   visible: boolean
@@ -150,6 +167,8 @@ const isEditing = ref(false)
 const saving = ref(false)
 const syncing = ref(false)
 const uploading = ref(false)
+const showSpeechSettings = ref(false)
+const showAnnouncer = ref(false)
 
 const profileData = reactive({
   nickname: '',

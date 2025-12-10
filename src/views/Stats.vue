@@ -978,8 +978,8 @@ onMounted(() => {
       }
 
       &.is-winner {
-        border-color: var(--honey-200);
-        background: linear-gradient(135deg, var(--honey-50) 0%, white 100%);
+        border-color: var(--honey-400);
+        border-width: 2px;
       }
 
       .challenge-record-header {
@@ -1867,6 +1867,343 @@ onMounted(() => {
 
         .level-item-name {
           font-size: 0.5rem;
+        }
+      }
+    }
+  }
+}
+
+// Dark mode styles
+:global([data-theme="dark"]) {
+  .stats-page {
+    .page-header {
+      h1 {
+        color: var(--text-primary);
+      }
+
+      p {
+        color: var(--text-secondary);
+      }
+    }
+
+    // Level card dark mode - 优化背景色
+    .level-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+
+      .current-level-showcase {
+        .showcase-badge {
+          background: var(--bg-card-solid);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .showcase-info {
+          .showcase-name {
+            color: var(--text-primary);
+          }
+
+          .showcase-title {
+            color: var(--text-muted);
+          }
+        }
+
+        // 等级颜色保持不变，但徽章背景适配 dark
+        &.level-elite .showcase-badge { box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35); }
+        &.level-expert .showcase-badge { box-shadow: 0 8px 24px rgba(236, 72, 153, 0.35); }
+        &.level-master .showcase-badge { box-shadow: 0 8px 24px rgba(245, 158, 11, 0.45); }
+        &.level-grandmaster .showcase-badge { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.45); }
+        &.level-legend .showcase-badge { 
+          background: linear-gradient(135deg, #3d3a28 0%, #4d4528 100%);
+          box-shadow: 0 8px 32px rgba(255, 215, 0, 0.5); 
+        }
+      }
+
+      .level-stats {
+        .total-points .points-value {
+          color: var(--accent-color);
+        }
+
+        .total-points .points-label {
+          color: var(--text-secondary);
+        }
+
+        .level-progress .progress-text {
+          color: var(--text-secondary);
+
+          strong {
+            color: var(--accent-color);
+          }
+
+          .max-level {
+            color: var(--accent-color);
+          }
+        }
+      }
+
+      .levels-showcase {
+        background: rgba(35, 35, 40, 0.98);
+        border: 1px solid var(--border-color);
+
+        .level-item {
+          &.locked {
+            .level-item-badge {
+              background: #2a2a30;
+              border-color: #3a3a40;
+            }
+          }
+
+          &.unlocked {
+            .level-item-badge {
+              background: var(--bg-card-solid);
+            }
+
+            &:hover {
+              background: var(--hover-bg);
+            }
+          }
+
+          &.current .level-item-name {
+            color: var(--accent-color);
+          }
+
+          .level-item-name {
+            color: var(--text-secondary);
+          }
+
+          // 各等级边框颜色适配 dark mode
+          .level-item-badge {
+            &.level-elite { background: linear-gradient(135deg, #2d2d32 0%, #3d2d52 100%); }
+            &.level-expert { background: linear-gradient(135deg, #2d2d32 0%, #3d2d3d 100%); }
+            &.level-master { background: linear-gradient(135deg, #2d2d32 0%, #3d3528 100%); }
+            &.level-grandmaster { background: linear-gradient(135deg, #2d2d32 0%, #3d2828 100%); }
+            &.level-legend { background: linear-gradient(135deg, #3d3a28 0%, #4d4528 100%); }
+          }
+        }
+      }
+    }
+
+    // Stat cards dark mode
+    .learning-section,
+    .challenge-section,
+    .overview-section {
+      h2 {
+        color: var(--text-primary);
+      }
+
+      .stat-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+
+        .stat-icon {
+          background: var(--accent-bg);
+          color: var(--accent-color);
+
+          &.highlight {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #d97706 100%);
+            color: #1a1a1d;
+          }
+
+          &.success {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--success);
+          }
+
+          &.learning {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+          }
+
+          &.warning {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--warning);
+          }
+
+          &.challenge {
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+          }
+
+          &.error {
+            background: rgba(248, 113, 113, 0.15);
+            color: var(--error);
+          }
+        }
+
+        .stat-info {
+          .stat-value {
+            color: var(--text-primary);
+          }
+
+          .stat-label {
+            color: var(--text-secondary);
+          }
+        }
+      }
+    }
+
+    // Challenge records dark mode - 优化胜利卡片
+    .challenge-records-section {
+      h2 {
+        color: var(--text-primary);
+      }
+
+      .challenge-record-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+
+        &:hover {
+          box-shadow: var(--shadow-md);
+        }
+
+        &.is-winner {
+          border-color: var(--accent-color);
+          border-width: 2px;
+          background: var(--bg-card);
+        }
+
+        .challenge-result-badge {
+          &.win {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            color: white;
+          }
+
+          &.lose {
+            background: rgba(60, 60, 65, 0.8);
+            color: var(--text-secondary);
+          }
+        }
+
+        .challenge-record-body {
+          .challenge-record-name {
+            color: var(--text-primary);
+          }
+
+          .challenge-record-meta .meta-tag {
+            color: var(--text-secondary);
+          }
+        }
+
+        .challenge-record-footer {
+          border-top-color: var(--border-color);
+
+          .challenge-record-time {
+            color: var(--text-muted);
+          }
+        }
+      }
+    }
+
+    // Records section dark mode
+    .records-section {
+      h2 {
+        color: var(--text-primary);
+      }
+
+      .record-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+
+        &:hover {
+          box-shadow: var(--shadow-md);
+        }
+
+        .record-date {
+          color: var(--text-muted);
+        }
+
+        .record-score .score-value {
+          color: var(--accent-color);
+        }
+
+        .record-details .detail-item {
+          color: var(--text-secondary);
+        }
+
+        .record-badge {
+          &.badge-iron {
+            background: rgba(60, 60, 65, 0.8);
+            color: var(--text-secondary);
+          }
+        }
+      }
+
+      .empty-state {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+
+        h3 {
+          color: var(--text-primary);
+        }
+
+        p {
+          color: var(--text-secondary);
+        }
+      }
+    }
+
+    // Achievements dark mode
+    .achievements-section {
+      h2 {
+        color: var(--text-primary);
+      }
+
+      .achievement {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+
+        .achievement-name {
+          color: var(--text-primary);
+        }
+
+        .achievement-desc {
+          color: var(--text-secondary);
+        }
+
+        &.unlocked:hover {
+          box-shadow: var(--shadow-md);
+        }
+      }
+    }
+
+    // Level detail dialog dark mode
+    .level-detail-dialog {
+      .dialog-badge-showcase {
+        background: #2a2a30;
+        border-color: #3a3a40;
+
+        &.unlocked {
+          &.level-novice { border-color: #9CA3AF; background: var(--bg-card-solid); }
+          &.level-apprentice { border-color: #84CC16; background: var(--bg-card-solid); }
+          &.level-beginner { border-color: #22C55E; background: var(--bg-card-solid); }
+          &.level-intermediate { border-color: #14B8A6; background: var(--bg-card-solid); }
+          &.level-challenger { border-color: #3B82F6; background: var(--bg-card-solid); }
+          &.level-elite { border-color: #8B5CF6; background: linear-gradient(135deg, #2d2d32 0%, #3d2d52 100%); }
+          &.level-expert { border-color: #EC4899; background: linear-gradient(135deg, #2d2d32 0%, #3d2d3d 100%); }
+          &.level-master { border-color: #F59E0B; background: linear-gradient(135deg, #2d2d32 0%, #3d3528 100%); box-shadow: 0 4px 30px rgba(245, 158, 11, 0.4); }
+          &.level-grandmaster { border-color: #EF4444; background: linear-gradient(135deg, #2d2d32 0%, #3d2828 100%); box-shadow: 0 4px 30px rgba(239, 68, 68, 0.4); }
+          &.level-legend { border-color: #FFD700; background: linear-gradient(135deg, #3d3a28 0%, #4d4528 100%); box-shadow: 0 4px 30px rgba(255, 215, 0, 0.6); }
+        }
+      }
+
+      .dialog-level-name {
+        color: var(--text-primary);
+      }
+
+      .dialog-level-desc {
+        color: var(--text-secondary);
+      }
+
+      .dialog-level-info {
+        background: rgba(30, 30, 35, 0.8);
+        border: 1px solid var(--border-color);
+
+        .info-item {
+          color: var(--text-secondary);
+          border-bottom-color: var(--border-color);
+
+          strong {
+            color: var(--accent-color);
+          }
         }
       }
     }

@@ -732,7 +732,7 @@ function handleLeave() {
   dialogInstance = DialogPlugin.confirm({
     header: '确认离开',
     body: '确定要离开挑战赛吗？',
-    confirmBtn: { content: '确认', theme: 'danger' },
+    confirmBtn: { content: '确认' },
     onConfirm: async () => {
       // 先关闭对话框，避免操作卡住时对话框不消失
       if (dialogInstance) {
@@ -1891,9 +1891,9 @@ onUnmounted(() => {
             }
 
             .answer-player {
-              font-weight: 500;
+              font-weight: 600;
               min-width: 60px;
-              color: var(--text-primary);
+              color: inherit;
             }
 
             .answer-text {

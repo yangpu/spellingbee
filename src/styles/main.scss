@@ -28,7 +28,7 @@
   --warning: #F59E0B;
   --info: #3B82F6;
 
-  // Theme colors
+  // Theme colors (Light mode - default)
   --bg-main: linear-gradient(135deg, var(--honey-50) 0%, #FFF7ED 50%, var(--honey-100) 100%);
   --bg-card: rgba(255, 255, 255, 0.85);
   --bg-card-solid: #FFFFFF;
@@ -45,6 +45,492 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --shadow-glow: 0 0 30px rgba(251, 191, 36, 0.3);
+}
+
+// Dark theme
+[data-theme="dark"] {
+  // Override theme colors for dark mode - improved readability
+  --bg-main: linear-gradient(135deg, #1a1a1d 0%, #121214 50%, #1a1a1d 100%);
+  --bg-card: rgba(45, 45, 50, 0.98);
+  --bg-card-solid: #2d2d32;
+  --border-color: #404045;
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1a6;
+  --text-muted: #6e6e73;
+  --accent-color: #fbbf24;
+  --accent-bg: rgba(251, 191, 36, 0.12);
+  --hover-bg: rgba(255, 255, 255, 0.08);
+
+  // Shadows for dark mode
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 30px rgba(251, 191, 36, 0.15);
+
+  // Override charcoal colors for dark mode
+  --charcoal-50: #3a3a3f;
+  --charcoal-100: #4a4a50;
+  --charcoal-200: #5a5a62;
+  --charcoal-600: #a1a1a6;
+  --charcoal-800: #e5e5e7;
+  --charcoal-900: #f5f5f7;
+
+  // Override honey colors for dark mode
+  --honey-50: rgba(251, 191, 36, 0.08);
+  --honey-100: rgba(251, 191, 36, 0.12);
+  --honey-200: rgba(251, 191, 36, 0.18);
+  --honey-600: #fbbf24;
+  --honey-700: #fbbf24;
+
+  // Success/Error/Warning with better visibility
+  --success: #34d399;
+  --error: #f87171;
+  --warning: #fbbf24;
+
+  // TDesign dark mode overrides
+  --td-bg-color-container: var(--bg-card-solid);
+  --td-bg-color-secondarycontainer: #252528;
+  --td-text-color-primary: var(--text-primary);
+  --td-text-color-secondary: var(--text-secondary);
+  --td-text-color-placeholder: var(--text-muted);
+  --td-border-level-1-color: var(--border-color);
+  --td-brand-color: var(--accent-color);
+
+  // Body background
+  body {
+    background: var(--bg-main);
+    color: var(--text-primary);
+  }
+
+  // Headings
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+  }
+
+  // Input and form elements
+  .t-input, .t-textarea, .t-select {
+    background-color: #252528 !important;
+    border-color: #404045 !important;
+    color: var(--text-primary) !important;
+
+    &:hover {
+      border-color: #505055 !important;
+    }
+
+    &:focus, &.t-is-focused {
+      border-color: var(--accent-color) !important;
+      box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2) !important;
+    }
+  }
+
+  .t-input__inner, .t-textarea__inner {
+    color: var(--text-primary) !important;
+    background-color: transparent !important;
+
+    &::placeholder {
+      color: var(--text-muted) !important;
+    }
+  }
+
+  // Select dropdown
+  .t-select-input {
+    background-color: #252528 !important;
+  }
+
+  .t-select__wrap {
+    background-color: #252528 !important;
+  }
+
+  .t-popup__content {
+    background-color: #2d2d32 !important;
+    border-color: #404045 !important;
+  }
+
+  .t-select-option {
+    color: var(--text-primary) !important;
+
+    &:hover, &.t-is-hover {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    &.t-is-selected {
+      background-color: var(--accent-bg) !important;
+      color: var(--accent-color) !important;
+    }
+  }
+
+  // Dialog
+  .t-dialog {
+    background-color: var(--bg-card-solid) !important;
+    border: 1px solid #404045 !important;
+  }
+
+  .t-dialog__header {
+    color: var(--text-primary) !important;
+    border-bottom-color: #404045 !important;
+  }
+
+  .t-dialog__body {
+    color: var(--text-primary) !important;
+  }
+
+  // Button overrides
+  .t-button--variant-outline {
+    border-color: #505055 !important;
+    color: var(--text-primary) !important;
+    background-color: transparent !important;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+      border-color: #606065 !important;
+    }
+  }
+
+  .t-button--variant-text {
+    color: var(--text-secondary) !important;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+      color: var(--text-primary) !important;
+    }
+  }
+
+  .t-button--theme-primary {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    border-color: #d97706 !important;
+    color: #1a1a1d !important;
+
+    &:hover {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+    }
+  }
+
+  // Tags
+  .t-tag {
+    background-color: #3a3a3f !important;
+    color: var(--text-primary) !important;
+    border-color: #505055 !important;
+  }
+
+  .t-tag--theme-primary.t-tag--variant-light {
+    background-color: var(--accent-bg) !important;
+    color: var(--accent-color) !important;
+    border-color: transparent !important;
+  }
+
+  // Tabs
+  .t-tabs__nav-item {
+    color: var(--text-secondary) !important;
+
+    &:hover {
+      color: var(--text-primary) !important;
+    }
+
+    &.t-is-active {
+      color: var(--accent-color) !important;
+    }
+  }
+
+  .t-tabs__bar {
+    background-color: var(--accent-color) !important;
+  }
+
+  // Slider
+  .t-slider__rail {
+    background-color: #404045 !important;
+  }
+
+  .t-slider__track {
+    background-color: var(--accent-color) !important;
+  }
+
+  .t-slider__button {
+    background-color: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
+  }
+
+  // Progress
+  .t-progress__bar {
+    background-color: #404045 !important;
+  }
+
+  .t-progress__inner {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  }
+
+  // Divider
+  .t-divider {
+    border-color: #404045 !important;
+  }
+
+  // Radio group
+  .t-radio-group {
+    .t-radio-button {
+      background-color: #252528 !important;
+      border-color: #404045 !important;
+      color: var(--text-secondary) !important;
+
+      &:hover {
+        color: var(--text-primary) !important;
+      }
+
+      &.t-is-checked {
+        background-color: var(--accent-bg) !important;
+        border-color: var(--accent-color) !important;
+        color: var(--accent-color) !important;
+      }
+    }
+  }
+
+  // Avatar
+  .t-avatar {
+    background-color: #3a3a3f !important;
+    color: var(--text-primary) !important;
+  }
+
+  // Card backgrounds in dark mode
+  .card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  // Page specific cards
+  .settings-bar, .completion-card, .word-card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  .learning-container {
+    background: transparent !important;
+    border-color: var(--border-color) !important;
+  }
+
+  // Feature cards on home page
+  .feature-card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+
+    .feature-icon {
+      background: var(--accent-bg) !important;
+    }
+
+    h3 {
+      color: var(--text-primary) !important;
+    }
+
+    p {
+      color: var(--text-secondary) !important;
+    }
+  }
+
+  // Steps on home page
+  .step-card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+
+    .step-number {
+      background: var(--accent-bg) !important;
+      color: var(--accent-color) !important;
+    }
+
+    h4 {
+      color: var(--text-primary) !important;
+    }
+
+    p {
+      color: var(--text-secondary) !important;
+    }
+  }
+
+  // Stats section
+  .stats-section, .stats-card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+
+    .stat-value {
+      color: var(--accent-color) !important;
+    }
+
+    .stat-label {
+      color: var(--text-secondary) !important;
+    }
+  }
+
+  // PWA install banner
+  .pwa-install-banner {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%) !important;
+    border-color: rgba(251, 191, 36, 0.3) !important;
+  }
+
+  // Word display
+  .word-display {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(217, 119, 6, 0.15) 100%) !important;
+    color: var(--accent-color) !important;
+  }
+
+  // Letter input
+  .letter-input .letter-box {
+    background: #252528 !important;
+    border-color: #505055 !important;
+    color: var(--text-primary) !important;
+
+    &--active {
+      border-color: var(--accent-color) !important;
+      box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2) !important;
+    }
+
+    &--correct {
+      background: rgba(52, 211, 153, 0.15) !important;
+      border-color: var(--success) !important;
+      color: var(--success) !important;
+    }
+
+    &--incorrect {
+      background: rgba(248, 113, 113, 0.15) !important;
+      border-color: var(--error) !important;
+      color: var(--error) !important;
+    }
+  }
+
+  // Score badge
+  .score-badge {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #1a1a1d !important;
+  }
+
+  // Table
+  .t-table {
+    background-color: var(--bg-card-solid) !important;
+
+    th {
+      background-color: #252528 !important;
+      color: var(--text-primary) !important;
+      border-color: #404045 !important;
+    }
+
+    td {
+      color: var(--text-primary) !important;
+      border-color: #404045 !important;
+    }
+
+    tr:hover td {
+      background-color: rgba(60, 60, 70, 0.8) !important;
+    }
+  }
+
+  // Pagination
+  .t-pagination {
+    .t-pagination__btn {
+      background-color: #252528 !important;
+      border-color: #404045 !important;
+      color: var(--text-primary) !important;
+
+      &:hover {
+        border-color: var(--accent-color) !important;
+      }
+
+      &.t-is-current {
+        background-color: var(--accent-color) !important;
+        border-color: var(--accent-color) !important;
+        color: #1a1a1d !important;
+      }
+    }
+  }
+
+  // Loading
+  .t-loading__gradient-conic {
+    background: conic-gradient(from 90deg at 50% 50%, transparent 0deg, var(--accent-color) 360deg) !important;
+  }
+
+  // Message/Notification
+  .t-message {
+    background-color: var(--bg-card-solid) !important;
+    border-color: #404045 !important;
+    color: var(--text-primary) !important;
+  }
+
+  // Form labels
+  .t-form__label {
+    color: var(--text-primary) !important;
+  }
+
+  // Input number
+  .t-input-number {
+    .t-input {
+      background-color: #252528 !important;
+    }
+
+    .t-input-number__decrease,
+    .t-input-number__increase {
+      background-color: #3a3a3f !important;
+      border-color: #404045 !important;
+      color: var(--text-primary) !important;
+
+      &:hover {
+        background-color: #4a4a50 !important;
+      }
+    }
+  }
+
+  // Checkbox
+  .t-checkbox__input {
+    border-color: #505055 !important;
+
+    &:checked {
+      background-color: var(--accent-color) !important;
+      border-color: var(--accent-color) !important;
+    }
+  }
+
+  .t-checkbox__label {
+    color: var(--text-primary) !important;
+  }
+
+  // Switch
+  .t-switch {
+    background-color: #404045 !important;
+
+    &.t-is-checked {
+      background-color: var(--accent-color) !important;
+    }
+  }
+
+  // Dialog footer buttons
+  .t-dialog__footer {
+    .t-button--variant-base {
+      background-color: #3a3a3f !important;
+      border-color: #505055 !important;
+      color: var(--text-primary) !important;
+
+      &:hover {
+        background-color: #4a4a50 !important;
+        border-color: #606065 !important;
+      }
+    }
+
+    // Confirm dialog - 强调确认按钮
+    .t-button--theme-primary,
+    .t-button--theme-danger {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+      border-color: #d97706 !important;
+      color: #1a1a1d !important;
+      font-weight: 600 !important;
+
+      &:hover {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+      }
+    }
+
+    .t-button--theme-danger {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+      border-color: #dc2626 !important;
+      color: white !important;
+
+      &:hover {
+        background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
+      }
+    }
+  }
 }
 
 // Global reset and base styles
