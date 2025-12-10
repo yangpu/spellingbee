@@ -175,6 +175,17 @@
   }
 
   // Button overrides
+  .t-button--theme-default {
+    background-color: #3a3a3f !important;
+    border-color: #505055 !important;
+    color: var(--text-primary) !important;
+
+    &:hover {
+      background-color: #454548 !important;
+      border-color: #606065 !important;
+    }
+  }
+
   .t-button--variant-outline {
     border-color: #505055 !important;
     color: var(--text-primary) !important;
@@ -280,13 +291,24 @@
         color: var(--accent-color) !important;
       }
     }
+
+    &.t-radio-group--filled {
+      background-color: #252528 !important;
+      border-color: #404045 !important;
+
+      .t-radio-button.t-is-checked {
+        // background-color: rgba(251, 191, 36, 0.25) !important;
+        background-color: #3a3a3f !important;
+        color: var(--accent-color) !important;
+      }
+    }
   }
 
   // Avatar
-  .t-avatar {
-    background-color: #3a3a3f !important;
-    color: var(--text-primary) !important;
-  }
+  // .t-avatar {
+  //   background: linear-gradient(135deg, #4a4a50 0%, #3a3a3f 100%) !important;
+  //   color: rgba(255, 255, 255, 0.9) !important;
+  // }
 
   // Card backgrounds in dark mode
   .card {
@@ -528,6 +550,40 @@
 
       &:hover {
         background: linear-gradient(135deg, #f87171 0%, #ef4444 100%) !important;
+      }
+    }
+  }
+
+  // Competition page - incorrect words review
+  .incorrect-words {
+    background: rgba(40, 40, 45, 0.8) !important;
+
+    h3 {
+      color: var(--accent-color) !important;
+    }
+
+    .word-list {
+      .word-item {
+        background: var(--bg-card-solid) !important;
+        border-left-color: var(--error) !important;
+
+        .word-main {
+          .correct-word {
+            color: var(--text-primary) !important;
+          }
+        }
+
+        .word-user {
+          color: var(--text-secondary) !important;
+        }
+
+        .word-def {
+          color: var(--text-secondary) !important;
+        }
+
+        .word-def-cn {
+          color: var(--text-muted) !important;
+        }
       }
     }
   }
@@ -820,6 +876,13 @@ h4 { font-size: 1.25rem; }
 
 .t-dialog {
   border-radius: 16px !important;
+}
+
+// Avatar global styles
+.t-avatar {
+  background: linear-gradient(135deg, var(--honey-400) 0%, var(--honey-500) 100%) !important;
+  color: white !important;
+  font-weight: 600 !important;
 }
 
 // Responsive helpers

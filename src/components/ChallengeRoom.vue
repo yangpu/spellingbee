@@ -14,15 +14,18 @@
             </t-button>
           </div>
         </div>
-        <div class="room-header-main">
-          <div class="room-cover" v-if="getCoverUrl(challenge?.image_url)">
+        <div class="room-header-main" :class="{ 'has-cover': getCoverUrl(challenge?.image_url) }">
+          <!-- 背景图片 -->
+          <div class="header-background" v-if="getCoverUrl(challenge?.image_url)">
             <img :src="getCoverUrl(challenge?.image_url)" alt="" />
+            <div class="header-overlay"></div>
           </div>
-          <div class="room-cover placeholder" v-else>
-            <t-icon name="trophy" size="32px" />
+          <div class="header-background placeholder" v-else>
+            <div class="header-overlay"></div>
           </div>
-          <div class="room-title">
-            <h2>{{ challenge?.name }}</h2>
+          <!-- 内容 -->
+          <div class="header-content">
+            <h2 class="room-name">{{ challenge?.name }}</h2>
             <t-tag :theme="statusTheme" variant="light">{{ statusText }}</t-tag>
           </div>
         </div>
@@ -34,16 +37,16 @@
           <div class="info-value">{{ challenge?.entry_fee }} <t-icon name="star" /></div>
         </div>
         <div class="info-card">
+          <div class="info-label">奖池</div>
+          <div class="info-value prize">{{ challenge?.prize_pool }} <t-icon name="gift" /></div>
+        </div>
+       <div class="info-card">
           <div class="info-label">单词数量</div>
           <div class="info-value">{{ challenge?.word_count }} 词</div>
         </div>
         <div class="info-card">
           <div class="info-label">答题时间</div>
           <div class="info-value">{{ challenge?.time_limit }}s</div>
-        </div>
-        <div class="info-card">
-          <div class="info-label">奖池</div>
-          <div class="info-value prize">{{ challenge?.prize_pool }} <t-icon name="gift" /></div>
         </div>
         <div class="info-card">
           <div class="info-label">难度</div>
@@ -111,6 +114,7 @@
         <div v-if="!challengeStore.isCreator" class="ready-section">
           <t-button 
             :theme="challengeStore.myParticipant?.is_ready ? 'default' : 'primary'"
+
             size="large"
             @click="handleToggleReady"
           >
@@ -126,7 +130,8 @@
         </div>
         <div v-if="challengeStore.isCreator" class="start-section">
           <t-button
-            theme="primary"
+            :theme="challengeStore.canStart ? 'primary' : 'default'"
+            :variant="challengeStore.canStart ? 'base' : 'outline'"
             size="large"
             :disabled="!challengeStore.canStart"
             @click="handleStart"
@@ -474,7 +479,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useAuthStore } from '@/stores/auth'
@@ -874,6 +879,11 @@ function handleToggleReady() {
   challengeStore.toggleReady()
 }
 
+onMounted(() => {
+  // 进入房间时立即滚动到顶部（禁用平滑滚动避免闪动）
+  window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+})
+
 onUnmounted(() => {
   // 组件卸载时不自动离开，保持连接
 })
@@ -898,42 +908,60 @@ onUnmounted(() => {
     }
 
     .room-header-main {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .room-cover {
-      width: 80px;
-      height: 56px;
-      border-radius: 8px;
+      position: relative;
+      min-height: 120px;
+      border-radius: 16px;
       overflow: hidden;
-      flex-shrink: 0;
-      background: linear-gradient(135deg, var(--honey-400) 0%, var(--honey-500) 100%);
 
-      &.placeholder {
+      .header-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        &.placeholder {
+          background: linear-gradient(135deg, var(--honey-400) 0%, var(--honey-600) 100%);
+        }
+
+        .header-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(
+            135deg,
+            rgba(0, 0, 0, 0.5) 0%,
+            rgba(0, 0, 0, 0.6) 100%
+          );
+        }
+      }
+
+      .header-content {
+        position: relative;
+        z-index: 1;
+        padding: 1.25rem;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
+        min-height: 120px;
         color: white;
-      }
+        text-align: center;
 
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-    }
-
-    .room-title {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-
-      h2 {
-        margin: 0;
-        font-size: 1.25rem;
+        .room-name {
+          margin: 0 0 0.5rem;
+          font-size: 1.35rem;
+          font-weight: 700;
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
       }
     }
   }
@@ -1906,6 +1934,26 @@ onUnmounted(() => {
               font-size: 0.8rem;
               opacity: 0.8;
             }
+          }
+        }
+      }
+    }
+  }
+}
+
+// 大屏幕样式
+@media (min-width: 1024px) {
+  .room-waiting {
+    .room-header {
+      .room-header-main {
+        min-height: 160px;
+
+        .header-content {
+          min-height: 160px;
+          padding: 1.5rem;
+
+          .room-name {
+            font-size: 1.5rem;
           }
         }
       }

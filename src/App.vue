@@ -39,10 +39,12 @@
         >
           登录
         </t-button>
-        <t-button v-else variant="text" class="user-avatar-btn" @click="showProfileDialog = true">
-          <t-avatar size="small" :image="authStore.profile?.avatar_url">
-            {{ avatarText }}
-          </t-avatar>
+        <t-button v-else variant="text" shape="round" class="user-avatar-btn" @click="showProfileDialog = true">
+          <template #icon>
+            <t-avatar size="small" :image="authStore.profile?.avatar_url">
+              {{ avatarText }}
+            </t-avatar>
+        </template>
           <span class="user-name">{{ displayName }}</span>
         </t-button>
       </div>
@@ -720,6 +722,8 @@ const forceRefresh = () => {
       align-items: center;
       gap: 0.5rem;
       cursor: pointer;
+      border: none !important;
+      background: none !important;
       
       .user-name {
         max-width: 100px;
