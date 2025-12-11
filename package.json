@@ -1,10 +1,10 @@
 {
   "name": "spellingbee",
-  "version": "1.9.10",
+  "version": "1.9.11",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0",
     "prebuild": "node scripts/bump-version.js",
     "build": "vue-tsc --noEmit && vite build",
     "type-check": "vue-tsc --noEmit",

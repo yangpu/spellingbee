@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase, reconnectRealtime, refreshSessionToken } from '@/lib/supabase'
+import { supabase, forceReconnectRealtime, refreshSessionToken, onRealtimeStatusChange, isRealtimeConnected } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { useWordsStore } from './words'
 import { useAnnouncerStore } from './announcer'
@@ -21,6 +21,40 @@ export const useChallengeStore = defineStore('challenge', () => {
   // 缓存控制
   const lastLoadTime = ref<number>(0)
   const CACHE_DURATION = 30 * 1000 // 30秒内不重复请求
+  const CACHE_KEY = 'challenges_cache'
+  const CACHE_TIME_KEY = 'challenges_cache_time'
+  
+  // 从 localStorage 加载缓存
+  function loadFromCache(): boolean {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY)
+      const cachedTime = localStorage.getItem(CACHE_TIME_KEY)
+      if (cached && cachedTime) {
+        const data = JSON.parse(cached)
+        if (Array.isArray(data) && data.length > 0) {
+          challenges.value = data.map(c => ({
+            ...c,
+            participants: c.participants || []
+          }))
+          lastLoadTime.value = parseInt(cachedTime, 10)
+          return true
+        }
+      }
+    } catch (e) {
+      console.error('[Challenge] Failed to load from cache:', e)
+    }
+    return false
+  }
+  
+  // 保存到 localStorage 缓存
+  function saveToCache(): void {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(challenges.value))
+      localStorage.setItem(CACHE_TIME_KEY, lastLoadTime.value.toString())
+    } catch (e) {
+      console.error('[Challenge] Failed to save to cache:', e)
+    }
+  }
   
   // 列表更新标志：当收到通知或其他需要刷新的事件时设置为 true
   // 进入列表页时检查此标志，如果为 true 则刷新并重置
@@ -59,7 +93,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     // 移除旧的监听器
     cleanupNetworkListeners()
     
-    networkOnlineHandler = () => {
+    networkOnlineHandler = async () => {
       console.log('[Challenge] Network online')
       isNetworkOnline.value = true
       
@@ -77,15 +111,25 @@ export const useChallengeStore = defineStore('challenge', () => {
         }
       }
       
-      // 网络恢复时，如果有 channel 但状态是 disconnected，尝试重连
-      if (channel.value && realtimeStatus.value === 'disconnected') {
+      // 网络恢复时，强制重连 Realtime
+      if (currentChallenge.value && realtimeStatus.value === 'disconnected') {
+        console.log('[Challenge] Network recovered, force reconnecting...')
+        realtimeStatus.value = 'connecting'
+        
         // 延迟重连，等待网络稳定
-        setTimeout(() => {
-          if (currentChallenge.value && isNetworkOnline.value) {
-            console.log('[Challenge] Attempting to reconnect after network recovery...')
-            initRealtimeChannel(currentChallenge.value.id).catch(console.error)
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        
+        if (currentChallenge.value && isNetworkOnline.value) {
+          try {
+            // 使用强制重连
+            await forceReconnectRealtime()
+            // 重新初始化 channel
+            await initRealtimeChannel(currentChallenge.value.id)
+          } catch (e) {
+            console.error('[Challenge] Reconnect failed:', e)
+            realtimeStatus.value = 'disconnected'
           }
-        }, 1000)
+        }
       }
     }
     
@@ -116,8 +160,63 @@ export const useChallengeStore = defineStore('challenge', () => {
     window.addEventListener('beforeunload', handleBeforeUnload)
     window.addEventListener('pagehide', handlePageHide)
     
+    // 监听页面可见性变化（移动端后台恢复、PC 休眠恢复）
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    // 注册 Realtime 状态变化回调
+    onRealtimeStatusChange((status) => {
+      console.log('[Challenge] Realtime status changed:', status)
+      if (status === 'disconnected' && currentChallenge.value) {
+        realtimeStatus.value = 'disconnected'
+      } else if (status === 'reconnecting') {
+        realtimeStatus.value = 'connecting'
+      } else if (status === 'connected') {
+        // 连接恢复后，可能需要重新加入 channel
+        if (currentChallenge.value && !channel.value) {
+          console.log('[Challenge] Realtime connected, reinitializing channel...')
+          initRealtimeChannel(currentChallenge.value.id).catch(console.error)
+        }
+      }
+    })
+    
     // 同步当前状态
     isNetworkOnline.value = navigator.onLine
+  }
+  
+  // 页面可见性变化处理
+  let lastHiddenTime = 0
+  const VISIBILITY_RECONNECT_THRESHOLD = 30000 // 30秒以上需要重连
+  
+  async function handleVisibilityChange(): Promise<void> {
+    if (document.visibilityState === 'hidden') {
+      lastHiddenTime = Date.now()
+      console.log('[Challenge] Page hidden')
+    } else if (document.visibilityState === 'visible') {
+      const hiddenDuration = Date.now() - lastHiddenTime
+      console.log('[Challenge] Page visible, was hidden for:', hiddenDuration, 'ms')
+      
+      // 如果有当前挑战赛，且隐藏时间超过阈值或连接已断开，强制重连
+      if (currentChallenge.value) {
+        const needsReconnect = hiddenDuration > VISIBILITY_RECONNECT_THRESHOLD || 
+                               realtimeStatus.value === 'disconnected' ||
+                               !isRealtimeConnected()
+        
+        if (needsReconnect) {
+          console.log('[Challenge] Triggering force reconnect due to visibility change')
+          realtimeStatus.value = 'connecting'
+          
+          try {
+            // 强制重连 Realtime
+            await forceReconnectRealtime()
+            // 重新初始化 channel
+            await initRealtimeChannel(currentChallenge.value.id)
+          } catch (e) {
+            console.error('[Challenge] Reconnect after visibility change failed:', e)
+            realtimeStatus.value = 'disconnected'
+          }
+        }
+      }
+    }
   }
   
   // 页面关闭前处理
@@ -152,6 +251,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
     window.removeEventListener('beforeunload', handleBeforeUnload)
     window.removeEventListener('pagehide', handlePageHide)
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
   }
 
   // Game state
@@ -161,8 +261,10 @@ export const useChallengeStore = defineStore('challenge', () => {
   const roundStartTime = ref(0)
   const roundTimeRemaining = ref(0)
   const roundTimer = ref<ReturnType<typeof setInterval> | null>(null)
-  const statusCheckTimer = ref<ReturnType<typeof setInterval> | null>(null) // 状态检查定时器
   const gameStatus = ref<'waiting' | 'ready' | 'playing' | 'round_result' | 'finished'>('waiting')
+  
+  // Realtime 数据库订阅 channel（用于监听 challenges 表变更）
+  const dbChannel = ref<RealtimeChannel | null>(null)
   const roundResults = ref<ChallengeWordResult[]>([])
   const myAnswer = ref('')
   const hasSubmitted = ref(false)
@@ -257,10 +359,10 @@ export const useChallengeStore = defineStore('challenge', () => {
       }
     }
     
-    // 如果是重试，先重新连接 Realtime
+    // 如果是重试，先强制重新连接 Realtime
     if (retryCount > 0) {
-      console.log(`[Challenge] Retry ${retryCount}/${maxRetries}, reconnecting realtime...`)
-      await reconnectRealtime()
+      console.log(`[Challenge] Retry ${retryCount}/${maxRetries}, force reconnecting realtime...`)
+      await forceReconnectRealtime()
       // 等待连接稳定
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
@@ -655,9 +757,9 @@ export const useChallengeStore = defineStore('challenge', () => {
       currentChallenge.value.started_at = new Date().toISOString()
     }
     
-    // 非主机用户启动状态检查定时器
+    // 非主机用户订阅数据库变更（替代轮询）
     if (!isHost.value) {
-      startStatusCheckTimer()
+      subscribeToDbChanges()
     }
     
     // 开始第一轮
@@ -806,6 +908,9 @@ export const useChallengeStore = defineStore('challenge', () => {
       updateChallengeInList(currentChallenge.value)
     }
 
+    // 标记列表需要刷新（比赛结束后返回列表时需要同步最新状态）
+    markNeedsRefresh()
+
     // 播放播音员音效：比赛结束时，胜利播放成功音效，失败播放错误音效
     const announcerStore = useAnnouncerStore()
     announcerStore.init().then(() => {
@@ -928,58 +1033,97 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
   }
 
-  // 启动状态检查定时器（非主机用户使用）
-  function startStatusCheckTimer(): void {
-    stopStatusCheckTimer()
+  // 订阅数据库变更（替代轮询机制）
+  async function subscribeToDbChanges(): Promise<void> {
+    if (!currentChallenge.value) return
     
-    // 每3秒检查一次数据库状态
-    statusCheckTimer.value = setInterval(async () => {
-      if (!currentChallenge.value || isHost.value || gameStatus.value === 'finished') {
-        stopStatusCheckTimer()
-        return
-      }
-
-      try {
-        const { data: latestChallenge } = await supabase
-          .from('challenges')
-          .select('status, winner_id, winner_name, prize_pool, finished_at, game_words, participants')
-          .eq('id', currentChallenge.value.id)
-          .single()
-
-        if (latestChallenge && (latestChallenge.status === 'finished' || latestChallenge.status === 'cancelled')) {
-          // 比赛已结束，更新本地状态
-          stopStatusCheckTimer()
-          stopRoundTimer()
-          
-          gameStatus.value = 'finished'
-          currentChallenge.value.status = latestChallenge.status
-          currentChallenge.value.winner_id = latestChallenge.winner_id
-          currentChallenge.value.winner_name = latestChallenge.winner_name
-          currentChallenge.value.prize_pool = latestChallenge.prize_pool
-          currentChallenge.value.finished_at = latestChallenge.finished_at
-          
-          if (latestChallenge.game_words) {
-            gameWords.value = latestChallenge.game_words
-            currentChallenge.value.game_words = latestChallenge.game_words
-          }
-          
-          if (latestChallenge.participants) {
-            currentChallenge.value.participants = latestChallenge.participants
-          }
-
-          // 更新缓存列表
-          updateChallengeInList(currentChallenge.value)
+    // 先清理旧的订阅
+    unsubscribeFromDbChanges()
+    
+    const challengeId = currentChallenge.value.id
+    const channelName = `db-changes:${challengeId}`
+    
+    // 创建数据库变更订阅 channel
+    dbChannel.value = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'challenges',
+          filter: `id=eq.${challengeId}`
+        },
+        (payload) => {
+          handleDbChange(payload.new as Challenge)
         }
-      } catch (e) {
-        console.error('Error checking challenge status:', e)
-      }
-    }, 3000)
+      )
+      .subscribe((status) => {
+        console.log('[Challenge] DB subscription status:', status)
+      })
   }
+  
+  // 处理数据库变更
+  function handleDbChange(updatedChallenge: Challenge): void {
+    if (!currentChallenge.value) return
+    
+    // 检查比赛状态变化
+    if (updatedChallenge.status === 'finished' || updatedChallenge.status === 'cancelled') {
+      // 比赛已结束，更新本地状态
+      unsubscribeFromDbChanges()
+      stopRoundTimer()
+      
+      gameStatus.value = 'finished'
+      currentChallenge.value.status = updatedChallenge.status
+      currentChallenge.value.winner_id = updatedChallenge.winner_id
+      currentChallenge.value.winner_name = updatedChallenge.winner_name
+      currentChallenge.value.prize_pool = updatedChallenge.prize_pool
+      currentChallenge.value.finished_at = updatedChallenge.finished_at
+      
+      if (updatedChallenge.game_words) {
+        gameWords.value = updatedChallenge.game_words
+        currentChallenge.value.game_words = updatedChallenge.game_words
+      }
+      
+      if (updatedChallenge.participants) {
+        currentChallenge.value.participants = updatedChallenge.participants
+      }
 
-  function stopStatusCheckTimer(): void {
-    if (statusCheckTimer.value) {
-      clearInterval(statusCheckTimer.value)
-      statusCheckTimer.value = null
+      // 更新缓存列表
+      updateChallengeInList(currentChallenge.value)
+      
+      // 标记列表需要刷新（比赛结束后返回列表时需要同步最新状态）
+      markNeedsRefresh()
+    } else if (updatedChallenge.participants) {
+      // 参与者状态变化（在线/离线/准备状态）
+      // 只更新其他用户的状态，保留当前用户的本地状态
+      const myUserId = authStore.user?.id
+      updatedChallenge.participants.forEach(p => {
+        if (p.user_id !== myUserId) {
+          const localParticipant = currentChallenge.value?.participants.find(
+            lp => lp.user_id === p.user_id
+          )
+          if (localParticipant) {
+            localParticipant.is_online = p.is_online
+            localParticipant.is_ready = p.is_ready
+            localParticipant.score = p.score
+            localParticipant.has_left = p.has_left
+          }
+        }
+      })
+    }
+  }
+  
+  // 取消数据库变更订阅
+  async function unsubscribeFromDbChanges(): Promise<void> {
+    if (dbChannel.value) {
+      try {
+        await dbChannel.value.unsubscribe()
+        await supabase.removeChannel(dbChannel.value as any)
+      } catch (e) {
+        console.error('[Challenge] Error unsubscribing from db changes:', e)
+      }
+      dbChannel.value = null
     }
   }
 
@@ -1255,23 +1399,42 @@ export const useChallengeStore = defineStore('challenge', () => {
 
   // CRUD operations
   async function loadChallenges(force = false): Promise<void> {
-    // 如果不是强制刷新，且缓存有效，直接返回
+    // 如果没有数据，先尝试从 localStorage 加载缓存（立即显示）
+    if (challenges.value.length === 0) {
+      const hasCache = loadFromCache()
+      if (hasCache) {
+        // 有缓存数据，不显示 loading，后台静默更新
+        // 检查缓存是否在有效期内
+        if (!force && Date.now() - lastLoadTime.value < CACHE_DURATION) {
+          return // 缓存有效，直接返回
+        }
+        // 缓存过期，后台静默更新（不设置 loading）
+        fetchInBackground()
+        return
+      }
+    }
+    
+    // 如果不是强制刷新，且内存缓存有效，直接返回
     if (!force && challenges.value.length > 0 && Date.now() - lastLoadTime.value < CACHE_DURATION) {
-      //console.log('[loadChallenges] 使用缓存，跳过刷新')
+      return
+    }
+    
+    // 如果有数据但需要刷新，后台静默更新
+    if (challenges.value.length > 0 && !force) {
+      fetchInBackground()
       return
     }
     
     // 防止并发请求，但添加超时保护
     if (loading.value) {
       if (!force) {
-        //console.log('[loadChallenges] 正在加载中，跳过')
         return
       }
       // 强制刷新时，直接重置 loading 状态
       loading.value = false
     }
     
-    //console.log('[loadChallenges] 开始从数据库加载, force:', force)
+    // 没有缓存数据，需要显示 loading
     loading.value = true
     
     try {
@@ -1300,6 +1463,7 @@ export const useChallengeStore = defineStore('challenge', () => {
           participants: c.participants || []
         }))
         lastLoadTime.value = Date.now()
+        saveToCache() // 保存到 localStorage
       }
     } catch (error) {
       console.error('Error loading challenges:', error)
@@ -1316,10 +1480,46 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
   }
   
+  // 后台静默获取数据（不显示 loading）
+  async function fetchInBackground(): Promise<void> {
+    try {
+      const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
+      
+      const url = `${supabaseUrl}/rest/v1/challenges?select=*&status=in.(waiting,ready,in_progress,finished)&order=created_at.desc&limit=50`
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (response.ok) {
+        const data = await response.json()
+        challenges.value = (data || []).map((c: Challenge) => ({
+          ...c,
+          participants: c.participants || []
+        }))
+        lastLoadTime.value = Date.now()
+        saveToCache()
+      }
+    } catch (e) {
+      // 后台更新失败，静默忽略
+      console.error('[Challenge] Background fetch failed:', e)
+    }
+  }
+  
   // 绕过缓存获取最新数据（使用 fetch API 直接请求）
   async function fetchFreshChallenges(): Promise<void> {
-    //console.log('[fetchFreshChallenges] 绕过缓存获取最新数据')
-    
     // 使用 fetch API 直接请求，添加 Cache-Control 头绕过 SW 缓存
     const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
@@ -1351,7 +1551,6 @@ export const useChallengeStore = defineStore('challenge', () => {
       }
       
       const data = await response.json()
-      //console.log('[fetchFreshChallenges] 最新数据数量:', data?.length)
       
       // 更新数据
       challenges.value = (data || []).map((c: Challenge) => ({
@@ -1359,6 +1558,7 @@ export const useChallengeStore = defineStore('challenge', () => {
         participants: c.participants || []
       }))
       lastLoadTime.value = Date.now()
+      saveToCache() // 保存到 localStorage
     } catch (error: any) {
       clearTimeout(timeoutId)
       if (error.name === 'AbortError') {
@@ -1540,8 +1740,8 @@ export const useChallengeStore = defineStore('challenge', () => {
         // 比赛正在进行中，但房主刷新了页面
         // Supabase 模式下可以尝试恢复状态
         gameStatus.value = 'playing'
-        // 启动状态检查定时器
-        startStatusCheckTimer()
+        // 订阅数据库变更（替代轮询）
+        subscribeToDbChanges()
         // 房主进入后广播同步消息，让其他用户同步状态
         setTimeout(() => broadcastSync(), 500)
       } else {
@@ -1578,7 +1778,8 @@ export const useChallengeStore = defineStore('challenge', () => {
       // 如果比赛正在进行中，设置为 playing 状态
       if (challenge.status === 'in_progress') {
         gameStatus.value = 'playing'
-        startStatusCheckTimer()
+        // 订阅数据库变更（替代轮询）
+        subscribeToDbChanges()
       } else {
         gameStatus.value = 'waiting'
       }
@@ -1730,6 +1931,9 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     // 更新缓存列表中的挑战赛
     updateChallengeInList(currentChallenge.value)
+    
+    // 标记列表需要刷新
+    markNeedsRefresh()
 
     await cleanup()
   }
@@ -1797,6 +2001,15 @@ export const useChallengeStore = defineStore('challenge', () => {
           .from('challenges')
           .update({ status: 'cancelled' })
           .eq('id', currentChallenge.value.id)
+
+        // 更新本地状态
+        currentChallenge.value.status = 'cancelled'
+        
+        // 更新缓存列表
+        updateChallengeInList(currentChallenge.value)
+        
+        // 标记列表需要刷新
+        markNeedsRefresh()
 
         broadcast({
           type: 'game_end',
@@ -1937,6 +2150,9 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     // 更新缓存列表中的挑战赛
     updateChallengeInList(currentChallenge.value)
+    
+    // 标记列表需要刷新（确保返回列表时能看到最新状态）
+    markNeedsRefresh()
 
     // TODO: 更新赢家积分到用户账户
   }
@@ -1946,6 +2162,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     const index = challenges.value.findIndex(c => c.id === challenge.id)
     if (index !== -1) {
       challenges.value[index] = { ...challenge }
+      saveToCache() // 同步更新 localStorage 缓存
     }
   }
 
@@ -2013,7 +2230,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
   async function cleanup(): Promise<void> {
     stopRoundTimer()
-    stopStatusCheckTimer()
+    unsubscribeFromDbChanges() // 清理数据库订阅
     cleanupNetworkListeners() // 清理网络状态监听器
     
     // 清理 Supabase Realtime Channel（添加超时保护，避免卡住）
@@ -2056,6 +2273,12 @@ export const useChallengeStore = defineStore('challenge', () => {
   // 清除缓存，强制下次加载时重新获取数据
   function clearCache(): void {
     lastLoadTime.value = 0
+    try {
+      localStorage.removeItem(CACHE_KEY)
+      localStorage.removeItem(CACHE_TIME_KEY)
+    } catch (e) {
+      // 忽略 localStorage 错误
+    }
   }
   
   // 标记列表需要刷新（供外部调用，如收到通知时）

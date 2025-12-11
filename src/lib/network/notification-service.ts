@@ -9,7 +9,7 @@
  */
 
 import { ref, computed } from 'vue'
-import { supabase, refreshSessionToken } from '@/lib/supabase'
+import { supabase, refreshSessionToken, forceReconnectRealtime } from '@/lib/supabase'
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import type { Challenge } from '@/types'
 import type { ChallengeNotification, NotificationHandler } from './types'
@@ -497,30 +497,15 @@ class ChallengeNotificationService {
     this.forceCleanupAllChannels()
     await this.cleanupChannel()
     
-    // 清理 Supabase 内部所有 channel
+    // 【关键】使用 forceReconnectRealtime 彻底销毁 WebSocket 连接并重建
+    // 这会断开底层 WebSocket，刷新 session token，然后重新连接
+    this.log('Force reconnecting Supabase Realtime...')
     try {
-      const allChannels = supabase.getChannels()
-      for (const ch of allChannels) {
-        try {
-          await ch.unsubscribe()
-          await supabase.removeChannel(ch)
-        } catch (e) {
-          // 忽略
-        }
-      }
+      await forceReconnectRealtime()
+      this.log('Supabase Realtime force reconnected')
     } catch (e) {
-      // 忽略
+      this.warn('Force reconnect Realtime failed:', e)
     }
-    
-    // 【关键】刷新 Supabase session token（解决 JWT 过期问题）
-    this.log('Refreshing session token...')
-    const hasValidSession = await refreshSessionToken()
-    if (!hasValidSession) {
-      this.error('No valid session, cannot reconnect')
-      this._isReconnecting.value = false
-      return
-    }
-    this.log('Session token refreshed')
     
     // 等待足够时间，确保所有清理完成
     await new Promise(resolve => setTimeout(resolve, 500))

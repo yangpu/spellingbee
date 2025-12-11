@@ -50,7 +50,16 @@ const routes: RouteRecordRaw[] = [
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    // 浏览器前进/后退时恢复之前的位置（使用 instant 避免看到滚动过程）
+    if (savedPosition) {
+      return { ...savedPosition, behavior: 'instant' }
+    }
+    // 其他情况保持当前位置（不滚动）
+    // ChallengeRoom 组件会在 onMounted 中自行处理滚动到顶部
+    return false
+  }
 })
 
 export default router

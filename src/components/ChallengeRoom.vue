@@ -936,7 +936,7 @@ function handleToggleReady() {
 }
 
 onMounted(() => {
-  // 进入房间时立即滚动到顶部（禁用平滑滚动避免闪动）
+  // 进入房间时立即滚动到顶部（使用 instant 避免看到滚动过程）
   window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
 })
 
