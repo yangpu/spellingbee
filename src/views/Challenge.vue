@@ -1390,10 +1390,8 @@ watch(() => challengeStore.currentChallenge, async (newVal, oldVal) => {
     router.replace({ name: 'Challenge' })
     // 恢复滚动位置
     restoreScrollPosition()
-    // 标记列表需要刷新（离开房间后状态可能变化）
-    challengeStore.markNeedsRefresh()
-    // 检查并刷新
-    await challengeStore.checkAndRefresh()
+    // 不再标记刷新，因为 updateChallengeInList 已经更新了本地缓存
+    // 直接使用缓存数据即可
   }
 })
 
@@ -1453,9 +1451,7 @@ watch(() => route.params.id, async (newId, oldId) => {
     } catch { }
     // 恢复滚动位置
     restoreScrollPosition()
-    // 标记需要刷新并检查
-    challengeStore.markNeedsRefresh()
-    await challengeStore.checkAndRefresh()
+    // 不再标记刷新，直接使用缓存数据
     return
   }
 
@@ -1466,11 +1462,13 @@ watch(() => route.params.id, async (newId, oldId) => {
     return
   }
 
-  // 回到列表页且没有当前挑战赛：检查是否需要刷新
+  // 回到列表页且没有当前挑战赛：直接使用缓存，不发起请求
   if (!newId && !challengeStore.currentChallenge) {
     challengeStore.loading = false
-    // 使用 checkAndRefresh 代替强制刷新，只在有标志时才刷新
-    await challengeStore.checkAndRefresh()
+    // 只有在 needsRefresh 标志为 true 时才刷新（如收到新挑战通知）
+    if (challengeStore.needsRefresh) {
+      await challengeStore.checkAndRefresh()
+    }
   }
 })
 </script>

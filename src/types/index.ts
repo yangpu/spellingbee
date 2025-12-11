@@ -121,6 +121,7 @@ export interface AnnouncerSettings {
   human: {
     correctPhrase: string
     incorrectPhrase: string
+    newChallengePhrase?: string
   }
   animal: {
     success: {
@@ -128,6 +129,10 @@ export interface AnnouncerSettings {
       soundFile: string
     }
     failure: {
+      type: string
+      soundFile: string
+    }
+    newChallenge?: {
       type: string
       soundFile: string
     }

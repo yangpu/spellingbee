@@ -908,8 +908,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       updateChallengeInList(currentChallenge.value)
     }
 
-    // 标记列表需要刷新（比赛结束后返回列表时需要同步最新状态）
-    markNeedsRefresh()
+    // 不再标记刷新，因为 updateChallengeInList 已经更新了本地缓存
 
     // 播放播音员音效：比赛结束时，胜利播放成功音效，失败播放错误音效
     const announcerStore = useAnnouncerStore()
@@ -1091,9 +1090,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
       // 更新缓存列表
       updateChallengeInList(currentChallenge.value)
-      
-      // 标记列表需要刷新（比赛结束后返回列表时需要同步最新状态）
-      markNeedsRefresh()
+      // 不再标记刷新，因为 updateChallengeInList 已经更新了本地缓存
     } else if (updatedChallenge.participants) {
       // 参与者状态变化（在线/离线/准备状态）
       // 只更新其他用户的状态，保留当前用户的本地状态
@@ -1931,9 +1928,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     // 更新缓存列表中的挑战赛
     updateChallengeInList(currentChallenge.value)
-    
-    // 标记列表需要刷新
-    markNeedsRefresh()
+    // 不再标记刷新，因为 updateChallengeInList 已经更新了本地缓存
 
     await cleanup()
   }
@@ -2007,9 +2002,7 @@ export const useChallengeStore = defineStore('challenge', () => {
         
         // 更新缓存列表
         updateChallengeInList(currentChallenge.value)
-        
-        // 标记列表需要刷新
-        markNeedsRefresh()
+        // 不再标记刷新，因为 updateChallengeInList 已经更新了本地缓存
 
         broadcast({
           type: 'game_end',
@@ -2150,9 +2143,7 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     // 更新缓存列表中的挑战赛
     updateChallengeInList(currentChallenge.value)
-    
-    // 标记列表需要刷新（确保返回列表时能看到最新状态）
-    markNeedsRefresh()
+    // 不再标记刷新，因为 updateChallengeInList 已经更新了本地缓存
 
     // TODO: 更新赢家积分到用户账户
   }

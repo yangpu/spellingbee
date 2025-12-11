@@ -32,11 +32,7 @@
         </router-link>
       </div>
       <div class="nav-user">
-        <t-button
-          v-if="!authStore.user"
-          theme="primary"
-          @click="showAuthDialog = true"
-        >
+        <t-button v-if="!authStore.user" theme="primary" @click="showAuthDialog = true">
           登录
         </t-button>
         <t-button v-else variant="text" shape="round" class="user-avatar-btn" @click="showProfileDialog = true">
@@ -44,7 +40,7 @@
             <t-avatar size="small" :image="authStore.profile?.avatar_url">
               {{ avatarText }}
             </t-avatar>
-        </template>
+          </template>
           <span class="user-name">{{ displayName }}</span>
         </t-button>
       </div>
@@ -59,56 +55,28 @@
     </main>
 
     <footer class="app-footer">
-      <span>©️版权所有({{ new Date().getFullYear()}})：杨若即 · yangruoji@outlook.com</span>
+      <span>©️版权所有({{ new Date().getFullYear() }})：杨若即 · yangruoji@outlook.com</span>
       <VersionInfo />
       <t-button variant="text" size="small" class="status-btn" @click="showNetworkStatus = true">
-        <span 
-          class="connection-dot" 
-          :class="{ connected: supabaseConnected }"
-        ></span>
+        <span class="connection-dot" :class="{ connected: supabaseConnected }"></span>
       </t-button>
     </footer>
 
     <!-- Network Status Dialog -->
-    <NetworkStatus 
-      v-model:visible="showNetworkStatus" 
-      :is-logged-in="!!authStore.user" 
-    />
+    <NetworkStatus v-model:visible="showNetworkStatus" :is-logged-in="!!authStore.user" />
 
     <!-- Auth Dialog -->
-    <t-dialog
-      v-model:visible="showAuthDialog"
-      :header="dialogHeader()"
-      :footer="false"
-      width="400px"
-      @close="authMode = 'login'"
-    >
-      <t-form
-        ref="authForm"
-        :data="authData"
-        :rules="authRules"
-        @submit="handleAuth"
-      >
+    <t-dialog v-model:visible="showAuthDialog" :header="dialogHeader()" :footer="false" width="400px"
+      @close="authMode = 'login'">
+      <t-form ref="authForm" :data="authData" :rules="authRules" @submit="handleAuth">
         <t-form-item name="email" label="邮箱">
           <t-input v-model="authData.email" placeholder="请输入邮箱" />
         </t-form-item>
         <t-form-item v-if="authMode !== 'forgot'" name="password" label="密码">
-          <t-input
-            v-model="authData.password"
-            type="password"
-            placeholder="请输入密码"
-          />
+          <t-input v-model="authData.password" type="password" placeholder="请输入密码" />
         </t-form-item>
-        <t-form-item
-          v-if="authMode === 'register'"
-          name="confirmPassword"
-          label="确认密码"
-        >
-          <t-input
-            v-model="authData.confirmPassword"
-            type="password"
-            placeholder="请再次输入密码"
-          />
+        <t-form-item v-if="authMode === 'register'" name="confirmPassword" label="确认密码">
+          <t-input v-model="authData.confirmPassword" type="password" placeholder="请再次输入密码" />
         </t-form-item>
         <div class="auth-actions">
           <t-button theme="primary" type="submit" :loading="authLoading" block>
@@ -127,23 +95,21 @@
     </t-dialog>
 
     <!-- User Profile Dialog -->
-    <UserProfile 
-      v-model:visible="showProfileDialog" 
-      @logout="handleLogout"
-    />
+    <UserProfile v-model:visible="showProfileDialog" @logout="handleLogout" />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { MessagePlugin } from 'tdesign-vue-next';
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
 import { useChallengeStore } from '@/stores/challenge';
+import { useAnnouncerStore } from '@/stores/announcer';
 import { useChallengeNotifications, notificationService } from '@/lib/network';
 import UserProfile from '@/components/UserProfile.vue';
 import NetworkStatus from '@/components/NetworkStatus.vue';
@@ -166,6 +132,7 @@ const competitionStore = useCompetitionStore();
 const learningStore = useLearningStore();
 const speechStore = useSpeechStore();
 const challengeStore = useChallengeStore();
+const announcerStore = useAnnouncerStore();
 
 // 挑战赛通知取消订阅函数
 let unsubscribeNotification = null;
@@ -272,7 +239,7 @@ const handleLogout = () => {
 // Sync all data from cloud
 const syncAllData = async () => {
   if (!authStore.user) return;
-  
+
   try {
     await Promise.all([
       competitionStore.loadRecords(),
@@ -287,32 +254,37 @@ const syncAllData = async () => {
 // 初始化挑战赛通知服务
 const initNotificationService = async () => {
   if (!authStore.user) return;
-  
+
   // 防止重复初始化
   if (notificationInitialized) {
     return;
   }
   notificationInitialized = true;
-  
+
   try {
     await notificationService.init(authStore.user.id);
-    
+
     // 订阅新挑战赛通知
     unsubscribeNotification = notificationService.addHandler(async (notification) => {
       if (notification.type === 'new_challenge') {
         // 标记列表需要刷新
         challengeStore.markNeedsRefresh();
-        
+
         // 如果当前在挑战页面列表（不在房间内），立即刷新
         if (route.path === '/challenge' && !challengeStore.currentChallenge) {
-          console.log('[App] On challenge list, refreshing immediately');
+          // console.log('[App] On challenge list, refreshing immediately');
           await challengeStore.checkAndRefresh();
         }
-        
+
+        // 播放新挑战通知音效/语音
+        announcerStore.playNewChallenge().catch(e => {
+          console.warn('[App] Failed to play new challenge sound:', e);
+        });
+
         // 显示新挑战赛通知弹窗
         const challenge = notification.challenge;
         const creatorName = notification.fromUser?.nickname || '未知用户';
-        
+
         let dialogInstance = null;
         dialogInstance = DialogPlugin.confirm({
           header: '新的挑战赛',
@@ -325,43 +297,43 @@ const initNotificationService = async () => {
               dialogInstance.destroy();
               dialogInstance = null;
             }
-            
+
             // 显示加载提示（使用 5 秒超时自动关闭，防止卡住）
             const loadingInstance = MessagePlugin.loading('正在加入挑战赛...', 5000);
-            
+
             try {
               // 重置所有状态，确保可以正常加入
               challengeStore.loading = false;
-              
+
               // 如果当前在房间内，先清理（带超时保护）
               if (challengeStore.currentChallenge) {
                 await Promise.race([
                   challengeStore.cleanup(),
                   new Promise(resolve => setTimeout(resolve, 2000))
-                ]).catch(() => {});
+                ]).catch(() => { });
               }
-              
+
               // 加入挑战赛（带超时保护）
               await Promise.race([
                 challengeStore.joinChallenge(challenge.id),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('加入超时，请检查网络后重试')), 15000))
               ]);
-              
+
               // 关闭加载提示
               MessagePlugin.closeAll();
-              
+
               // 跳转到挑战赛房间
               router.push(`/challenge/${challenge.id}`);
               MessagePlugin.success('加入成功');
             } catch (error) {
               // 关闭加载提示
               MessagePlugin.closeAll();
-              
+
               console.error('[App] Failed to join challenge from notification:', error);
               MessagePlugin.error(error.message || '加入失败，请稍后重试');
               // 刷新列表，让用户可以手动加入
               challengeStore.clearCache();
-              challengeStore.loadChallenges(true).catch(() => {});
+              challengeStore.loadChallenges(true).catch(() => { });
               // 跳转到挑战赛列表页
               router.push('/challenge');
             }
@@ -375,7 +347,7 @@ const initNotificationService = async () => {
         });
       }
     });
-    
+
     // console.log('[App] Challenge notification service initialized');
   } catch (error) {
     console.error('[App] Failed to init notification service:', error);
@@ -397,18 +369,18 @@ const destroyNotificationService = async () => {
 const handleVisibilityChange = async () => {
   if (document.visibilityState === 'visible') {
     console.log('[App] Visibility changed to visible');
-    
+
     // 立即强制重置所有 store 的 loading 状态
     wordsStore.loading = false;
     challengeStore.loading = false;
-    
+
     // 标记列表需要刷新（下次进入列表页时检查）
     // 不直接 clearCache，避免不必要的请求
     challengeStore.markNeedsRefresh();
-    
+
     // 更新网络状态
     isOnline.value = navigator.onLine;
-    
+
     // notification-service 内部会自动处理可见性变化和重连
     // 这里不需要手动调用 forceReconnect
   }
@@ -432,12 +404,12 @@ onMounted(async () => {
   await wordsStore.init();
   await learningStore.init();
   await competitionStore.loadRecords();
-  
+
   // 初始化挑战赛通知服务（用户已登录时）
   if (authStore.user) {
     await initNotificationService();
   }
-  
+
   // 监听页面可见性变化（处理应用从后台恢复）
   document.addEventListener('visibilitychange', handleVisibilityChange);
   // 监听网络状态变化
@@ -550,7 +522,7 @@ const dialogHeader = () => {
       cursor: pointer;
       border: none !important;
       background: none !important;
-      
+
       .user-name {
         max-width: 100px;
         overflow: hidden;
@@ -581,11 +553,11 @@ const dialogHeader = () => {
   font-size: 0.85rem;
   border-top: 1px solid var(--border-color);
   background: var(--bg-card);
-  
+
   .status-btn {
     padding: 0.15rem 0.4rem;
     min-width: auto;
-    
+
     .connection-dot {
       display: inline-block;
       width: 8px;
@@ -593,7 +565,7 @@ const dialogHeader = () => {
       border-radius: 50%;
       background: #ef4444;
       transition: background-color 0.3s;
-      
+
       &.connected {
         background: #22c55e;
       }
@@ -606,7 +578,7 @@ const dialogHeader = () => {
   flex-direction: column;
   gap: 0.5rem;
   margin-top: 1rem;
-  
+
   .auth-links {
     display: flex;
     justify-content: space-between;
@@ -625,10 +597,12 @@ const dialogHeader = () => {
 }
 
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-4px);
   }
@@ -647,7 +621,7 @@ const dialogHeader = () => {
       .nav-link span {
         display: none;
       }
-      
+
       .home-link {
         display: none;
       }

@@ -24,7 +24,8 @@ export const useAnnouncerStore = defineStore('announcer', () => {
     type: 'animal', // 'human' | 'animal' - 默认动物播音员
     human: {
       correctPhrase: 'Correct!',
-      incorrectPhrase: 'Incorrect.'
+      incorrectPhrase: 'Incorrect.',
+      newChallengePhrase: '新挑战！'
     },
     animal: {
       success: {
@@ -34,6 +35,10 @@ export const useAnnouncerStore = defineStore('announcer', () => {
       failure: {
         type: 'dog',
         soundFile: 'bark.wav' // 只存文件名
+      },
+      newChallenge: {
+        type: 'dog',
+        soundFile: 'bark.wav' // 默认使用小狗音效
       }
     }
   }
@@ -165,6 +170,22 @@ export const useAnnouncerStore = defineStore('announcer', () => {
     }
   }
   
+  // 播放新挑战通知
+  async function playNewChallenge(): Promise<string> {
+    if (settings.value.type === 'human') {
+      // 人物模式：朗读新挑战语句
+      const phrase = settings.value.human.newChallengePhrase || '新挑战！'
+      await speechStore.speakChinese(phrase, { rate: 1.0 })
+      return 'human'
+    } else {
+      // 动物模式：播放音效（默认使用小狗）
+      const newChallengeConfig = settings.value.animal.newChallenge || { type: 'dog', soundFile: 'bark.wav' }
+      const soundUrl = getFullSoundUrl(newChallengeConfig.soundFile)
+      await playSound(soundUrl)
+      return newChallengeConfig.type
+    }
+  }
+  
   // 播放音效（音量比正常语音小20%）
   async function playSound(url: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -213,6 +234,7 @@ export const useAnnouncerStore = defineStore('announcer', () => {
     updateSettings,
     playSuccess,
     playFailure,
+    playNewChallenge,
     playSound,
     resetToDefaults,
     uploadCustomSound,

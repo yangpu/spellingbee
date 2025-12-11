@@ -46,7 +46,7 @@
           <div class="info-label">奖池</div>
           <div class="info-value prize">{{ challenge?.prize_pool }} <t-icon name="gift" /></div>
         </div>
-       <div class="info-card">
+        <div class="info-card">
           <div class="info-label">单词数量</div>
           <div class="info-value">{{ challenge?.word_count }} 词</div>
         </div>
@@ -79,11 +79,8 @@
       <div class="participants-section">
         <h3>参赛选手 ({{ challenge?.participants?.length || 0 }}/{{ challenge?.max_participants }})</h3>
         <div class="participants-grid">
-          <div class="participant-card"
-            v-for="p in challenge?.participants"
-            :key="p.user_id"
-            :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-creator': p.user_id === challenge?.creator_id }"
-          >
+          <div class="participant-card" v-for="p in challenge?.participants" :key="p.user_id"
+            :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-creator': p.user_id === challenge?.creator_id }">
             <div class="participant-avatar">
               <t-avatar :image="p.avatar_url" size="large">
                 {{ p.nickname?.charAt(0) }}
@@ -96,18 +93,15 @@
                 <t-tag v-if="p.user_id === challenge?.creator_id" size="small" theme="warning">房主</t-tag>
               </div>
               <div class="participant-status">
-                <t-icon :name="isParticipantReady(p) ? 'check-circle' : 'time'" :class="{ ready: isParticipantReady(p) }" />
+                <t-icon :name="isParticipantReady(p) ? 'check-circle' : 'time'"
+                  :class="{ ready: isParticipantReady(p) }" />
                 {{ isParticipantReady(p) ? '已准备' : '未准备' }}
               </div>
             </div>
           </div>
 
           <!-- 空位 -->
-          <div 
-            class="participant-card empty"
-            v-for="i in emptySlots"
-            :key="'empty-' + i"
-          >
+          <div class="participant-card empty" v-for="i in emptySlots" :key="'empty-' + i">
             <div class="empty-slot">
               <t-icon name="user-add" size="32px" />
               <span>等待加入</span>
@@ -118,13 +112,9 @@
 
       <div class="room-actions-bottom">
         <div v-if="!challengeStore.isCreator" class="ready-section">
-          <t-button 
-            :theme="challengeStore.myParticipant?.is_ready ? 'default' : 'primary'"
-            :variant="isConnected ? 'base' : 'outline'"
-            size="large"
-            :disabled="!isConnected"
-            @click="handleToggleReady"
-          >
+          <t-button :theme="challengeStore.myParticipant?.is_ready ? 'default' : 'primary'"
+            :variant="isConnected ? 'base' : 'outline'" size="large" :disabled="!isConnected"
+            @click="handleToggleReady">
             <template #icon>
               <t-icon :name="challengeStore.myParticipant?.is_ready ? 'close' : 'check'" />
             </template>
@@ -144,14 +134,9 @@
           </div>
         </div>
         <div v-if="challengeStore.isCreator" class="start-section">
-          <t-button
-            :theme="challengeStore.canStart ? 'primary' : 'default'"
-            :variant="challengeStore.canStart ? 'base' : 'outline'"
-            size="large"
-            :disabled="!challengeStore.canStart"
-            @click="handleStart"
-            :loading="starting"
-          >
+          <t-button :theme="challengeStore.canStart ? 'primary' : 'default'"
+            :variant="challengeStore.canStart ? 'base' : 'outline'" size="large" :disabled="!challengeStore.canStart"
+            @click="handleStart" :loading="starting">
             <template #icon><t-icon name="play-circle" /></template>
             开始比赛
           </t-button>
@@ -173,7 +158,8 @@
     </div>
 
     <!-- 比赛进行中 -->
-    <div class="room-playing" v-else-if="challengeStore.gameStatus === 'playing' || challengeStore.gameStatus === 'round_result'">
+    <div class="room-playing"
+      v-else-if="challengeStore.gameStatus === 'playing' || challengeStore.gameStatus === 'round_result'">
       <!-- 顶部信息栏 -->
       <div class="game-header">
         <div class="game-title">{{ challenge?.name }}</div>
@@ -188,12 +174,8 @@
 
       <!-- 参赛者得分 -->
       <div class="scoreboard">
-        <div 
-          class="score-item"
-          v-for="(p, index) in challengeStore.sortedParticipants"
-          :key="p.user_id"
-          :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-leader': index === 0 }"
-        >
+        <div class="score-item" v-for="(p, index) in challengeStore.sortedParticipants" :key="p.user_id"
+          :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-leader': index === 0 }">
           <div class="score-rank">{{ index + 1 }}</div>
           <div class="score-avatar">
             <t-avatar :image="p.avatar_url" size="small">{{ p.nickname?.charAt(0) }}</t-avatar>
@@ -205,13 +187,8 @@
       </div>
 
       <!-- 房主离线提示 -->
-      <t-dialog
-        v-model:visible="showHostOfflineDialog"
-        header="主持人已离线"
-        :close-on-overlay-click="false"
-        :close-btn="false"
-        :footer="false"
-      >
+      <t-dialog v-model:visible="showHostOfflineDialog" header="主持人已离线" :close-on-overlay-click="false"
+        :close-btn="false" :footer="false">
         <div class="host-offline-content">
           <t-icon name="wifi-off" size="48px" class="offline-icon" />
           <p>主持人（房主）已断开连接，比赛可能无法正常进行。</p>
@@ -245,7 +222,8 @@
             </t-button>
           </div>
           <div class="word-definition" v-if="showChinese">
-            {{ challengeStore.currentWord?.definition_cn || (showEnglish ? '' : challengeStore.currentWord?.definition) }}
+            {{ challengeStore.currentWord?.definition_cn || (showEnglish ? '' : challengeStore.currentWord?.definition)
+            }}
           </div>
           <div class="word-definition-en" v-if="showEnglish && challengeStore.currentWord?.definition">
             {{ challengeStore.currentWord?.definition }}
@@ -258,22 +236,12 @@
 
         <!-- 输入区域 -->
         <div class="input-section">
-          <LetterInput
-            ref="letterInputRef"
-            :word="challengeStore.currentWord?.word || ''"
-            :disabled="challengeStore.hasSubmitted"
-            :auto-submit="true"
-            :assisted-mode="challenge?.assisted_input !== false"
-            @submit="handleSubmit"
-          />
+          <LetterInput ref="letterInputRef" :word="challengeStore.currentWord?.word || ''"
+            :disabled="challengeStore.hasSubmitted" :auto-submit="true"
+            :assisted-mode="challenge?.assisted_input !== false" @submit="handleSubmit" />
 
           <div class="submit-section">
-            <t-button
-              theme="primary"
-              size="large"
-              :disabled="challengeStore.hasSubmitted"
-              @click="handleManualSubmit"
-            >
+            <t-button theme="primary" size="large" :disabled="challengeStore.hasSubmitted" @click="handleManualSubmit">
               <template #icon><t-icon :name="challengeStore.hasSubmitted ? 'check' : 'send'" /></template>
               {{ challengeStore.hasSubmitted ? '已提交' : '提交答案' }}
             </t-button>
@@ -288,12 +256,8 @@
           <span class="word-pronunciation">{{ challengeStore.currentWord?.pronunciation }}</span>
         </div>
         <div class="result-list">
-          <div 
-            class="result-item"
-            v-for="result in challengeStore.roundResults"
-            :key="result.user_id"
-            :class="{ correct: result.is_correct, wrong: !result.is_correct }"
-          >
+          <div class="result-item" v-for="result in challengeStore.roundResults" :key="result.user_id"
+            :class="{ correct: result.is_correct, wrong: !result.is_correct }">
             <t-icon :name="result.is_correct ? 'check-circle' : 'close-circle'" />
             <span class="result-user">{{ getParticipantName(result.user_id) }}</span>
             <span class="result-answer">{{ result.answer || '未作答' }}</span>
@@ -307,11 +271,7 @@
 
       <!-- 退出比赛按钮 -->
       <div class="exit-game-section" v-if="challengeStore.gameStatus === 'playing'">
-        <t-button
-          variant="text"
-          theme="danger"
-          @click="handleExitGame"
-        >
+        <t-button variant="text" theme="danger" @click="handleExitGame">
           <template #icon><t-icon name="logout" /></template>
           退出比赛
         </t-button>
@@ -341,7 +301,9 @@
         <p class="victory-subtitle">你在「{{ challenge?.name }}」中取得了胜利</p>
         <div class="prize-display">
           <div class="prize-icon">💰</div>
-          <div class="prize-amount">+{{ challenge?.prize_pool || (challenge?.entry_fee * challenge?.participants?.length) }}</div>
+          <div class="prize-amount">+{{ challenge?.prize_pool || (challenge?.entry_fee *
+            challenge?.participants?.length) }}
+          </div>
           <div class="prize-label">积分奖励</div>
         </div>
       </div>
@@ -363,7 +325,7 @@
           <div class="header-background placeholder" v-else>
             <div class="header-overlay"></div>
           </div>
-          
+
           <!-- 比赛信息内容 -->
           <div class="header-content">
             <h3 class="challenge-name">{{ challenge?.name }}</h3>
@@ -400,8 +362,8 @@
               </t-tag>
             </div>
             <div class="challenge-time">
-                        <span><t-icon name="calendar" /> {{ formatDateTime(challenge?.created_at) }}</span>
-                        <span v-if="challenge?.finished_at"> → {{ formatDateTime(challenge?.finished_at, true) }}</span>
+              <span><t-icon name="calendar" /> {{ formatDateTime(challenge?.created_at) }}</span>
+              <span v-if="challenge?.finished_at"> → {{ formatDateTime(challenge?.finished_at, true) }}</span>
             </div>
           </div>
         </div>
@@ -417,7 +379,9 @@
               <div class="winner-label">🎉 冠军</div>
               <div class="winner-name">{{ challenge?.winner_name }}</div>
               <div class="winner-prize">
-                获得 <strong>{{ challenge?.prize_pool || (challenge?.entry_fee * challenge?.participants?.length) }}</strong> 积分
+                获得 <strong>{{ challenge?.prize_pool || (challenge?.entry_fee * challenge?.participants?.length)
+                  }}</strong>
+                积分
               </div>
             </div>
           </div>
@@ -427,16 +391,11 @@
         <div class="final-ranking">
           <div class="section-title">最终排名</div>
           <div class="ranking-list">
-            <div 
-              class="ranking-item"
-              v-for="(p, index) in challengeStore.sortedParticipants"
-              :key="p.user_id"
-              :class="{ 
-                'is-winner': index === 0 && !p.has_left, 
-                'is-me': p.user_id === authStore.user?.id,
-                'has-left': p.has_left
-              }"
-            >
+            <div class="ranking-item" v-for="(p, index) in challengeStore.sortedParticipants" :key="p.user_id" :class="{
+              'is-winner': index === 0 && !p.has_left,
+              'is-me': p.user_id === authStore.user?.id,
+              'has-left': p.has_left
+            }">
               <div class="rank-num" :class="'rank-' + (index + 1)">
                 <span v-if="p.has_left">-</span>
                 <span v-else>{{ index + 1 }}</span>
@@ -462,13 +421,9 @@
           <t-icon :name="showRecords ? 'chevron-up' : 'chevron-down'" />
         </div>
         <div class="records-content" v-if="showRecords">
-          <div 
-            class="record-item"
-            v-for="(gameWord, index) in challengeStore.gameWords"
-            :key="index"
-          >
+          <div class="record-item" v-for="(gameWord, index) in paginatedGameWords" :key="gameWord.word.word + index">
             <div class="record-word-row">
-              <span class="round-num">{{ index + 1 }}</span>
+              <span class="round-num">{{ (recordsCurrentPage - 1) * recordsPageSize + index + 1 }}</span>
               <span class="word-text">{{ gameWord.word.word }}</span>
               <span class="word-phonetic">{{ gameWord.word.pronunciation }}</span>
               <t-button variant="text" size="small" @click.stop="speakWord(gameWord.word.word)">
@@ -477,18 +432,25 @@
             </div>
             <div class="record-definition">{{ gameWord.word.definition_cn || gameWord.word.definition }}</div>
             <div class="record-answers" v-if="gameWord.results?.length > 0">
-              <div 
-                class="answer-item"
-                v-for="result in gameWord.results"
-                :key="result.user_id"
-                :class="{ correct: result.is_correct, timeout: !result.answer }"
-              >
-                <t-icon :name="result.is_correct ? 'check-circle-filled' : (result.answer ? 'close-circle-filled' : 'time-filled')" />
+              <div class="answer-item" v-for="result in gameWord.results" :key="result.user_id"
+                :class="{ correct: result.is_correct, timeout: !result.answer }">
+                <t-icon
+                  :name="result.is_correct ? 'check-circle-filled' : (result.answer ? 'close-circle-filled' : 'time-filled')" />
                 <span class="answer-player">{{ getParticipantName(result.user_id) }}</span>
                 <span class="answer-text">{{ result.answer || '未作答' }}</span>
                 <span class="answer-time">{{ (result.time_taken / 1000).toFixed(1) }}s</span>
               </div>
             </div>
+          </div>
+          <!-- 分页控制 -->
+          <div class="records-pagination" v-if="recordsTotalPages > 1">
+            <t-button variant="outline" size="small" :disabled="recordsCurrentPage <= 1" @click="recordsCurrentPage--">
+              <template #icon><t-icon name="chevron-left" /></template>
+            </t-button>
+            <span class="page-info">{{ recordsCurrentPage }} / {{ recordsTotalPages }}</span>
+            <t-button variant="outline" size="small" :disabled="recordsCurrentPage >= recordsTotalPages" @click="recordsCurrentPage++">
+              <template #icon><t-icon name="chevron-right" /></template>
+            </t-button>
           </div>
         </div>
       </div>
@@ -529,6 +491,20 @@ const letterInputRef = ref(null)
 const showRecords = ref(true) // 是否显示比赛记录（默认展开）
 const showHostOfflineDialog = ref(false) // 房主离线提示对话框
 const hostOfflineDialogDismissed = ref(false) // 用户是否已关闭过对话框
+
+// 比赛记录分页
+const recordsPageSize = 5 // 每页显示5条记录
+const recordsCurrentPage = ref(1)
+
+const recordsTotalPages = computed(() => {
+  return Math.ceil(challengeStore.gameWords.length / recordsPageSize)
+})
+
+const paginatedGameWords = computed(() => {
+  const start = (recordsCurrentPage.value - 1) * recordsPageSize
+  const end = start + recordsPageSize
+  return challengeStore.gameWords.slice(start, end)
+})
 
 const challenge = computed(() => challengeStore.currentChallenge)
 
@@ -645,7 +621,7 @@ function getConfettiStyle(index) {
   const delay = Math.random() * 3
   const duration = 2 + Math.random() * 2
   const size = 8 + Math.random() * 8
-  
+
   return {
     left: `${left}%`,
     backgroundColor: color,
@@ -803,7 +779,7 @@ function handleLeave() {
         dialogInstance.destroy()
         dialogInstance = null
       }
-      
+
       try {
         // 添加超时保护，避免 leaveChallenge 卡住
         await Promise.race([
@@ -813,15 +789,15 @@ function handleLeave() {
       } catch (e) {
         console.error('[ChallengeRoom] Leave failed:', e)
       }
-      
+
       // 无论成功失败，都强制清理状态
       try {
         await Promise.race([
           challengeStore.cleanup(),
           new Promise(resolve => setTimeout(resolve, 2000)) // 2秒超时
         ])
-      } catch {}
-      
+      } catch { }
+
       // 强制跳转到列表页（不依赖 watch）
       router.replace({ name: 'Challenge' })
     },
@@ -845,15 +821,15 @@ async function handleLeaveFinished() {
   } catch (e) {
     console.error('[ChallengeRoom] Leave finished failed:', e)
   }
-  
+
   // 无论成功失败，都强制清理状态
   try {
     await Promise.race([
       challengeStore.cleanup(),
       new Promise(resolve => setTimeout(resolve, 2000))
     ])
-  } catch {}
-  
+  } catch { }
+
   // 强制跳转到列表页
   router.replace({ name: 'Challenge' })
 }
@@ -883,7 +859,7 @@ function handleCancel() {
           challengeStore.cleanup(),
           new Promise(resolve => setTimeout(resolve, 2000))
         ])
-      } catch {}
+      } catch { }
       router.replace({ name: 'Challenge' })
     },
     onClose: () => {
@@ -921,7 +897,7 @@ function handleExitGame() {
           challengeStore.cleanup(),
           new Promise(resolve => setTimeout(resolve, 2000))
         ])
-      } catch {}
+      } catch { }
       router.replace({ name: 'Challenge' })
     },
     onClose: () => {
@@ -995,11 +971,9 @@ onUnmounted(() => {
           left: 0;
           right: 0;
           bottom: 0;
-          background: linear-gradient(
-            135deg,
-            rgba(0, 0, 0, 0.5) 0%,
-            rgba(0, 0, 0, 0.6) 100%
-          );
+          background: linear-gradient(135deg,
+              rgba(0, 0, 0, 0.5) 0%,
+              rgba(0, 0, 0, 0.6) 100%);
         }
       }
 
@@ -1094,7 +1068,7 @@ onUnmounted(() => {
         &.hints {
           font-size: 0.85rem;
           gap: 0.5rem;
-          
+
           span {
             padding: 0.125rem 0.5rem;
             background: var(--honey-100);
@@ -1318,7 +1292,7 @@ onUnmounted(() => {
 
       .score-avatar {
         position: relative;
-        
+
         .online-dot {
           position: absolute;
           bottom: -2px;
@@ -1328,7 +1302,7 @@ onUnmounted(() => {
           border-radius: 50%;
           background: var(--charcoal-300);
           border: 2px solid white;
-          
+
           &.online {
             background: var(--success);
           }
@@ -1350,23 +1324,23 @@ onUnmounted(() => {
   .host-offline-content {
     text-align: center;
     padding: 1rem 0;
-    
+
     .offline-icon {
       color: var(--charcoal-400);
       margin-bottom: 1rem;
     }
-    
+
     p {
       margin: 0.5rem 0;
       color: var(--text-primary);
-      
+
       &.hint {
         color: var(--text-secondary);
         font-size: 0.9rem;
       }
     }
   }
-  
+
   .host-offline-actions {
     display: flex;
     gap: 1rem;
@@ -1678,11 +1652,9 @@ onUnmounted(() => {
           left: 0;
           right: 0;
           bottom: 0;
-          background: linear-gradient(
-            to bottom,
-            rgba(0, 0, 0, 0.2) 0%,
-            rgba(0, 0, 0, 0.6) 100%
-          );
+          background: linear-gradient(to bottom,
+              rgba(0, 0, 0, 0.2) 0%,
+              rgba(0, 0, 0, 0.6) 100%);
         }
       }
 
@@ -2018,6 +1990,23 @@ onUnmounted(() => {
           }
         }
       }
+
+      .records-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--charcoal-100);
+        margin-top: 0.5rem;
+
+        .page-info {
+          font-size: 0.9rem;
+          color: var(--text-secondary);
+          min-width: 60px;
+          text-align: center;
+        }
+      }
     }
   }
 }
@@ -2044,8 +2033,15 @@ onUnmounted(() => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @keyframes confetti-fall {
@@ -2053,6 +2049,7 @@ onUnmounted(() => {
     transform: translateY(-20px) rotate(0deg);
     opacity: 1;
   }
+
   100% {
     transform: translateY(400px) rotate(720deg);
     opacity: 0;
@@ -2060,24 +2057,57 @@ onUnmounted(() => {
 }
 
 @keyframes trophy-bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes trophy-pulse {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-  50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.3; }
+
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0.3;
+  }
 }
 
 @keyframes title-appear {
-  0% { transform: scale(0.5); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @keyframes prize-pop {
-  0% { transform: scale(0); opacity: 0; }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 @media (max-width: 768px) {

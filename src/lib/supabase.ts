@@ -45,7 +45,7 @@ export function initRealtimeHeartbeat(): void {
     if (typeof supabase.realtime?.onHeartbeat === 'function') {
       // @ts-ignore
       supabase.realtime.onHeartbeat((status: string) => {
-        console.log('[Supabase] Heartbeat status:', status)
+        //console.log('[Supabase] Heartbeat status:', status)
         if (status === 'ok') {
           notifyRealtimeStatus('connected')
         } else if (status === 'timeout' || status === 'disconnected') {
@@ -74,7 +74,7 @@ export async function refreshSessionToken(): Promise<boolean> {
       // 有 session 但刷新失败，可能是网络问题，返回 true 继续尝试
       return true
     }
-    console.log('[Supabase] Session refreshed successfully')
+    //console.log('[Supabase] Session refreshed successfully')
     return true
   } catch (e) {
     console.warn('[Supabase] Error refreshing session:', e)
@@ -99,7 +99,7 @@ export function isRealtimeConnected(): boolean {
 
 // 强制重新连接 Realtime（彻底销毁旧连接，创建新连接）
 export async function forceReconnectRealtime(): Promise<boolean> {
-  console.log('[Supabase] Force reconnecting realtime...')
+  //console.log('[Supabase] Force reconnecting realtime...')
   notifyRealtimeStatus('reconnecting')
   
   try {
@@ -114,7 +114,7 @@ export async function forceReconnectRealtime(): Promise<boolean> {
     // 2. 使用官方 API 移除所有 channels（这会触发 unsubscribe）
     try {
       await supabase.removeAllChannels()
-      console.log('[Supabase] All channels removed')
+      //console.log('[Supabase] All channels removed')
     } catch (e) {
       console.warn('[Supabase] Error removing channels:', e)
     }
@@ -127,7 +127,7 @@ export async function forceReconnectRealtime(): Promise<boolean> {
         if (typeof supabase.realtime.disconnect === 'function') {
           // @ts-ignore
           supabase.realtime.disconnect()
-          console.log('[Supabase] Realtime disconnected')
+          //console.log('[Supabase] Realtime disconnected')
         }
       }
     } catch (e) {
@@ -143,7 +143,7 @@ export async function forceReconnectRealtime(): Promise<boolean> {
       if (supabase.realtime && typeof supabase.realtime.connect === 'function') {
         // @ts-ignore
         supabase.realtime.connect()
-        console.log('[Supabase] Realtime connect called')
+        //console.log('[Supabase] Realtime connect called')
       }
     } catch (e) {
       console.warn('[Supabase] Error connecting realtime:', e)
@@ -154,7 +154,7 @@ export async function forceReconnectRealtime(): Promise<boolean> {
     
     // 7. 检查连接状态
     const connected = isRealtimeConnected()
-    console.log('[Supabase] Realtime connected:', connected)
+    //console.log('[Supabase] Realtime connected:', connected)
     
     if (connected) {
       notifyRealtimeStatus('connected')
@@ -185,14 +185,14 @@ export function initVisibilityChangeHandler(): void {
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'hidden') {
       lastHiddenTime = Date.now()
-      console.log('[Supabase] Page hidden at:', new Date().toISOString())
+      //console.log('[Supabase] Page hidden at:', new Date().toISOString())
     } else if (document.visibilityState === 'visible') {
       const hiddenDuration = Date.now() - lastHiddenTime
-      console.log('[Supabase] Page visible, was hidden for:', hiddenDuration, 'ms')
+      //console.log('[Supabase] Page visible, was hidden for:', hiddenDuration, 'ms')
       
       // 如果隐藏时间超过阈值，或者检测到连接已断开，强制重连
       if (hiddenDuration > RECONNECT_THRESHOLD_MS || !isRealtimeConnected()) {
-        console.log('[Supabase] Triggering force reconnect due to visibility change')
+        //console.log('[Supabase] Triggering force reconnect due to visibility change')
         await forceReconnectRealtime()
       }
     }
@@ -200,16 +200,16 @@ export function initVisibilityChangeHandler(): void {
   
   // 监听 online 事件
   window.addEventListener('online', async () => {
-    console.log('[Supabase] Network online, checking realtime connection...')
+    //console.log('[Supabase] Network online, checking realtime connection...')
     // 网络恢复后，延迟检查并重连
     await new Promise(resolve => setTimeout(resolve, 1000))
     if (!isRealtimeConnected()) {
-      console.log('[Supabase] Realtime not connected, force reconnecting...')
+      //console.log('[Supabase] Realtime not connected, force reconnecting...')
       await forceReconnectRealtime()
     }
   })
   
-  console.log('[Supabase] Visibility change handler initialized')
+  //console.log('[Supabase] Visibility change handler initialized')
 }
 
 // 初始化心跳和可见性监听
