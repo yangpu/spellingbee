@@ -16,6 +16,19 @@
             <h3 class="nickname">{{ displayName }}</h3>
             <p class="email">{{ authStore.user?.email }}</p>
           </div>
+          <t-button 
+            variant="text" 
+            shape="circle" 
+            class="network-status-btn"
+            @click="showNetworkStatus = true"
+          >
+            <template #icon>
+              <span 
+                class="connection-dot" 
+                :class="{ connected: supabaseConnected }"
+              ></span>
+            </template>
+          </t-button>
         </div>
         
         <div class="profile-details">
@@ -128,6 +141,12 @@
     
     <!-- 播音员弹窗 -->
     <AnnouncerSettings v-model="showAnnouncer" />
+    
+    <!-- 网络状态弹窗 -->
+    <NetworkStatus 
+      v-model:visible="showNetworkStatus" 
+      :is-logged-in="!!authStore.user" 
+    />
   </t-dialog>
 </template>
 
@@ -139,10 +158,12 @@ import { useAuthStore } from '@/stores/auth'
 import { useCompetitionStore } from '@/stores/competition'
 import { useLearningStore } from '@/stores/learning'
 import { useSpeechStore } from '@/stores/speech'
+import { useChallengeNotifications } from '@/lib/network'
 import { supabase } from '@/lib/supabase'
 import SystemSettings from './SystemSettings.vue'
 import SpeechSettings from './SpeechSettings.vue'
 import AnnouncerSettings from './AnnouncerSettings.vue'
+import NetworkStatus from './NetworkStatus.vue'
 
 const props = defineProps<{
   visible: boolean
@@ -158,6 +179,9 @@ const competitionStore = useCompetitionStore()
 const learningStore = useLearningStore()
 const speechStore = useSpeechStore()
 
+// Supabase 连接状态
+const { isConnected: supabaseConnected } = useChallengeNotifications()
+
 const dialogVisible = computed({
   get: () => props.visible,
   set: (val) => emit('update:visible', val)
@@ -169,6 +193,7 @@ const syncing = ref(false)
 const uploading = ref(false)
 const showSpeechSettings = ref(false)
 const showAnnouncer = ref(false)
+const showNetworkStatus = ref(false)
 
 const profileData = reactive({
   nickname: '',
@@ -377,6 +402,8 @@ const handleLogout = async () => {
       margin-bottom: 1.5rem;
       
       .profile-info {
+        flex: 1;
+        
         .nickname {
           margin: 0 0 0.25rem 0;
           font-size: 1.25rem;
@@ -388,6 +415,23 @@ const handleLogout = async () => {
           margin: 0;
           font-size: 0.9rem;
           color: var(--text-secondary);
+        }
+      }
+      
+      .network-status-btn {
+        flex-shrink: 0;
+        
+        .connection-dot {
+          display: inline-block;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: #ef4444;
+          transition: background-color 0.3s;
+          
+          &.connected {
+            background: #22c55e;
+          }
         }
       }
     }
@@ -432,13 +476,17 @@ const handleLogout = async () => {
     
     .profile-actions {
       display: flex;
-      gap: 0.75rem;
+      gap: 0.5rem;
       margin-top: 1rem;
-      flex-wrap: wrap;
       
       .t-button {
         flex: 1;
-        min-width: 120px;
+        min-width: 0;
+        padding: 0 0.5rem;
+        
+        :deep(.t-button__text) {
+          white-space: nowrap;
+        }
       }
     }
   }
@@ -517,15 +565,26 @@ const handleLogout = async () => {
   .user-profile {
     .profile-view {
       .profile-header {
-        flex-direction: column;
-        text-align: center;
+        flex-direction: row;
+        text-align: left;
+        gap: 0.75rem;
+        
+        .network-status-btn {
+          align-self: flex-start;
+          margin-top: 0.25rem;
+        }
       }
       
       .profile-actions {
-        flex-direction: column;
+        gap: 0.25rem;
         
         .t-button {
-          width: 100%;
+          padding: 0 0.25rem;
+          font-size: 0.8rem;
+          
+          :deep(.t-icon) {
+            font-size: 14px;
+          }
         }
       }
     }

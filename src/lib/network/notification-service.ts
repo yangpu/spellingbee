@@ -9,7 +9,7 @@
  */
 
 import { ref, computed } from 'vue'
-import { supabase } from '@/lib/supabase'
+import { supabase, refreshSessionToken } from '@/lib/supabase'
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import type { Challenge } from '@/types'
 import type { ChallengeNotification, NotificationHandler } from './types'
@@ -273,6 +273,14 @@ class ChallengeNotificationService {
     const currentChannelId = this.channelId
     
     try {
+      // 【关键】先刷新 session token，解决 JWT 过期问题
+      const hasValidSession = await refreshSessionToken()
+      if (!hasValidSession) {
+        this.warn('No valid session, cannot connect')
+        this._isConnected.value = false
+        throw new Error('No valid session')
+      }
+      
       // 先彻底清理所有旧 channel
       this.forceCleanupAllChannels()
       
@@ -504,25 +512,15 @@ class ChallengeNotificationService {
       // 忽略
     }
     
-    // 刷新 Supabase session token（解决 JWT 过期问题）
-    try {
-      this.log('Refreshing session token...')
-      const { data, error } = await supabase.auth.refreshSession()
-      if (error) {
-        this.warn('Failed to refresh session:', error.message)
-        // 如果刷新失败，尝试获取当前 session
-        const { data: sessionData } = await supabase.auth.getSession()
-        if (!sessionData.session) {
-          this.error('No valid session, cannot reconnect')
-          this._isReconnecting.value = false
-          return
-        }
-      } else {
-        this.log('Session refreshed successfully')
-      }
-    } catch (e) {
-      this.warn('Error refreshing session:', e)
+    // 【关键】刷新 Supabase session token（解决 JWT 过期问题）
+    this.log('Refreshing session token...')
+    const hasValidSession = await refreshSessionToken()
+    if (!hasValidSession) {
+      this.error('No valid session, cannot reconnect')
+      this._isReconnecting.value = false
+      return
     }
+    this.log('Session token refreshed')
     
     // 等待足够时间，确保所有清理完成
     await new Promise(resolve => setTimeout(resolve, 500))

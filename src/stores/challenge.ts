@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase, reconnectRealtime } from '@/lib/supabase'
+import { supabase, reconnectRealtime, refreshSessionToken } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { useWordsStore } from './words'
 import { useAnnouncerStore } from './announcer'
@@ -21,17 +21,138 @@ export const useChallengeStore = defineStore('challenge', () => {
   // 缓存控制
   const lastLoadTime = ref<number>(0)
   const CACHE_DURATION = 30 * 1000 // 30秒内不重复请求
+  
+  // 列表更新标志：当收到通知或其他需要刷新的事件时设置为 true
+  // 进入列表页时检查此标志，如果为 true 则刷新并重置
+  const needsRefresh = ref(false)
 
   // Supabase Realtime state (替代 PeerJS)
   const channel = ref<RealtimeChannel | null>(null)
   const connectionId = ref<string>('')
   const isHost = ref(false)
-  const connectionStatus = ref<'disconnected' | 'connecting' | 'connected'>('disconnected')
+  const realtimeStatus = ref<'disconnected' | 'connecting' | 'connected'>('disconnected') // Supabase Realtime 连接状态
+  const isNetworkOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true) // 浏览器网络状态
+  
+  // 真实的连接状态：结合网络状态和 Realtime 连接状态
+  const connectionStatus = computed<'disconnected' | 'connecting' | 'connected'>(() => {
+    // 如果网络离线，直接返回 disconnected
+    if (!isNetworkOnline.value) {
+      return 'disconnected'
+    }
+    // 否则返回 Realtime 的连接状态
+    return realtimeStatus.value
+  })
   
   // 保留 PeerJS 相关变量以兼容旧代码（但不再使用）
   const peer = ref<any>(null)
   const peerId = ref<string>('')
   const connections = ref<Map<string, any>>(new Map())
+  
+  // 网络状态监听器
+  let networkOnlineHandler: (() => void) | null = null
+  let networkOfflineHandler: (() => void) | null = null
+  
+  // 初始化网络状态监听
+  function initNetworkListeners(): void {
+    if (typeof window === 'undefined') return
+    
+    // 移除旧的监听器
+    cleanupNetworkListeners()
+    
+    networkOnlineHandler = () => {
+      console.log('[Challenge] Network online')
+      isNetworkOnline.value = true
+      
+      // 更新本地用户的在线状态
+      if (currentChallenge.value && authStore.user) {
+        const myParticipant = currentChallenge.value.participants.find(
+          p => p.user_id === authStore.user!.id
+        )
+        if (myParticipant) {
+          myParticipant.is_online = true
+          // 房主在线时自动设置为已准备
+          if (isHost.value) {
+            myParticipant.is_ready = true
+          }
+        }
+      }
+      
+      // 网络恢复时，如果有 channel 但状态是 disconnected，尝试重连
+      if (channel.value && realtimeStatus.value === 'disconnected') {
+        // 延迟重连，等待网络稳定
+        setTimeout(() => {
+          if (currentChallenge.value && isNetworkOnline.value) {
+            console.log('[Challenge] Attempting to reconnect after network recovery...')
+            initRealtimeChannel(currentChallenge.value.id).catch(console.error)
+          }
+        }, 1000)
+      }
+    }
+    
+    networkOfflineHandler = () => {
+      console.log('[Challenge] Network offline')
+      isNetworkOnline.value = false
+      
+      // 网络离线时，更新本地用户的状态
+      if (currentChallenge.value && authStore.user) {
+        const myParticipant = currentChallenge.value.participants.find(
+          p => p.user_id === authStore.user!.id
+        )
+        if (myParticipant) {
+          myParticipant.is_online = false
+          // 离线时所有人都取消准备状态（包括房主）
+          myParticipant.is_ready = false
+        }
+      }
+      
+      // 标记 Realtime 状态为断开
+      realtimeStatus.value = 'disconnected'
+    }
+    
+    window.addEventListener('online', networkOnlineHandler)
+    window.addEventListener('offline', networkOfflineHandler)
+    
+    // 监听页面关闭/刷新事件，确保能够正确离开 Presence
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('pagehide', handlePageHide)
+    
+    // 同步当前状态
+    isNetworkOnline.value = navigator.onLine
+  }
+  
+  // 页面关闭前处理
+  function handleBeforeUnload(): void {
+    // 尝试同步离开 Presence（使用 sendBeacon 发送离线状态）
+    if (channel.value && authStore.user && currentChallenge.value) {
+      try {
+        // 使用 untrack 离开 Presence（同步操作）
+        channel.value.untrack()
+      } catch (e) {
+        console.error('[Challenge] Error untracking on beforeunload:', e)
+      }
+    }
+  }
+  
+  // 页面隐藏处理（移动端）
+  function handlePageHide(): void {
+    handleBeforeUnload()
+  }
+  
+  // 清理网络状态监听器
+  function cleanupNetworkListeners(): void {
+    if (typeof window === 'undefined') return
+    
+    if (networkOnlineHandler) {
+      window.removeEventListener('online', networkOnlineHandler)
+      networkOnlineHandler = null
+    }
+    if (networkOfflineHandler) {
+      window.removeEventListener('offline', networkOfflineHandler)
+      networkOfflineHandler = null
+    }
+    window.removeEventListener('beforeunload', handleBeforeUnload)
+    window.removeEventListener('pagehide', handlePageHide)
+  }
 
   // Game state
   const gameWords = ref<ChallengeWord[]>([])
@@ -90,14 +211,28 @@ export const useChallengeStore = defineStore('challenge', () => {
   async function initRealtimeChannel(challengeId: string, retryCount = 0): Promise<string> {
     if (!authStore.user) throw new Error('请先登录')
     
+    // 初始化网络状态监听器（仅首次）
+    if (retryCount === 0) {
+      initNetworkListeners()
+    }
+    
     const channelName = `challenge:${challengeId}`
     const maxRetries = 2
+    
+    // 【关键】首次连接或重试时，先刷新 session token，解决 JWT 过期问题
+    if (retryCount === 0) {
+      console.log('[Challenge] Refreshing session token before connecting...')
+      const hasValidSession = await refreshSessionToken()
+      if (!hasValidSession) {
+        throw new Error('登录已过期，请重新登录')
+      }
+    }
     
     // 如果已有 channel，先清理
     if (channel.value) {
       const oldChannel = channel.value
       channel.value = null
-      connectionStatus.value = 'disconnected'
+      realtimeStatus.value = 'disconnected'
       
       // 同步清理：先 untrack，再 unsubscribe，最后 removeChannel
       try {
@@ -130,7 +265,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
     
-    connectionStatus.value = 'connecting'
+    realtimeStatus.value = 'connecting'
     connectionId.value = authStore.user.id
     
     // 创建新 channel（不立即赋值给 channel.value）
@@ -181,7 +316,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       timeoutId = setTimeout(() => {
         if (!resolved) {
           resolved = true
-          connectionStatus.value = 'disconnected'
+          realtimeStatus.value = 'disconnected'
           // 清理超时的 channel
           newChannel.unsubscribe().catch(() => {})
           supabase.removeChannel(newChannel as any).catch(() => {})
@@ -208,7 +343,7 @@ export const useChallengeStore = defineStore('challenge', () => {
           
           // 订阅成功后才设置 channel.value
           channel.value = newChannel
-          connectionStatus.value = 'connected'
+          realtimeStatus.value = 'connected'
           
           // 发送 Presence 状态
           const myParticipant = currentChallenge.value?.participants.find(
@@ -229,7 +364,7 @@ export const useChallengeStore = defineStore('challenge', () => {
           if (resolved) return
           resolved = true
           if (timeoutId) clearTimeout(timeoutId)
-          connectionStatus.value = 'disconnected'
+          realtimeStatus.value = 'disconnected'
           
           // 清理失败的 channel
           try {
@@ -255,18 +390,34 @@ export const useChallengeStore = defineStore('challenge', () => {
     if (!currentChallenge.value || !channel.value) return
     
     const state = channel.value.presenceState()
+    const creatorId = currentChallenge.value.creator_id
     
     // 更新所有参与者的在线状态
-    Object.entries(state).forEach(([userId, presences]) => {
-      if (presences.length > 0) {
+    currentChallenge.value.participants.forEach(participant => {
+      const userId = participant.user_id
+      const presences = state[userId]
+      const isCreator = userId === creatorId
+      
+      if (presences && presences.length > 0) {
+        // 用户在 Presence 中，标记为在线
         const presence = presences[0] as any
-        const participant = currentChallenge.value!.participants.find(p => p.user_id === userId)
-        if (participant) {
-          participant.is_online = true
+        participant.is_online = true
+        // 房主在线时自动设置为已准备
+        if (isCreator) {
+          participant.is_ready = true
+        } else {
           participant.is_ready = presence.is_ready || false
-          if (presence.score !== undefined) {
-            participant.score = presence.score
-          }
+        }
+        if (presence.score !== undefined) {
+          participant.score = presence.score
+        }
+      } else {
+        // 用户不在 Presence 中，标记为离线
+        // 注意：当前用户自己的状态由本地网络状态决定
+        if (userId !== authStore.user?.id) {
+          participant.is_online = false
+          // 离线时取消准备状态
+          participant.is_ready = false
         }
       }
     })
@@ -281,7 +432,12 @@ export const useChallengeStore = defineStore('challenge', () => {
     if (participant) {
       // 更新已存在的参与者状态
       participant.is_online = true
-      participant.is_ready = presence.is_ready || false
+      // 房主在线时自动设置为已准备
+      if (userId === currentChallenge.value.creator_id) {
+        participant.is_ready = true
+      } else {
+        participant.is_ready = presence.is_ready || false
+      }
     } else {
       // 添加新参与者（这种情况一般不会发生，因为参与者应该先在数据库中注册）
       //console.log('[Realtime] New participant joined via presence:', presence.nickname)
@@ -341,7 +497,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     if (authStore.user) {
       connectionId.value = authStore.user.id
       peerId.value = authStore.user.id
-      connectionStatus.value = 'connected'
+      realtimeStatus.value = 'connected'
       return authStore.user.id
     }
     throw new Error('请先登录')
@@ -1350,7 +1506,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       ])
     } catch (e) {
       // 如果连接失败，清理状态
-      connectionStatus.value = 'disconnected'
+      realtimeStatus.value = 'disconnected'
       throw e
     }
 
@@ -1858,6 +2014,7 @@ export const useChallengeStore = defineStore('challenge', () => {
   async function cleanup(): Promise<void> {
     stopRoundTimer()
     stopStatusCheckTimer()
+    cleanupNetworkListeners() // 清理网络状态监听器
     
     // 清理 Supabase Realtime Channel（添加超时保护，避免卡住）
     if (channel.value) {
@@ -1885,7 +2042,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     // 然后重置本地状态
     currentChallenge.value = null
     isHost.value = false
-    connectionStatus.value = 'disconnected'
+    realtimeStatus.value = 'disconnected'
     gameWords.value = []
     currentRound.value = 0
     currentWord.value = null
@@ -1900,6 +2057,20 @@ export const useChallengeStore = defineStore('challenge', () => {
   function clearCache(): void {
     lastLoadTime.value = 0
   }
+  
+  // 标记列表需要刷新（供外部调用，如收到通知时）
+  function markNeedsRefresh(): void {
+    needsRefresh.value = true
+  }
+  
+  // 检查并执行刷新（进入列表页时调用）
+  async function checkAndRefresh(): Promise<void> {
+    if (needsRefresh.value) {
+      needsRefresh.value = false
+      clearCache()
+      await loadChallenges(true)
+    }
+  }
 
   return {
     // State
@@ -1911,6 +2082,8 @@ export const useChallengeStore = defineStore('challenge', () => {
     peerId,
     isHost,
     connectionStatus,
+    isNetworkOnline, // 浏览器网络状态
+    realtimeStatus, // Supabase Realtime 连接状态
     gameWords,
     currentRound,
     currentWord,
@@ -1942,6 +2115,9 @@ export const useChallengeStore = defineStore('challenge', () => {
     submitAnswer,
     exitGame,
     cleanup,
-    clearCache
+    clearCache,
+    markNeedsRefresh,
+    checkAndRefresh,
+    needsRefresh
   }
 })

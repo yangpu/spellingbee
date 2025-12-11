@@ -89,16 +89,17 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return
     
     try {
+      // 使用 maybeSingle() 而不是 single()，避免在没有记录时抛出 406 错误
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', user.value.id)
-        .single()
+        .maybeSingle()
       
       if (!error && data) {
         profile.value = data as UserProfile
-      } else if (error?.code === 'PGRST116') {
-        // No profile found, create one
+      } else if (!data) {
+        // No profile found, create default profile
         profile.value = {
           user_id: user.value.id,
           nickname: user.value.email?.split('@')[0] || '',

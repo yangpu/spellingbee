@@ -60,9 +60,7 @@
 
     <footer class="app-footer">
       <span>©️版权所有({{ new Date().getFullYear()}})：杨若即 · yangruoji@outlook.com</span>
-      <t-button variant="text" size="small" class="version-btn" @click="showUpgradeConfirm">
-        v{{ appVersion }}
-      </t-button>
+      <VersionInfo />
       <t-button variant="text" size="small" class="status-btn" @click="showNetworkStatus = true">
         <span 
           class="connection-dot" 
@@ -72,50 +70,10 @@
     </footer>
 
     <!-- Network Status Dialog -->
-    <t-dialog
-      v-model:visible="showNetworkStatus"
-      header="网络状态"
-      :footer="false"
-      width="320px"
-    >
-      <div class="network-status-content">
-        <div class="status-item">
-          <template v-if="supabaseReconnecting">
-            <t-loading size="small" />
-          </template>
-          <template v-else>
-            <t-icon :name="supabaseConnected ? 'check-circle-filled' : 'close-circle-filled'" :class="supabaseConnected ? 'status-ok' : 'status-error'" />
-          </template>
-          <span>Supabase 实时服务</span>
-          <span class="status-text" :class="supabaseConnected ? 'text-ok' : supabaseReconnecting ? 'text-reconnecting' : 'text-error'">
-            {{ supabaseConnected ? '已连接' : supabaseReconnecting ? '连接中' : '未连接' }}
-          </span>
-        </div>
-        <div class="status-item">
-          <t-icon :name="isOnline ? 'check-circle-filled' : 'close-circle-filled'" :class="isOnline ? 'status-ok' : 'status-error'" />
-          <span>网络连接</span>
-          <span class="status-text" :class="isOnline ? 'text-ok' : 'text-error'">
-            {{ isOnline ? '在线' : '离线' }}
-          </span>
-        </div>
-        <div v-if="!authStore.user" class="login-hint-small">
-          <t-icon name="info-circle" />
-          <span>登录后才能连接实时服务</span>
-        </div>
-        <t-button 
-          v-else-if="!supabaseConnected && isOnline" 
-          theme="primary" 
-          block 
-          style="margin-top: 16px;" 
-          :loading="manualReconnecting"
-          :disabled="manualReconnecting"
-          @click="handleReconnect"
-        >
-          <template #icon><t-icon name="refresh" /></template>
-          立即重连
-        </t-button>
-      </div>
-    </t-dialog>
+    <NetworkStatus 
+      v-model:visible="showNetworkStatus" 
+      :is-logged-in="!!authStore.user" 
+    />
 
     <!-- Auth Dialog -->
     <t-dialog
@@ -179,31 +137,26 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next';
+import { MessagePlugin } from 'tdesign-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useWordsStore } from '@/stores/words';
 import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
 import { useChallengeStore } from '@/stores/challenge';
-import { notificationService, useChallengeNotifications } from '@/lib/network';
-import { versionService } from '@/lib/version-service';
+import { useChallengeNotifications, notificationService } from '@/lib/network';
 import UserProfile from '@/components/UserProfile.vue';
+import NetworkStatus from '@/components/NetworkStatus.vue';
+import VersionInfo from '@/components/VersionInfo.vue';
 
 const baseUrl = import.meta.env.BASE_URL;
-const appVersion = __APP_VERSION__;
 
-// 版本更新状态
-const isUpgrading = ref(false);
-let unsubscribeVersionUpdate = null;
-
-// Supabase 连接状态
-const { isConnected: supabaseConnected, isReconnecting: supabaseReconnecting } = useChallengeNotifications();
+// Supabase 连接状态（用于底部状态指示器）
+const { isConnected: supabaseConnected } = useChallengeNotifications();
 
 // 网络状态
 const isOnline = ref(navigator.onLine);
 const showNetworkStatus = ref(false);
-const manualReconnecting = ref(false); // 手动重连状态
 
 const route = useRoute();
 const router = useRouter();
@@ -347,6 +300,15 @@ const initNotificationService = async () => {
     // 订阅新挑战赛通知
     unsubscribeNotification = notificationService.addHandler(async (notification) => {
       if (notification.type === 'new_challenge') {
+        // 标记列表需要刷新
+        challengeStore.markNeedsRefresh();
+        
+        // 如果当前在挑战页面列表（不在房间内），立即刷新
+        if (route.path === '/challenge' && !challengeStore.currentChallenge) {
+          console.log('[App] On challenge list, refreshing immediately');
+          await challengeStore.checkAndRefresh();
+        }
+        
         // 显示新挑战赛通知弹窗
         const challenge = notification.challenge;
         const creatorName = notification.fromUser?.nickname || '未知用户';
@@ -440,8 +402,9 @@ const handleVisibilityChange = async () => {
     wordsStore.loading = false;
     challengeStore.loading = false;
     
-    // 清除缓存时间，强制下次加载时重新获取数据
-    challengeStore.clearCache();
+    // 标记列表需要刷新（下次进入列表页时检查）
+    // 不直接 clearCache，避免不必要的请求
+    challengeStore.markNeedsRefresh();
     
     // 更新网络状态
     isOnline.value = navigator.onLine;
@@ -462,100 +425,6 @@ const handleOffline = () => {
   // notification-service 内部会自动更新连接状态
 };
 
-// 显示升级确认对话框（手动点击版本号触发）
-const showUpgradeConfirm = async () => {
-  const dialog = DialogPlugin.confirm({
-    header: '版本信息',
-    body: `当前版本：v${appVersion}\n\n是否检测最新版本？\n\n如遇到更新问题，可点击"立即升级"强制刷新。`,
-    confirmBtn: '检测更新',
-    cancelBtn: '立即升级',
-    onConfirm: async () => {
-      dialog.destroy();
-      await checkAndPromptUpdate();
-    },
-    onCancel: () => {
-      dialog.destroy();
-      startUpgrade();
-    },
-    onClose: () => {
-      dialog.destroy();
-    }
-  });
-};
-
-// 检测并提示更新
-const checkAndPromptUpdate = async () => {
-  const loadingMsg = MessagePlugin.loading('正在检测最新版本...');
-  
-  try {
-    const result = await versionService.checkVersion();
-    MessagePlugin.closeAll();
-    
-    if (result.hasUpdate && result.latestVersion) {
-      showUpdateDialog(result.latestVersion, result.releaseNotes);
-    } else {
-      MessagePlugin.success('当前已是最新版本');
-    }
-  } catch (error) {
-    MessagePlugin.closeAll();
-    MessagePlugin.error('检测更新失败，请稍后重试');
-  }
-};
-
-// 显示更新对话框
-const showUpdateDialog = (newVersion, releaseNotes) => {
-  let body = `发现新版本：v${newVersion}\n当前版本：v${appVersion}`;
-  if (releaseNotes) {
-    body += `\n\n更新说明：${releaseNotes}`;
-  }
-  body += '\n\n是否立即更新？';
-  
-  const dialog = DialogPlugin.confirm({
-    header: '发现新版本',
-    body,
-    confirmBtn: '立即更新',
-    cancelBtn: '稍后再说',
-    onConfirm: () => {
-      dialog.destroy();
-      startUpgrade();
-    },
-    onClose: () => {
-      dialog.destroy();
-    }
-  });
-};
-
-// 开始升级
-const startUpgrade = () => {
-  isUpgrading.value = true;
-  
-  // 显示升级中的对话框
-  const dialog = DialogPlugin({
-    header: '正在更新',
-    body: '正在清理缓存并刷新页面，请稍候...',
-    footer: false,
-    closeOnOverlayClick: false,
-    closeOnEscKeydown: false
-  });
-  
-  // 执行强制刷新
-  forceRefresh();
-};
-
-// 手动重连
-const handleReconnect = async () => {
-  if (authStore.user && !manualReconnecting.value) {
-    manualReconnecting.value = true;
-    try {
-      await notificationService.forceReconnect();
-    } catch (e) {
-      console.error('[App] Reconnect error:', e);
-    } finally {
-      manualReconnecting.value = false;
-    }
-  }
-};
-
 // Initialize
 onMounted(async () => {
   await authStore.init();
@@ -563,23 +432,6 @@ onMounted(async () => {
   await wordsStore.init();
   await learningStore.init();
   await competitionStore.loadRecords();
-  
-  // 初始化版本服务并检测更新
-  await versionService.init();
-  
-  // 订阅版本更新（实时推送）
-  unsubscribeVersionUpdate = versionService.onUpdate((versionInfo) => {
-    // 收到新版本推送，自动弹出更新提示
-    showUpdateDialog(versionInfo.version, versionInfo.release_notes);
-  });
-  
-  // 如果启动时就检测到有新版本，提示用户
-  if (versionService.hasUpdate && versionService.latestVersion) {
-    // 延迟一点显示，让页面先加载完成
-    setTimeout(() => {
-      showUpdateDialog(versionService.latestVersion, versionService.releaseNotes);
-    }, 2000);
-  }
   
   // 初始化挑战赛通知服务（用户已登录时）
   if (authStore.user) {
@@ -596,11 +448,6 @@ onMounted(async () => {
 // Cleanup
 onUnmounted(async () => {
   await destroyNotificationService();
-  if (unsubscribeVersionUpdate) {
-    unsubscribeVersionUpdate();
-    unsubscribeVersionUpdate = null;
-  }
-  await versionService.destroy();
   document.removeEventListener('visibilitychange', handleVisibilityChange);
   window.removeEventListener('online', handleOnline);
   window.removeEventListener('offline', handleOffline);
@@ -624,27 +471,6 @@ const dialogHeader = () => {
   if (authMode.value === 'login') return '登录';
   if (authMode.value === 'register') return '注册';
   return '忘记密码';
-};
-
-// 强制刷新页面
-const forceRefresh = () => {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      registrations.forEach(registration => {
-        registration.unregister();
-      });
-    });
-  }
-  if ('caches' in window) {
-    caches.keys().then(names => {
-      names.forEach(name => {
-        caches.delete(name);
-      });
-    });
-  }
-  setTimeout(() => {
-    window.location.reload(true);
-  }, 100);
 };
 </script>
 
@@ -756,17 +582,6 @@ const forceRefresh = () => {
   border-top: 1px solid var(--border-color);
   background: var(--bg-card);
   
-  .version-btn {
-    font-family: 'SF Mono', Monaco, monospace;
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    padding: 0.15rem 0.5rem;
-    
-    &:hover {
-      color: var(--accent-color);
-    }
-  }
-  
   .status-btn {
     padding: 0.15rem 0.4rem;
     min-width: auto;
@@ -783,59 +598,6 @@ const forceRefresh = () => {
         background: #22c55e;
       }
     }
-  }
-}
-
-.network-status-content {
-  .status-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid var(--border-color);
-    
-    &:last-of-type {
-      border-bottom: none;
-    }
-    
-    .status-ok {
-      color: #22c55e;
-      font-size: 1.25rem;
-    }
-    
-    .status-error {
-      color: #ef4444;
-      font-size: 1.25rem;
-    }
-    
-    .status-text {
-      margin-left: auto;
-      font-weight: 500;
-      
-      &.text-ok {
-        color: #22c55e;
-      }
-      
-      &.text-error {
-        color: #ef4444;
-      }
-      
-      &.text-reconnecting {
-        color: #f59e0b;
-      }
-    }
-  }
-  
-  .login-hint-small {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: var(--warning-light, #fef3c7);
-    border-radius: 8px;
-    color: var(--warning, #d97706);
-    font-size: 0.875rem;
   }
 }
 

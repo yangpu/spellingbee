@@ -26,7 +26,13 @@
           <!-- 内容 -->
           <div class="header-content">
             <h2 class="room-name">{{ challenge?.name }}</h2>
-            <t-tag :theme="statusTheme" variant="light">{{ statusText }}</t-tag>
+            <div class="header-status-row">
+              <t-tag :theme="statusTheme" variant="light">{{ statusText }}</t-tag>
+              <div class="connection-status-inline">
+                <div class="status-dot" :class="challengeStore.connectionStatus"></div>
+                <span>{{ connectionStatusText }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -114,8 +120,9 @@
         <div v-if="!challengeStore.isCreator" class="ready-section">
           <t-button 
             :theme="challengeStore.myParticipant?.is_ready ? 'default' : 'primary'"
-
+            :variant="isConnected ? 'base' : 'outline'"
             size="large"
+            :disabled="!isConnected"
             @click="handleToggleReady"
           >
             <template #icon>
@@ -123,9 +130,17 @@
             </template>
             {{ challengeStore.myParticipant?.is_ready ? '取消准备' : '准备比赛' }}
           </t-button>
-          <div class="ready-hint" v-if="challengeStore.myParticipant?.is_ready">
+          <div class="ready-hint offline" v-if="!isConnected">
+            <t-icon name="wifi-off" />
+            网络已断开，检查网络连接！
+          </div>
+          <div class="ready-hint" v-else-if="challengeStore.myParticipant?.is_ready">
             <t-icon name="time" />
             等待主持人开始比赛...
+          </div>
+          <div class="ready-hint" v-else>
+            <t-icon name="time" />
+            点击准备开始比赛！
           </div>
         </div>
         <div v-if="challengeStore.isCreator" class="start-section">
@@ -141,17 +156,20 @@
             开始比赛
           </t-button>
           <div class="start-hint" v-if="!challengeStore.canStart">
-            <span v-if="challenge?.participants?.length < 2">等待更多玩家加入（至少2人）</span>
-            <span v-else-if="!challengeStore.allReady">等待所有玩家确认参赛</span>
-            <span v-else-if="!challengeStore.allOnline">等待所有玩家上线</span>
+            <t-icon name="time" />
+
+            <span v-if="challenge?.participants?.length < 2">等待更多玩家加入（至少2人）...</span>
+            <span v-else-if="!challengeStore.allReady">等待所有玩家确认参赛...</span>
+            <span v-else-if="!challengeStore.allOnline">等待所有玩家上线...</span>
+          </div>
+          <div class="start-hint" v-else>
+            <t-icon name="time" />
+
+            <span>全部玩家就绪，点击开始比赛！</span>
           </div>
         </div>
       </div>
 
-      <div class="connection-status">
-        <div class="status-dot" :class="challengeStore.connectionStatus"></div>
-        <span>{{ connectionStatusText }}</span>
-      </div>
     </div>
 
     <!-- 比赛进行中 -->
@@ -516,7 +534,12 @@ const challenge = computed(() => challengeStore.currentChallenge)
 
 // 判断参与者是否在线
 function isParticipantOnline(participant) {
-  // 直接使用数据库中的 is_online 状态，确保所有人看到的状态一致
+  // 如果是当前用户自己，使用本地网络状态和 Realtime 连接状态
+  if (participant.user_id === authStore.user?.id) {
+    // 当前用户在线 = 网络在线 + Realtime 已连接
+    return challengeStore.isNetworkOnline && challengeStore.realtimeStatus === 'connected'
+  }
+  // 其他用户使用 Presence 同步的状态
   return participant.is_online === true
 }
 
@@ -531,6 +554,10 @@ function isParticipantReady(participant) {
 const isHostOnline = computed(() => {
   if (!challenge.value) return true
   const host = challenge.value.participants?.find(p => p.user_id === challenge.value.creator_id)
+  // 如果房主是当前用户，使用本地状态
+  if (host?.user_id === authStore.user?.id) {
+    return challengeStore.isNetworkOnline && challengeStore.realtimeStatus === 'connected'
+  }
   return host?.is_online === true
 })
 
@@ -538,6 +565,35 @@ const isHostOnline = computed(() => {
 const isCurrentUserHost = computed(() => {
   if (!challenge.value || !authStore.user) return false
   return challenge.value.creator_id === authStore.user.id
+})
+
+// 当前用户是否已连接（网络在线 + Realtime 已连接）
+const isConnected = computed(() => {
+  return challengeStore.connectionStatus === 'connected'
+})
+
+// 监听连接状态变化，离线时自动取消准备，在线时房主自动准备
+watch(() => challengeStore.connectionStatus, (status, oldStatus) => {
+  // 从已连接变为未连接，自动取消准备（包括房主）
+  if (oldStatus === 'connected' && status === 'disconnected') {
+    if (challengeStore.myParticipant?.is_ready) {
+      console.log('[ChallengeRoom] Connection lost, auto cancelling ready status')
+      // 本地立即更新状态（不依赖网络）
+      if (challengeStore.myParticipant) {
+        challengeStore.myParticipant.is_ready = false
+      }
+      MessagePlugin.warning('网络已断开，已自动取消准备状态')
+    }
+  }
+  // 从未连接变为已连接，房主自动设置为已准备
+  else if (oldStatus !== 'connected' && status === 'connected') {
+    if (challengeStore.isCreator && challengeStore.myParticipant) {
+      console.log('[ChallengeRoom] Connection restored, host auto ready')
+      challengeStore.myParticipant.is_ready = true
+      // 同步到服务器
+      challengeStore.toggleReady()
+    }
+  }
 })
 
 // 监听房主在线状态变化（仅在比赛进行中时生效）
@@ -961,6 +1017,42 @@ onUnmounted(() => {
           font-size: 1.35rem;
           font-weight: 700;
           text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+          color: white;
+        }
+
+        .header-status-row {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+          justify-content: center;
+
+          .connection-status-inline {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.25rem 0.6rem;
+            border-radius: 12px;
+
+            .status-dot {
+              width: 8px;
+              height: 8px;
+              border-radius: 50%;
+              background: var(--charcoal-400);
+
+              &.connecting {
+                background: var(--warning);
+                animation: pulse 1s infinite;
+              }
+
+              &.connected {
+                background: var(--success);
+              }
+            }
+          }
         }
       }
     }
@@ -1116,6 +1208,11 @@ onUnmounted(() => {
         font-size: 0.9rem;
         color: var(--honey-600);
         animation: pulse 1.5s ease-in-out infinite;
+
+        &.offline {
+          color: var(--error);
+          animation: none;
+        }
       }
     }
 
@@ -1126,33 +1223,14 @@ onUnmounted(() => {
       gap: 0.5rem;
 
       .start-hint {
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-      }
-    }
-  }
-
-  .connection-status {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--charcoal-300);
-
-      &.connecting {
-        background: var(--warning);
-        animation: pulse 1s infinite;
-      }
-
-      &.connected {
-        background: var(--success);
+        // font-size: 0.85rem;
+        // color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        color: var(--honey-600);
+        animation: pulse 1.5s ease-in-out infinite;
       }
     }
   }
@@ -1954,6 +2032,7 @@ onUnmounted(() => {
 
           .room-name {
             font-size: 1.5rem;
+            color: white;
           }
         }
       }

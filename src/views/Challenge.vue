@@ -467,6 +467,9 @@ const coverFiles = ref([])
 const uploadingCover = ref(false)
 const uploadRef = ref(null) // 上传组件引用
 
+// 保存的随机单词，用于定制挑战赛名称和快捷按钮
+const savedRandomWord = ref('')
+
 // 页面可见性变化处理
 let lastHiddenTime = 0
 const VISIBILITY_RELOAD_THRESHOLD = 3000 // 3秒
@@ -487,16 +490,18 @@ async function handleVisibilityChange() {
     }
     // 重置 connectingId，避免卡在"正在建立连接"状态
     connectingId.value = null
+    // 【关键】重置创建挑战赛按钮状态，避免卡在加载状态
+    quickCreating.value = null
+    creating.value = false
     
     // 如果隐藏时间超过阈值
     if (hiddenDuration > VISIBILITY_RELOAD_THRESHOLD) {
       // 先重新连接 Realtime（移动端后台切换可能导致 WebSocket 断开）
       await reconnectRealtime()
       
-      // 如果不在房间内，自动刷新列表
+      // 如果不在房间内，检查是否需要刷新（使用标志机制，避免不必要的请求）
       if (!challengeStore.currentChallenge) {
-        challengeStore.clearCache()
-        challengeStore.loadChallenges(true).catch(() => {})
+        await challengeStore.checkAndRefresh()
       }
     }
   } else {
@@ -813,8 +818,9 @@ async function getRandomWordForName() {
 
 // 打开创建对话框
 async function openCreateDialog() {
-  const randomWord = await getRandomWordForName()
-  createData.name = `挑战赛-${randomWord.toUpperCase()}`
+  // 获取新的随机单词并保存
+  savedRandomWord.value = await getRandomWordForName()
+  createData.name = `挑战赛-${savedRandomWord.value.toUpperCase()}`
   // 根据保存的封面类型设置
   customCoverUrl.value = ''
   randomCoverUrl.value = ''
@@ -1300,8 +1306,8 @@ async function quickCreate(playerCount) {
   quickCreating.value = playerCount
   
   try {
-    // 生成随机名称
-    const randomWord = await getRandomWordForName()
+    // 使用已保存的随机单词（如果没有则重新获取）
+    const randomWord = savedRandomWord.value || await getRandomWordForName()
     const name = `${playerCount}人对战-${randomWord.toUpperCase()}`
     
     // 检查名称是否重复
@@ -1472,12 +1478,16 @@ async function joinChallengeById(challengeId) {
 
 // 监听 currentChallenge 变化，同步 URL
 // 注意：只处理离开房间的情况，进入房间由具体操作函数处理（避免重复 push）
-watch(() => challengeStore.currentChallenge, (newVal, oldVal) => {
+watch(() => challengeStore.currentChallenge, async (newVal, oldVal) => {
   if (!newVal && oldVal && route.params.id) {
     // 离开挑战赛，返回列表（使用 replace 避免重复历史记录）
     router.replace({ name: 'Challenge' })
     // 恢复滚动位置
     restoreScrollPosition()
+    // 标记列表需要刷新（离开房间后状态可能变化）
+    challengeStore.markNeedsRefresh()
+    // 检查并刷新
+    await challengeStore.checkAndRefresh()
   }
 })
 
@@ -1488,12 +1498,19 @@ onMounted(async () => {
   loadImageCache()
   prefetchImages()
   
-  await challengeStore.loadChallenges()
-  
   // 如果 URL 中有挑战赛 ID，尝试加入
   const challengeId = route.params.id
   if (challengeId) {
+    // 先加载列表（使用缓存）
+    await challengeStore.loadChallenges()
     await joinChallengeById(challengeId)
+  } else {
+    // 在列表页：先检查是否需要刷新，否则使用缓存
+    if (challengeStore.needsRefresh) {
+      await challengeStore.checkAndRefresh()
+    } else {
+      await challengeStore.loadChallenges()
+    }
   }
   
   // 监听页面可见性变化
@@ -1530,6 +1547,9 @@ watch(() => route.params.id, async (newId, oldId) => {
     } catch {}
     // 恢复滚动位置
     restoreScrollPosition()
+    // 标记需要刷新并检查
+    challengeStore.markNeedsRefresh()
+    await challengeStore.checkAndRefresh()
     return
   }
   
@@ -1540,13 +1560,11 @@ watch(() => route.params.id, async (newId, oldId) => {
     return
   }
   
-  // 回到列表页且没有当前挑战赛
+  // 回到列表页且没有当前挑战赛：检查是否需要刷新
   if (!newId && !challengeStore.currentChallenge) {
-    // 如果 loading 状态异常或没有数据，强制重新加载
-    if (challengeStore.loading || challengeStore.challenges.length === 0) {
-      challengeStore.loading = false
-      await challengeStore.loadChallenges(true)
-    }
+    challengeStore.loading = false
+    // 使用 checkAndRefresh 代替强制刷新，只在有标志时才刷新
+    await challengeStore.checkAndRefresh()
   }
 })
 </script>
