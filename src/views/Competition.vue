@@ -555,6 +555,7 @@ const showResultAnimal = ref(null); // 'cat' for success, 'dog' for failure
 const showDefinitionHint = ref(false); // 显示中文释义
 const isStarting = ref(false); // 开始比赛按钮加载状态
 const isPaused = ref(false); // 比赛是否因页面切换而暂停
+const isComponentMounted = ref(true); // 组件是否已挂载（用于防止卸载后执行回调）
 
 // Letter input state
 const letterInputRef = ref(null);
@@ -2001,11 +2002,21 @@ function announceWord() {
 
   // Speak the word
   setTimeout(() => {
-    speakWord(currentWord.value.word);
+    // 检查组件是否已卸载
+    if (!isComponentMounted.value) return;
+    if (currentWord.value) {
+      speakWord(currentWord.value.word);
+    }
   }, 500);
 }
 
 function speakWord(word, callback = null) {
+  // 检查组件是否已卸载
+  if (!isComponentMounted.value) {
+    if (callback) callback();
+    return;
+  }
+  
   speechSynthesis.cancel();
   isSpeaking.value = true;
 
@@ -2014,6 +2025,9 @@ function speakWord(word, callback = null) {
 
   // 使用 speechStore 朗读单词
   speechStore.speakWord(word).then(() => {
+    // 检查组件是否已卸载
+    if (!isComponentMounted.value) return;
+    
     isSpeaking.value = false;
     if (callback) {
       callback();
@@ -2022,12 +2036,19 @@ function speakWord(word, callback = null) {
       resumeVoiceRecognition();
     }
   }).catch(() => {
+    if (!isComponentMounted.value) return;
     isSpeaking.value = false;
     if (callback) callback();
   });
 }
 
 function speakWithCallback(text, callback) {
+  // 检查组件是否已卸载
+  if (!isComponentMounted.value) {
+    if (callback) callback();
+    return;
+  }
+  
   speechSynthesis.cancel();
   isSpeaking.value = true;
 
@@ -2036,9 +2057,11 @@ function speakWithCallback(text, callback) {
 
   // 使用 speechStore 朗读英文
   speechStore.speakEnglish(text, { rate: 1.2 }).then(() => {
+    if (!isComponentMounted.value) return;
     isSpeaking.value = false;
     if (callback) callback();
   }).catch(() => {
+    if (!isComponentMounted.value) return;
     isSpeaking.value = false;
     if (callback) callback();
   });
@@ -2154,6 +2177,9 @@ function stopTimer() {
 }
 
 function handleTimeout() {
+  // 检查组件是否已卸载
+  if (!isComponentMounted.value) return;
+  
   stopTimer();
   stopVoiceInput();
   competitionStore.timeOut();
@@ -2174,6 +2200,9 @@ function handleTimeout() {
   isAnswerSubmitted.value = true;
 
   setTimeout(() => {
+    // 再次检查组件是否已卸载
+    if (!isComponentMounted.value) return;
+    
     showResultAnimal.value = null;
     showDefinitionHint.value = false;
     moveToNextOrEnd();
@@ -2182,6 +2211,8 @@ function handleTimeout() {
 
 async function submitAnswer() {
   if (!currentWord.value) return;
+  // 检查组件是否已卸载
+  if (!isComponentMounted.value) return;
   
   const userAnswer = letterInputRef.value?.getAnswer() || '';
   if (!userAnswer || !letterInputRef.value?.isFilled()) return;
@@ -2226,6 +2257,9 @@ async function submitAnswer() {
   }
 
   setTimeout(() => {
+    // 检查组件是否已卸载
+    if (!isComponentMounted.value) return;
+    
     // 隐藏动画和释义
     showResultAnimal.value = null;
     showDefinitionHint.value = false;
@@ -2274,6 +2308,9 @@ async function playDogSound() {
 }
 
 function skipWord() {
+  // 检查组件是否已卸载
+  if (!isComponentMounted.value) return;
+  
   stopTimer();
   stopVoiceInput();
 
@@ -2294,6 +2331,9 @@ function skipWord() {
   announcerMessage.value = `跳过了这个单词。正确答案是 "${skippedWord}"`;
 
   setTimeout(() => {
+    // 检查组件是否已卸载
+    if (!isComponentMounted.value) return;
+    
     // 隐藏动画和释义
     showResultAnimal.value = null;
     showDefinitionHint.value = false;
@@ -2322,6 +2362,9 @@ function skipWord() {
 }
 
 async function moveToNextOrEnd() {
+  // 检查组件是否已卸载
+  if (!isComponentMounted.value) return;
+  
   if (competitionStore.nextWord()) {
     resetAskedQuestions();
     initLetterSlots();
@@ -2339,6 +2382,9 @@ async function moveToNextOrEnd() {
 }
 
 async function endCompetition() {
+  // 检查组件是否已卸载
+  if (!isComponentMounted.value) return;
+  
   stopTimer();
   stopVoiceInput();
   lastResult.value = await competitionStore.endCompetition();
@@ -2371,7 +2417,8 @@ function handleVisibilityChange() {
       competitionStore.saveSession(currentLetters.value);
     }
   } else if (document.visibilityState === 'visible') {
-    // 页面恢复到前台，恢复比赛
+    // 页面恢复到前台
+    // 只有当比赛仍然处于激活状态时才恢复（如果组件已卸载，isActive 会被设为 false）
     if (competitionStore.isActive && isPaused.value) {
       isPaused.value = false;
       
@@ -2385,7 +2432,10 @@ function handleVisibilityChange() {
       if (currentWord.value) {
         announcerMessage.value = '比赛继续，请拼写单词...';
         setTimeout(() => {
-          speakWord(currentWord.value.word);
+          // 再次检查比赛状态，避免组件已卸载时执行
+          if (competitionStore.isActive && currentWord.value) {
+            speakWord(currentWord.value.word);
+          }
         }, 500);
       }
       
@@ -2393,6 +2443,7 @@ function handleVisibilityChange() {
       if (settings.voiceInput) {
         initVoiceRecognition();
         setTimeout(() => {
+          // 再次检查比赛状态
           if (settings.voiceInput && competitionStore.isActive && !isSpeaking.value) {
             startVoiceInput();
           }
@@ -2419,15 +2470,21 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  // 如果比赛正在进行中，保存当前进度（用于 Vue Router 页面切换）
+  // 标记组件已卸载，防止后续回调执行
+  isComponentMounted.value = false;
+  
+  // 如果比赛正在进行中，保存当前进度并暂停比赛
   if (competitionStore.isActive) {
-    competitionStore.saveSession(currentLetters.value);
+    // 保存进度并暂停比赛（这会设置 isActive = false）
+    competitionStore.pauseCompetition(currentLetters.value);
   }
   
+  // 清理所有定时器和语音实例
   stopTimer();
   stopVoiceInput();
   clearWordPhaseTimer();
   speechSynthesis.cancel();
+  
   // 移除可见性监听
   document.removeEventListener('visibilitychange', handleVisibilityChange);
 });

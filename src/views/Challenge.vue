@@ -21,56 +21,42 @@
 
       <!-- 状态统计和搜索 -->
       <div class="filter-section" v-if="challengeStore.challenges.length > 0">
-        <div class="status-tabs">
-          <div 
-            class="status-tab" 
-            :class="{ active: statusFilter === 'all' }"
-            @click="statusFilter = 'all'"
-          >
+        <!-- 桌面端：状态标签 -->
+        <div class="status-tabs desktop-only">
+          <div class="status-tab" :class="{ active: statusFilter === 'all' }" @click="statusFilter = 'all'">
             <span class="tab-label">全部</span>
             <span class="tab-count">{{ statusCounts.all }}</span>
           </div>
-          <div 
-            class="status-tab" 
-            :class="{ active: statusFilter === 'waiting' }"
-            @click="statusFilter = 'waiting'"
-          >
+          <div class="status-tab" :class="{ active: statusFilter === 'waiting' }" @click="statusFilter = 'waiting'">
             <span class="tab-label">等待中</span>
             <span class="tab-count waiting">{{ statusCounts.waiting }}</span>
           </div>
-          <div 
-            class="status-tab" 
-            :class="{ active: statusFilter === 'in_progress' }"
-            @click="statusFilter = 'in_progress'"
-          >
+          <div class="status-tab" :class="{ active: statusFilter === 'in_progress' }"
+            @click="statusFilter = 'in_progress'">
             <span class="tab-label">进行中</span>
             <span class="tab-count in_progress">{{ statusCounts.in_progress }}</span>
           </div>
-          <div 
-            class="status-tab" 
-            :class="{ active: statusFilter === 'finished' }"
-            @click="statusFilter = 'finished'"
-          >
+          <div class="status-tab" :class="{ active: statusFilter === 'finished' }" @click="statusFilter = 'finished'">
             <span class="tab-label">已结束</span>
             <span class="tab-count finished">{{ statusCounts.finished }}</span>
           </div>
-          <div 
-            v-if="authStore.user"
-            class="status-tab" 
-            :class="{ active: statusFilter === 'mine' }"
-            @click="statusFilter = 'mine'"
-          >
+          <div v-if="authStore.user" class="status-tab" :class="{ active: statusFilter === 'mine' }"
+            @click="statusFilter = 'mine'">
             <span class="tab-label">我的比赛</span>
             <span class="tab-count mine">{{ statusCounts.mine }}</span>
           </div>
         </div>
         <div class="search-box">
-          <t-input 
-            v-model="searchKeyword" 
-            placeholder="搜索挑战赛名称..." 
-            clearable
-            :prefix-icon="() => h(SearchIcon)"
-          />
+          <!-- 手机端：状态下拉选择 -->
+          <t-select v-model="statusFilter" class="status-select mobile-only"
+            :popup-props="{ overlayClassName: 'status-select-popup' }">
+            <t-option value="all" :label="`全部 (${statusCounts.all})`" />
+            <t-option value="waiting" :label="`等待中 (${statusCounts.waiting})`" />
+            <t-option value="in_progress" :label="`进行中 (${statusCounts.in_progress})`" />
+            <t-option value="finished" :label="`已结束 (${statusCounts.finished})`" />
+            <t-option v-if="authStore.user" value="mine" :label="`我的比赛 (${statusCounts.mine})`" />
+          </t-select>
+          <t-input v-model="searchKeyword" placeholder="搜索挑战赛名称..." clearable :prefix-icon="() => h(SearchIcon)" />
           <t-button variant="outline" @click="refreshList" :loading="challengeStore.loading" class="refresh-btn">
             <template #icon><t-icon name="refresh" /></template>
           </t-button>
@@ -105,13 +91,9 @@
 
       <!-- 挑战赛卡片列表 -->
       <div class="challenge-cards" v-else>
-        <div 
-          class="challenge-card" 
-          v-for="challenge in paginatedChallenges" 
-          :key="challenge.id"
+        <div class="challenge-card" v-for="challenge in paginatedChallenges" :key="challenge.id"
           :class="{ connecting: connectingId === challenge.id, finished: challenge.status === 'finished', cancelled: challenge.status === 'cancelled' }"
-          @click="viewChallenge(challenge)"
-        >
+          @click="viewChallenge(challenge)">
           <!-- 连接中遮罩 -->
           <div class="connecting-overlay" v-if="connectingId === challenge.id">
             <t-loading size="medium" />
@@ -126,14 +108,8 @@
               {{ getStatusText(challenge.status) }}
             </div>
             <!-- 管理员删除按钮 -->
-            <t-button
-              v-if="isAdmin(challenge)"
-              class="delete-btn"
-              variant="text"
-              theme="danger"
-              size="small"
-              @click.stop="handleDelete(challenge)"
-            >
+            <t-button v-if="isAdmin(challenge)" class="delete-btn" variant="text" theme="danger" size="small"
+              @click.stop="handleDelete(challenge)">
               <template #icon><t-icon name="delete" /></template>
             </t-button>
           </div>
@@ -172,65 +148,48 @@
             <!-- 参赛选手（单行显示，超过3人只显示创建者名称+其他人图标） -->
             <div class="card-participants-row">
               <template v-if="challenge.participants?.length <= 3">
-                <div 
-                  class="participant-chip"
-                  v-for="p in getSortedParticipants(challenge)"
-                  :key="p.user_id"
-                  :class="{ 'is-winner': challenge.status === 'finished' && p.user_id === challenge.winner_id }"
-                >
-                  <span class="winner-icon" v-if="challenge.status === 'finished' && p.user_id === challenge.winner_id">🏆</span>
+                <div class="participant-chip" v-for="p in getSortedParticipants(challenge)" :key="p.user_id"
+                  :class="{ 'is-winner': challenge.status === 'finished' && p.user_id === challenge.winner_id }">
+                  <span class="winner-icon"
+                    v-if="challenge.status === 'finished' && p.user_id === challenge.winner_id">🏆</span>
                   <t-avatar v-else size="18px" :image="p.avatar_url">{{ p.nickname?.charAt(0) }}</t-avatar>
                   <span class="participant-name">{{ p.nickname }}</span>
                 </div>
               </template>
               <template v-else>
                 <!-- 创建者显示名称 -->
-                <div class="participant-chip" v-if="getCreator(challenge)" :class="{ 'is-winner': challenge.status === 'finished' && getCreator(challenge).user_id === challenge.winner_id }">
-                  <span class="winner-icon" v-if="challenge.status === 'finished' && getCreator(challenge).user_id === challenge.winner_id">🏆</span>
-                  <t-avatar v-else size="18px" :image="getCreator(challenge).avatar_url">{{ getCreator(challenge).nickname?.charAt(0) }}</t-avatar>
+                <div class="participant-chip" v-if="getCreator(challenge)"
+                  :class="{ 'is-winner': challenge.status === 'finished' && getCreator(challenge).user_id === challenge.winner_id }">
+                  <span class="winner-icon"
+                    v-if="challenge.status === 'finished' && getCreator(challenge).user_id === challenge.winner_id">🏆</span>
+                  <t-avatar v-else size="18px" :image="getCreator(challenge).avatar_url">{{
+                    getCreator(challenge).nickname?.charAt(0) }}</t-avatar>
                   <span class="participant-name">{{ getCreator(challenge).nickname }}</span>
                 </div>
                 <!-- 其他人只显示图标 -->
                 <template v-for="p in getOtherParticipants(challenge)" :key="p.user_id">
-                  <span class="winner-icon-only" v-if="challenge.status === 'finished' && p.user_id === challenge.winner_id">🏆</span>
-                  <t-avatar 
-                    v-else
-                    size="18px" 
-                    :image="p.avatar_url"
-                    class="participant-avatar-only"
-                  >{{ p.nickname?.charAt(0) }}</t-avatar>
+                  <span class="winner-icon-only"
+                    v-if="challenge.status === 'finished' && p.user_id === challenge.winner_id">🏆</span>
+                  <t-avatar v-else size="18px" :image="p.avatar_url" class="participant-avatar-only">{{
+                    p.nickname?.charAt(0) }}</t-avatar>
                 </template>
               </template>
             </div>
           </div>
           <div class="card-action">
-            <t-button 
-              v-if="challenge.status === 'finished' || challenge.status === 'cancelled'"
-              variant="outline"
-              size="small"
-              @click.stop="viewChallengeDetail(challenge)"
-            >
+            <t-button v-if="challenge.status === 'finished' || challenge.status === 'cancelled'" variant="outline"
+              size="small" @click.stop="viewChallengeDetail(challenge)">
               <template #icon><t-icon name="browse" /></template>
               查看详情
             </t-button>
-            <t-button 
-              v-else-if="isJoined(challenge)"
-              theme="primary" 
-              size="small"
-              :loading="connectingId === challenge.id"
-              @click.stop="enterChallenge(challenge)"
-            >
+            <t-button v-else-if="isJoined(challenge)" theme="primary" size="small"
+              :loading="connectingId === challenge.id" @click.stop="enterChallenge(challenge)">
               <template #icon><t-icon name="enter" /></template>
               进入房间
             </t-button>
-            <t-button 
-              v-else
-              theme="primary" 
-              size="small"
+            <t-button v-else theme="primary" size="small"
               :disabled="!authStore.user || challenge.participants?.length >= challenge.max_participants"
-              :loading="connectingId === challenge.id"
-              @click.stop="joinChallenge(challenge)"
-            >
+              :loading="connectingId === challenge.id" @click.stop="joinChallenge(challenge)">
               <template #icon><t-icon name="user-add" /></template>
               报名参赛
             </t-button>
@@ -240,14 +199,8 @@
 
       <!-- 分页 -->
       <div class="pagination-section" v-if="filteredChallenges.length > pageSize">
-        <t-pagination
-          v-model:current="currentPage"
-          v-model:page-size="pageSize"
-          :total="filteredChallenges.length"
-          :page-size-options="pageSizeOptions"
-          :show-jumper="false"
-          size="medium"
-        />
+        <t-pagination v-model:current="currentPage" v-model:page-size="pageSize" :total="filteredChallenges.length"
+          :page-size-options="pageSizeOptions" :show-jumper="false" size="medium" />
       </div>
 
     </div>
@@ -256,34 +209,17 @@
     <ChallengeRoom v-else />
 
     <!-- 创建挑战赛对话框 -->
-    <t-dialog
-      v-model:visible="showCreateDialog"
-      header="创建挑战赛"
-      :footer="false"
-      width="500px"
-    >
+    <t-dialog v-model:visible="showCreateDialog" header="创建挑战赛" :footer="false" width="500px">
       <!-- 快速创建按钮 -->
       <div class="quick-create-section">
         <div class="quick-create-buttons">
-          <t-button 
-            theme="primary" 
-            size="large" 
-            block 
-            :loading="quickCreating === 2"
-            :disabled="quickCreating !== null"
-            @click="quickCreate(2)"
-          >
+          <t-button theme="primary" size="large" block :loading="quickCreating === 2" :disabled="quickCreating !== null"
+            @click="quickCreate(2)">
             <template #icon><t-icon name="usergroup-add" /></template>
             两人对战
           </t-button>
-          <t-button 
-            variant="outline"
-            size="large" 
-            block 
-            :loading="quickCreating === 3"
-            :disabled="quickCreating !== null"
-            @click="quickCreate(3)"
-          >
+          <t-button variant="outline" size="large" block :loading="quickCreating === 3"
+            :disabled="quickCreating !== null" @click="quickCreate(3)">
             <template #icon><t-icon name="usergroup" /></template>
             三人对战
           </t-button>
@@ -300,13 +236,7 @@
           <t-icon :name="showCustomCreate ? 'chevron-up' : 'chevron-down'" />
         </div>
         <div class="custom-content" :class="showCustomCreate ? 'expanded' : 'collapsed'">
-          <t-form
-            ref="createForm"
-            :data="createData"
-            :rules="createRules"
-            @submit="handleCreate"
-            label-width="100px"
-          >
+          <t-form ref="createForm" :data="createData" :rules="createRules" @submit="handleCreate" label-width="100px">
             <t-form-item name="name" label="名称">
               <t-input v-model="createData.name" placeholder="给挑战赛起个名字" maxlength="30" />
             </t-form-item>
@@ -316,31 +246,20 @@
             <t-form-item name="image_url" label="封面图片">
               <div class="cover-selection">
                 <div class="cover-options">
-                  <div 
-                    class="cover-option" 
-                    :class="{ active: coverType === 'none' }"
-                    @click="selectCoverType('none')"
-                  >
+                  <div class="cover-option" :class="{ active: coverType === 'none' }" @click="selectCoverType('none')">
                     <div class="cover-option-preview empty">
                       <t-icon name="image" size="24px" />
                     </div>
                     <span>无封面</span>
                   </div>
-                  <div 
-                    class="cover-option" 
-                    :class="{ active: coverType === 'default' }"
-                    @click="selectCoverType('default')"
-                  >
+                  <div class="cover-option" :class="{ active: coverType === 'default' }"
+                    @click="selectCoverType('default')">
                     <div class="cover-option-preview">
                       <img :src="`${baseUrl}challenge-default.svg`" alt="默认封面" />
                     </div>
                     <span>默认</span>
                   </div>
-                  <div 
-                    class="cover-option" 
-                    :class="{ active: coverType === 'random' }"
-                    @click="selectRandomCover"
-                  >
+                  <div class="cover-option" :class="{ active: coverType === 'random' }" @click="selectRandomCover">
                     <div class="cover-option-preview" v-if="randomCoverUrl && !loadingRandomCover">
                       <img :src="randomCoverUrl" alt="随机封面" />
                     </div>
@@ -350,11 +269,7 @@
                     </div>
                     <span>随机</span>
                   </div>
-                  <div 
-                    class="cover-option" 
-                    :class="{ active: coverType === 'custom' }"
-                    @click="triggerUpload"
-                  >
+                  <div class="cover-option" :class="{ active: coverType === 'custom' }" @click="triggerUpload">
                     <div class="cover-option-preview" v-if="customCoverUrl">
                       <img :src="customCoverUrl" alt="自定义封面" />
                     </div>
@@ -364,18 +279,9 @@
                     <span>自定义</span>
                   </div>
                 </div>
-                <t-upload
-                  ref="uploadRef"
-                  v-model="coverFiles"
-                  :action="''"
-                  theme="custom"
-                  accept="image/*"
-                  :auto-upload="false"
-                  :show-upload-progress="false"
-                  :request-method="customUpload"
-                  @change="handleCoverChange"
-                  style="display: none;"
-                />
+                <t-upload ref="uploadRef" v-model="coverFiles" :action="''" theme="custom" accept="image/*"
+                  :auto-upload="false" :show-upload-progress="false" :request-method="customUpload"
+                  @change="handleCoverChange" style="display: none;" />
                 <t-loading v-if="uploadingCover" size="small" class="upload-loading" />
               </div>
             </t-form-item>
@@ -477,7 +383,7 @@ const VISIBILITY_RELOAD_THRESHOLD = 3000 // 3秒
 async function handleVisibilityChange() {
   if (document.visibilityState === 'visible') {
     const hiddenDuration = Date.now() - lastHiddenTime
-    
+
     // 应用从后台恢复时，立即重置 loading 状态
     if (challengeStore.loading) {
       challengeStore.loading = false
@@ -493,12 +399,12 @@ async function handleVisibilityChange() {
     // 【关键】重置创建挑战赛按钮状态，避免卡在加载状态
     quickCreating.value = null
     creating.value = false
-    
+
     // 如果隐藏时间超过阈值
     if (hiddenDuration > VISIBILITY_RELOAD_THRESHOLD) {
       // 先重新连接 Realtime（移动端后台切换可能导致 WebSocket 断开）
       await reconnectRealtime()
-      
+
       // 如果不在房间内，检查是否需要刷新（使用标志机制，避免不必要的请求）
       if (!challengeStore.currentChallenge) {
         await challengeStore.checkAndRefresh()
@@ -604,15 +510,15 @@ function addImageToCache(url) {
 async function prefetchImages() {
   // 如果缓存已满，不需要预加载
   if (cachedImages.value.length >= MAX_CACHE_SIZE) return
-  
+
   const needCount = MAX_CACHE_SIZE - cachedImages.value.length
-  
+
   // 并行获取多张图片
   const fetchPromises = []
   for (let i = 0; i < needCount; i++) {
     fetchPromises.push(fetchSingleImage())
   }
-  
+
   const results = await Promise.allSettled(fetchPromises)
   results.forEach(result => {
     if (result.status === 'fulfilled' && result.value) {
@@ -630,8 +536,8 @@ async function fetchSingleImage() {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
     ])
     if (url) return url
-  } catch {}
-  
+  } catch { }
+
   // 尝试 Picsum
   try {
     const url = await Promise.race([
@@ -639,8 +545,8 @@ async function fetchSingleImage() {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
     ])
     if (url) return url
-  } catch {}
-  
+  } catch { }
+
   // 尝试 LoremFlickr（第三备选）
   try {
     const url = await Promise.race([
@@ -648,8 +554,8 @@ async function fetchSingleImage() {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
     ])
     if (url) return url
-  } catch {}
-  
+  } catch { }
+
   return null
 }
 
@@ -715,7 +621,7 @@ const filteredChallenges = computed(() => {
   // 搜索过滤
   if (searchKeyword.value.trim()) {
     const keyword = searchKeyword.value.trim().toLowerCase()
-    result = result.filter(c => 
+    result = result.filter(c =>
       c.name.toLowerCase().includes(keyword) ||
       c.creator_name?.toLowerCase().includes(keyword)
     )
@@ -806,12 +712,12 @@ async function getRandomWordForName() {
   if (wordsStore.words.length === 0) {
     await wordsStore.init()
   }
-  
+
   if (wordsStore.words.length > 0) {
     const randomIndex = Math.floor(Math.random() * wordsStore.words.length)
     return wordsStore.words[randomIndex].word
   }
-  
+
   // 如果词汇表为空，使用时间戳
   return Date.now().toString(36)
 }
@@ -825,7 +731,7 @@ async function openCreateDialog() {
   customCoverUrl.value = ''
   randomCoverUrl.value = ''
   coverFiles.value = []
-  
+
   // 根据封面类型设置 image_url
   if (coverType.value === 'none') {
     createData.image_url = ''
@@ -841,7 +747,7 @@ async function openCreateDialog() {
     coverType.value = 'random'
     fetchRandomCover()
   }
-  
+
   showCreateDialog.value = true
 }
 
@@ -878,7 +784,7 @@ function formatTime(dateStr) {
   const date = new Date(dateStr)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
-  
+
   // 小于1分钟
   if (diff < 60 * 1000) {
     return '刚刚'
@@ -949,55 +855,55 @@ const customUpload = () => {
 // 处理封面图片选择
 const handleCoverChange = async (value) => {
   if (!value || value.length === 0) return
-  
+
   const file = value[0]
   if (!file.raw) return
-  
+
   // 检查文件大小（限制 2MB）
   if (file.raw.size > 2 * 1024 * 1024) {
     MessagePlugin.error('图片大小不能超过 2MB')
     coverFiles.value = []
     return
   }
-  
+
   // 检查文件类型
   if (!file.raw.type.startsWith('image/')) {
     MessagePlugin.error('请选择图片文件')
     coverFiles.value = []
     return
   }
-  
+
   await uploadCover(file.raw)
 }
 
 // 上传封面到 Supabase Storage
 const uploadCover = async (file) => {
   if (!authStore.user) return
-  
+
   uploadingCover.value = true
-  
+
   try {
     const fileExt = file.name.split('.').pop()
     const fileName = `challenge-${Date.now()}.${fileExt}`
     const filePath = `challenges/${fileName}`
-    
+
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: true
       })
-    
+
     if (uploadError) {
       console.error('Upload error:', uploadError)
       MessagePlugin.error('上传失败，请重试')
       return
     }
-    
+
     const { data: urlData } = supabase.storage
       .from('avatars')
       .getPublicUrl(filePath)
-    
+
     if (urlData?.publicUrl) {
       customCoverUrl.value = urlData.publicUrl
       createData.image_url = urlData.publicUrl
@@ -1053,9 +959,9 @@ async function fetchRandomCover() {
     // 短暂延迟后重新开始
     await new Promise(resolve => setTimeout(resolve, 100))
   }
-  
+
   loadingRandomCover.value = true
-  
+
   try {
     // 优先从缓存获取
     const cachedUrl = getImageFromCache()
@@ -1067,13 +973,13 @@ async function fetchRandomCover() {
       prefetchImages()
       return
     }
-    
+
     // 缓存为空，实时获取（总超时6秒）
     const imageUrl = await Promise.race([
       fetchSingleImage(),
       new Promise((resolve) => setTimeout(() => resolve(null), 6000))
     ])
-    
+
     if (imageUrl) {
       randomCoverUrl.value = imageUrl
       createData.image_url = imageUrl
@@ -1103,18 +1009,18 @@ async function fetchFromUnsplash() {
       }
     }
   )
-  
+
   if (!response.ok) {
     throw new Error(`Unsplash API error: ${response.status}`)
   }
-  
+
   const data = await response.json()
   const imageUrl = data.urls?.regular || data.urls?.small
-  
+
   if (!imageUrl) {
     throw new Error('No image URL in response')
   }
-  
+
   // 预加载图片（3秒超时）
   await preloadImage(imageUrl, 3000)
   return imageUrl
@@ -1124,7 +1030,7 @@ async function fetchFromUnsplash() {
 async function fetchFromPicsum() {
   // Picsum 提供随机图片，添加时间戳避免缓存
   const imageUrl = `https://picsum.photos/800/400?random=${Date.now()}`
-  
+
   // 预加载图片（2秒超时）
   await preloadImage(imageUrl, 2000)
   return imageUrl
@@ -1134,7 +1040,7 @@ async function fetchFromPicsum() {
 async function fetchFromLoremFlickr() {
   const topic = randomCoverTopics[Math.floor(Math.random() * randomCoverTopics.length)]
   const imageUrl = `https://loremflickr.com/800/400/${topic}?random=${Date.now()}`
-  
+
   // 预加载图片（2秒超时）
   await preloadImage(imageUrl, 2000)
   return imageUrl
@@ -1145,12 +1051,12 @@ function preloadImage(url, timeout = 3000) {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
-    
+
     const timeoutId = setTimeout(() => {
       img.src = ''
       reject(new Error('Image preload timeout'))
     }, timeout)
-    
+
     img.onload = () => {
       clearTimeout(timeoutId)
       resolve()
@@ -1198,18 +1104,18 @@ async function viewChallenge(challenge) {
     MessagePlugin.warning('请先登录')
     return
   }
-  
+
   // 已结束的比赛，点击查看详情
   if (challenge.status === 'finished' || challenge.status === 'cancelled') {
     viewChallengeDetail(challenge)
     return
   }
-  
+
   if (connectingId.value) return // 防止重复点击
-  
+
   // 保存滚动位置
   saveScrollPosition()
-  
+
   connectingId.value = challenge.id
   try {
     await challengeStore.joinChallenge(challenge.id)
@@ -1229,7 +1135,7 @@ async function viewChallenge(challenge) {
 function viewChallengeDetail(challenge) {
   // 保存滚动位置
   saveScrollPosition()
-  
+
   challengeStore.viewFinishedChallenge(challenge)
   // 更新 URL
   router.push({ name: 'ChallengeRoom', params: { id: challenge.id } })
@@ -1242,10 +1148,10 @@ async function enterChallenge(challenge) {
   }
 
   if (connectingId.value) return
-  
+
   // 保存滚动位置
   saveScrollPosition()
-  
+
   connectingId.value = challenge.id
   try {
     await challengeStore.joinChallenge(challenge.id)
@@ -1265,10 +1171,10 @@ async function joinChallenge(challenge) {
   }
 
   if (connectingId.value) return
-  
+
   // 保存滚动位置
   saveScrollPosition()
-  
+
   connectingId.value = challenge.id
   try {
     await challengeStore.joinChallenge(challenge.id)
@@ -1304,29 +1210,29 @@ async function handleDelete(challenge) {
 // 快速创建挑战赛（两人/三人对战）
 async function quickCreate(playerCount) {
   quickCreating.value = playerCount
-  
+
   try {
     // 使用已保存的随机单词（如果没有则重新获取）
     const randomWord = savedRandomWord.value || await getRandomWordForName()
     const name = `${playerCount}人对战-${randomWord.toUpperCase()}`
-    
+
     // 检查名称是否重复
     const { data: existing } = await supabase
       .from('challenges')
       .select('id')
       .eq('name', name)
       .limit(1)
-    
+
     let finalName = name
     if (existing && existing.length > 0) {
       // 如果重复，添加时间戳
       const timestamp = Date.now().toString(36).slice(-4)
       finalName = `${playerCount}人对战-${randomWord.toUpperCase()}-${timestamp}`
     }
-    
+
     // 保存设置
     saveSettings()
-    
+
     // 确定封面URL：创建时不等待图片加载，如果没有加载成功则留空
     let imageUrl = ''
     if (coverType.value === 'none') {
@@ -1339,7 +1245,7 @@ async function quickCreate(playerCount) {
     } else if (coverType.value === 'custom' && customCoverUrl.value) {
       imageUrl = customCoverUrl.value
     }
-    
+
     // 添加超时保护，避免卡住
     await Promise.race([
       challengeStore.createChallenge({
@@ -1358,10 +1264,10 @@ async function quickCreate(playerCount) {
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 20000))
     ])
-    
+
     showCreateDialog.value = false
     MessagePlugin.success(`${playerCount}人对战创建成功`)
-    
+
     // 创建成功后手动跳转到房间（带上房间ID）
     if (challengeStore.currentChallenge) {
       router.push({ name: 'ChallengeRoom', params: { id: challengeStore.currentChallenge.id } })
@@ -1370,7 +1276,7 @@ async function quickCreate(playerCount) {
     MessagePlugin.error(error.message || '创建失败')
     // 超时或失败时清理可能的残留状态
     if (challengeStore.currentChallenge) {
-      challengeStore.cleanup().catch(() => {})
+      challengeStore.cleanup().catch(() => { })
     }
   } finally {
     quickCreating.value = null
@@ -1388,7 +1294,7 @@ async function handleCreate({ validateResult }) {
       .select('id')
       .eq('name', createData.name)
       .limit(1)
-    
+
     if (existing && existing.length > 0) {
       MessagePlugin.warning('挑战赛名称已存在，请更换一个名称')
       creating.value = false
@@ -1422,15 +1328,15 @@ async function handleCreate({ validateResult }) {
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 20000))
     ])
-    
+
     showCreateDialog.value = false
     MessagePlugin.success('挑战赛创建成功')
-    
+
     // 创建成功后手动跳转到房间（带上房间ID）
     if (challengeStore.currentChallenge) {
       router.push({ name: 'ChallengeRoom', params: { id: challengeStore.currentChallenge.id } })
     }
-    
+
     // 重置名称和封面，保留其他设置
     createData.name = ''
     createData.description = ''
@@ -1443,7 +1349,7 @@ async function handleCreate({ validateResult }) {
     MessagePlugin.error(error.message || '创建失败')
     // 超时或失败时清理可能的残留状态
     if (challengeStore.currentChallenge) {
-      challengeStore.cleanup().catch(() => {})
+      challengeStore.cleanup().catch(() => { })
     }
   } finally {
     creating.value = false
@@ -1457,13 +1363,13 @@ async function refreshList() {
 // 通过 URL 参数加入挑战赛
 async function joinChallengeById(challengeId) {
   if (!challengeId) return
-  
+
   // 先加载列表以获取挑战赛信息
   await challengeStore.loadChallenges()
-  
+
   // 如果已经在这个挑战赛中，不需要重新加入
   if (challengeStore.currentChallenge?.id === challengeId) return
-  
+
   connectingId.value = challengeId
   try {
     await challengeStore.joinChallenge(challengeId)
@@ -1493,11 +1399,11 @@ watch(() => challengeStore.currentChallenge, async (newVal, oldVal) => {
 
 onMounted(async () => {
   await loadSettings()
-  
+
   // 加载图片缓存并在后台预加载图片
   loadImageCache()
   prefetchImages()
-  
+
   // 如果 URL 中有挑战赛 ID，尝试加入
   const challengeId = route.params.id
   if (challengeId) {
@@ -1512,7 +1418,7 @@ onMounted(async () => {
       await challengeStore.loadChallenges()
     }
   }
-  
+
   // 监听页面可见性变化
   document.addEventListener('visibilitychange', handleVisibilityChange)
   lastHiddenTime = Date.now()
@@ -1538,13 +1444,13 @@ watch(() => route.params.id, async (newId, oldId) => {
         challengeStore.leaveChallenge(true),
         new Promise(resolve => setTimeout(resolve, 2000))
       ])
-    } catch {}
+    } catch { }
     try {
       await Promise.race([
         challengeStore.cleanup(),
         new Promise(resolve => setTimeout(resolve, 1000))
       ])
-    } catch {}
+    } catch { }
     // 恢复滚动位置
     restoreScrollPosition()
     // 标记需要刷新并检查
@@ -1552,14 +1458,14 @@ watch(() => route.params.id, async (newId, oldId) => {
     await challengeStore.checkAndRefresh()
     return
   }
-  
+
   // 用户从列表前进到房间页（浏览器前进按钮）
   // newId 有值但 currentChallenge 为空，需要加入房间
   if (newId && !challengeStore.currentChallenge) {
     await joinChallengeById(newId)
     return
   }
-  
+
   // 回到列表页且没有当前挑战赛：检查是否需要刷新
   if (!newId && !challengeStore.currentChallenge) {
     challengeStore.loading = false
@@ -1679,14 +1585,57 @@ watch(() => route.params.id, async (newId, oldId) => {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    
+
     :deep(.t-input) {
       min-width: 200px;
       max-width: 280px;
     }
-    
+
     .refresh-btn {
       flex-shrink: 0;
+    }
+
+    .status-select {
+      width: 130px;
+      flex-shrink: 0;
+    }
+  }
+}
+
+// 响应式：桌面端显示标签，手机端显示下拉框
+.desktop-only {
+  display: flex;
+}
+
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+  }
+
+  .filter-section {
+    flex-direction: column;
+    align-items: stretch;
+
+    .search-box {
+      width: 100%;
+
+      :deep(.t-input) {
+        flex: 1;
+        min-width: 0;
+        max-width: none;
+      }
+
+      .status-select {
+        width: 120px;
+      }
     }
   }
 }
@@ -1747,8 +1696,10 @@ watch(() => route.params.id, async (newId, oldId) => {
 
   &.connecting {
     pointer-events: none;
-    
-    .card-image, .card-content, .card-action {
+
+    .card-image,
+    .card-content,
+    .card-action {
       opacity: 0.5;
     }
   }
@@ -1756,7 +1707,7 @@ watch(() => route.params.id, async (newId, oldId) => {
   &.finished {
     opacity: 0.9;
     //background: linear-gradient(135deg, var(--honey-50) 0%, var(--honey-100) 100%);
-    
+
     .card-image {
       background: linear-gradient(135deg, var(--honey-300) 0%, var(--honey-500) 100%);
     }
@@ -1764,7 +1715,7 @@ watch(() => route.params.id, async (newId, oldId) => {
 
   &.cancelled {
     opacity: 0.7;
-    
+
     .card-image {
       filter: grayscale(50%);
     }
@@ -1853,7 +1804,7 @@ watch(() => route.params.id, async (newId, oldId) => {
       width: 32px;
       height: 32px;
       padding: 0;
-      
+
       &:hover {
         background: var(--error-light, #fee2e2);
       }
@@ -1895,7 +1846,8 @@ watch(() => route.params.id, async (newId, oldId) => {
       font-size: 0.8rem;
       color: var(--text-muted);
 
-      .card-time, .card-participants-count {
+      .card-time,
+      .card-participants-count {
         display: flex;
         align-items: center;
         gap: 0.25rem;
@@ -1933,7 +1885,7 @@ watch(() => route.params.id, async (newId, oldId) => {
 
         &.is-winner {
           background: linear-gradient(135deg, var(--honey-100) 0%, var(--honey-200) 100%);
-          
+
           .participant-name {
             color: var(--honey-700);
             font-weight: 600;
@@ -2092,13 +2044,13 @@ watch(() => route.params.id, async (newId, oldId) => {
   .custom-content {
     overflow: hidden;
     transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
-    
+
     &.collapsed {
       max-height: 0;
       opacity: 0;
       padding-top: 0;
     }
-    
+
     &.expanded {
       // max-height: 1000px;
       opacity: 1;
@@ -2197,7 +2149,9 @@ watch(() => route.params.id, async (newId, oldId) => {
         }
 
         // 输入框优化
-        .t-input, .t-textarea, .t-input-number {
+        .t-input,
+        .t-textarea,
+        .t-input-number {
           font-size: 0.9rem;
         }
       }
@@ -2230,7 +2184,7 @@ watch(() => route.params.id, async (newId, oldId) => {
   .form-actions {
     margin-top: 1rem;
     gap: 0.75rem;
-    
+
     .t-button {
       font-size: 0.9rem;
     }

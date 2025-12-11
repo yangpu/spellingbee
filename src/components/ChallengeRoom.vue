@@ -400,8 +400,8 @@
               </t-tag>
             </div>
             <div class="challenge-time">
-              <span><t-icon name="calendar" /> {{ formatDateTime(challenge?.created_at) }}</span>
-              <span v-if="challenge?.finished_at"> → {{ formatDateTime(challenge?.finished_at) }}</span>
+                        <span><t-icon name="calendar" /> {{ formatDateTime(challenge?.created_at) }}</span>
+                        <span v-if="challenge?.finished_at"> → {{ formatDateTime(challenge?.finished_at, true) }}</span>
             </div>
           </div>
         </div>
@@ -754,13 +754,16 @@ function getWordModeText(mode) {
 }
 
 // 格式化日期时间
-function formatDateTime(dateStr) {
+function formatDateTime(dateStr, timeOnly = false) {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  const month = date.getMonth() + 1
-  const day = date.getDate()
   const hours = date.getHours().toString().padStart(2, '0')
   const minutes = date.getMinutes().toString().padStart(2, '0')
+  if (timeOnly) {
+    return `${hours}:${minutes}`
+  }
+  const month = date.getMonth() + 1
+  const day = date.getDate()
   return `${month}月${day}日 ${hours}:${minutes}`
 }
 
@@ -1466,7 +1469,7 @@ onUnmounted(() => {
 
         &.correct {
           background: var(--success-light, #d1fae5);
-          color: var(--success);
+          color: var(--success-text, #059669);
         }
 
         &.wrong {
@@ -1983,7 +1986,7 @@ onUnmounted(() => {
 
             &.correct {
               background: var(--success-light, #d1fae5);
-              color: var(--success);
+              color: var(--success-text, #059669);
             }
 
             &.timeout {

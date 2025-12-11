@@ -2,39 +2,19 @@
   <div class="letter-input-container" @click="handleContainerClick">
     <div class="letter-slots">
       <template v-for="(slot, i) in visibleSlots" :key="i">
-        <div
-          v-if="slot.visible"
-          class="letter-slot"
-          :class="{
-            'slot-active': i === currentLetterIndex && !disabled,
-            'slot-filled': slot.value,
-            'slot-correct': slot.status === 'correct',
-            'slot-wrong': slot.status === 'wrong',
-            'slot-missing': slot.status === 'missing'
-          }"
-          @click="focusInput(i)"
-        >
-          <input
-            :ref="el => inputRefs[i] = el"
-            type="text"
-            maxlength="1"
-            class="letter-input"
-            :value="letterSlots[i]?.value || ''"
-            :disabled="disabled"
-            @input="handleInput($event, i)"
-            @keydown="handleKeydown($event, i)"
-            @compositionstart="handleCompositionStart"
-            @compositionend="handleCompositionEnd($event, i)"
-            @focus="handleFocus($event, i)"
-            @blur="handleBlur"
-            @beforeinput="handleBeforeInput"
-            autocomplete="off"
-            autocapitalize="off"
-            autocorrect="off"
-            spellcheck="false"
-            enterkeyhint="next"
-            inputmode="text"
-          />
+        <div v-if="slot.visible" class="letter-slot" :class="{
+          'slot-active': i === currentLetterIndex && !disabled,
+          'slot-filled': slot.value,
+          'slot-correct': slot.status === 'correct',
+          'slot-wrong': slot.status === 'wrong',
+          'slot-missing': slot.status === 'missing'
+        }" @click="focusInput(i)">
+          <input :ref="el => inputRefs[i] = el" type="text" maxlength="1" class="letter-input"
+            :value="letterSlots[i]?.value || ''" :disabled="disabled" @input="handleInput($event, i)"
+            @keydown="handleKeydown($event, i)" @compositionstart="handleCompositionStart"
+            @compositionend="handleCompositionEnd($event, i)" @focus="handleFocus($event, i)" @blur="handleBlur"
+            @beforeinput="handleBeforeInput" autocomplete="off" autocapitalize="off" autocorrect="off"
+            spellcheck="false" enterkeyhint="next" inputmode="text" />
           <span class="letter-hint" v-if="showFirstLetterHint && i === 0 && !slot.value && word">
             {{ word[0]?.toUpperCase() }}
           </span>
@@ -112,10 +92,10 @@ const visibleSlots = computed(() => {
     return letterSlots.value.map((slot, i) => ({ ...slot, index: i, visible: true }))
   }
   // 非辅助模式：显示所有已有的字母框（动态增长）
-  return letterSlots.value.map((slot, i) => ({ 
-    ...slot, 
-    index: i, 
-    visible: true 
+  return letterSlots.value.map((slot, i) => ({
+    ...slot,
+    index: i,
+    visible: true
   }))
 })
 
@@ -171,17 +151,17 @@ function resetSlots() {
   currentLetterIndex.value = 0
   handledByKeydown.value = false
   lastInputRecord.value = {}
-  
+
   if (pendingMoveToNext.value) {
     clearTimeout(pendingMoveToNext.value)
     pendingMoveToNext.value = null
   }
-  
+
   if (blurTimeout.value) {
     clearTimeout(blurTimeout.value)
     blurTimeout.value = null
   }
-  
+
   nextTick(() => {
     if (inputRefs.value[0] && !props.disabled) {
       inputRefs.value[0].focus()
@@ -207,13 +187,13 @@ function recordInput(index, value) {
 // 统一的字母输入处理函数
 function processLetterInput(value, index, inputElement) {
   if (props.disabled) return
-  
+
   recordInput(index, value)
   letterSlots.value[index].value = value
   if (inputElement) {
     inputElement.value = value
   }
-  
+
   // 辅助模式：实时检查是否正确并显示颜色
   // 非辅助模式：输入时不显示颜色（提交后才显示）
   if (props.assistedMode) {
@@ -222,17 +202,17 @@ function processLetterInput(value, index, inputElement) {
   } else {
     letterSlots.value[index].status = 'filled'
   }
-  
+
   const answer = currentAnswer.value
   emit('change', answer)
   emit('update:letters', answer)
-  
+
   // 取消之前的待执行移动操作
   if (pendingMoveToNext.value) {
     clearTimeout(pendingMoveToNext.value)
     pendingMoveToNext.value = null
   }
-  
+
   // 移动到下一个框或自动提交
   if (props.assistedMode) {
     // 辅助模式：固定字母框数量
@@ -286,43 +266,43 @@ function handleInput(event, index) {
     event.target.value = letterSlots.value[index].value || ''
     return
   }
-  
+
   if (isMobile) {
     event.target.value = letterSlots.value[index].value || ''
     return
   }
-  
+
   const inputValue = event.target.value || ''
   const letters = inputValue.replace(/[^a-zA-Z]/g, '').toLowerCase()
-  
+
   if (!letters) {
     event.target.value = letterSlots.value[index].value || ''
     return
   }
-  
+
   const value = letters.charAt(0)
-  
+
   if (letterSlots.value[index].value === value) {
     event.target.value = value
     return
   }
-  
+
   if (isDuplicateInput(index, value)) {
     event.target.value = letterSlots.value[index].value || value
     return
   }
-  
+
   processLetterInput(value, index, event.target)
 }
 
 // 处理键盘事件
 function handleKeydown(event, index) {
   if (props.disabled) return
-  
+
   if (event.key === 'Backspace') {
     event.preventDefault()
     handledByKeydown.value = true
-    
+
     if (letterSlots.value[index].value) {
       letterSlots.value[index].value = ''
       letterSlots.value[index].status = 'empty'
@@ -360,7 +340,7 @@ function handleKeydown(event, index) {
       emit('update:letters', answer)
       return
     }
-    
+
     setTimeout(() => { handledByKeydown.value = false }, 50)
   } else if (event.key === 'Enter') {
     // 非辅助模式：Enter 提交答案（至少输入了一个字母）
@@ -377,16 +357,16 @@ function handleKeydown(event, index) {
   } else if (/^[a-zA-Z]$/.test(event.key)) {
     event.preventDefault()
     handledByKeydown.value = true
-    
+
     const value = event.key.toLowerCase()
-    
+
     if (letterSlots.value[index].value === value) {
       handledByKeydown.value = false
       return
     }
-    
+
     processLetterInput(value, index, inputRefs.value[index])
-    
+
     setTimeout(() => { handledByKeydown.value = false }, 30)
   }
 }
@@ -398,27 +378,27 @@ function handleCompositionStart() {
 
 function handleCompositionEnd(event, index) {
   isComposing.value = false
-  
+
   const inputValue = event.target.value || ''
   const letters = inputValue.replace(/[^a-zA-Z]/g, '').toLowerCase()
-  
+
   if (!letters) {
     event.target.value = letterSlots.value[index].value || ''
     return
   }
-  
+
   const value = letters.charAt(0)
-  
+
   if (letterSlots.value[index].value === value) {
     event.target.value = value
     return
   }
-  
+
   if (isDuplicateInput(index, value)) {
     event.target.value = letterSlots.value[index].value || value
     return
   }
-  
+
   processLetterInput(value, index, event.target)
 }
 
@@ -438,18 +418,18 @@ function handleFocus(event, index) {
 // 处理失焦 - 延迟后自动聚焦到当前激活框
 function handleBlur() {
   if (props.disabled) return
-  
+
   // 清除之前的定时器
   if (blurTimeout.value) {
     clearTimeout(blurTimeout.value)
   }
-  
+
   // 延迟检查，如果没有其他输入框获得焦点，则重新聚焦
   blurTimeout.value = setTimeout(() => {
     // 检查当前文档焦点是否在组件内
     const activeElement = document.activeElement
     const isInComponent = inputRefs.value.some(ref => ref === activeElement)
-    
+
     if (!isInComponent && !props.disabled) {
       // 找到第一个空位或当前位置
       let targetIndex = letterSlots.value.findIndex(slot => !slot.value)
@@ -468,7 +448,7 @@ function handleBlur() {
 // 点击容器时聚焦到当前激活框
 function handleContainerClick(event) {
   if (props.disabled) return
-  
+
   // 如果点击的不是输入框，聚焦到当前激活框
   if (event.target.tagName !== 'INPUT') {
     // 找到第一个空位或当前位置
@@ -487,49 +467,49 @@ function handleContainerClick(event) {
 function handleBeforeInput(event) {
   if (props.disabled) return
   if (event.isComposing || isComposing.value) return
-  
+
   if (event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward') {
     return
   }
-  
+
   const data = event.data
   if (!data) return
-  
+
   const hasLetter = /[a-zA-Z]/.test(data)
   if (!hasLetter) {
     event.preventDefault()
     return
   }
-  
+
   if (handledByKeydown.value) {
     event.preventDefault()
     return
   }
-  
+
   const inputElement = event.target
   const currentIndex = inputRefs.value.findIndex(ref => ref === inputElement)
   if (currentIndex === -1) return
-  
+
   const letters = data.replace(/[^a-zA-Z]/g, '').toLowerCase()
   if (!letters) {
     event.preventDefault()
     return
   }
-  
+
   const value = letters.charAt(0)
-  
+
   if (isDuplicateInput(currentIndex, value)) {
     event.preventDefault()
     return
   }
-  
+
   if (isMobile) {
     event.preventDefault()
     if (letterSlots.value[currentIndex].value === value) return
     processLetterInput(value, currentIndex, inputElement)
     return
   }
-  
+
   if (data.length > 1) {
     const multiLetters = data.replace(/[^a-zA-Z]/g, '').toLowerCase()
     if (multiLetters.length > 1) {
@@ -578,12 +558,12 @@ defineExpose({
     isSubmitted.value = true
     const wordLetters = props.word.toLowerCase().split('')
     const wordLength = wordLetters.length
-    
+
     // 移除最后一个空字母框（如果有）
     if (letterSlots.value.length > 0 && !letterSlots.value[letterSlots.value.length - 1].value) {
       letterSlots.value.pop()
     }
-    
+
     // 如果输入的字母数量少于单词长度，补充字母框（显示正确答案，灰色+红框）
     while (letterSlots.value.length < wordLength) {
       const correctLetter = wordLetters[letterSlots.value.length]
@@ -592,12 +572,12 @@ defineExpose({
         status: 'missing' // 未输入的字母框使用 missing 状态（灰色字母+红框）
       })
     }
-    
+
     // 逐个比较用户输入和正确答案
     letterSlots.value.forEach((slot, i) => {
       // 跳过已经标记为 missing 的字母框
       if (slot.status === 'missing') return
-      
+
       if (slot.value) {
         const correctLetter = wordLetters[i]?.toLowerCase()
         slot.status = slot.value === correctLetter ? 'correct' : 'wrong'
@@ -610,7 +590,7 @@ defineExpose({
 function setValueInternal(value) {
   if (!value) return
   const letters = value.toLowerCase().split('').filter(l => /^[a-z]$/.test(l))
-  
+
   if (props.assistedMode) {
     // 辅助模式：按单词长度填充
     if (letterSlots.value.length === 0) return
