@@ -354,7 +354,7 @@ import { SearchIcon } from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useChallengeStore } from '@/stores/challenge'
 import { useWordsStore } from '@/stores/words'
-import { supabase, reconnectRealtime } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import ChallengeRoom from '@/components/ChallengeRoom.vue'
 
 const baseUrl = import.meta.env.BASE_URL
@@ -400,11 +400,9 @@ async function handleVisibilityChange() {
     quickCreating.value = null
     creating.value = false
 
-    // 如果隐藏时间超过阈值
+    // 如果隐藏时间超过阈值，刷新挑战赛列表
+    // 注意：Realtime 重连由 RealtimeManager 统一处理，这里不再调用 forceReconnect
     if (hiddenDuration > VISIBILITY_RELOAD_THRESHOLD) {
-      // 先重新连接 Realtime（移动端后台切换可能导致 WebSocket 断开）
-      await reconnectRealtime()
-
       // 如果不在房间内，检查是否需要刷新（使用标志机制，避免不必要的请求）
       if (!challengeStore.currentChallenge) {
         await challengeStore.checkAndRefresh()
@@ -1214,21 +1212,9 @@ async function quickCreate(playerCount) {
   try {
     // 使用已保存的随机单词（如果没有则重新获取）
     const randomWord = savedRandomWord.value || await getRandomWordForName()
-    const name = `${playerCount}人对战-${randomWord.toUpperCase()}`
-
-    // 检查名称是否重复
-    const { data: existing } = await supabase
-      .from('challenges')
-      .select('id')
-      .eq('name', name)
-      .limit(1)
-
-    let finalName = name
-    if (existing && existing.length > 0) {
-      // 如果重复，添加时间戳
-      const timestamp = Date.now().toString(36).slice(-4)
-      finalName = `${playerCount}人对战-${randomWord.toUpperCase()}-${timestamp}`
-    }
+    // 直接使用带时间戳的名称，避免重复检查的数据库请求
+    const timestamp = Date.now().toString(36).slice(-4)
+    const finalName = `${playerCount}人对战-${randomWord.toUpperCase()}-${timestamp}`
 
     // 保存设置
     saveSettings()
@@ -1262,7 +1248,7 @@ async function quickCreate(playerCount) {
         show_english: createData.show_english,
         assisted_input: createData.assisted_input
       }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 20000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 15000))
     ])
 
     showCreateDialog.value = false
@@ -1288,19 +1274,6 @@ async function handleCreate({ validateResult }) {
 
   creating.value = true
   try {
-    // 检查名称是否重复
-    const { data: existing } = await supabase
-      .from('challenges')
-      .select('id')
-      .eq('name', createData.name)
-      .limit(1)
-
-    if (existing && existing.length > 0) {
-      MessagePlugin.warning('挑战赛名称已存在，请更换一个名称')
-      creating.value = false
-      return
-    }
-
     // 保存设置
     saveSettings()
 
@@ -1326,7 +1299,7 @@ async function handleCreate({ validateResult }) {
         show_english: createData.show_english,
         assisted_input: createData.assisted_input
       }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 20000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('创建超时，请检查网络后重试')), 15000))
     ])
 
     showCreateDialog.value = false

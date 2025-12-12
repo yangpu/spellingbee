@@ -46,13 +46,16 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       // Listen for auth changes
-      supabase.auth.onAuthStateChange(async (event, session) => {
+      // 注意：回调函数必须是同步的，不能使用 async
+      // 参考：https://github.com/orgs/supabase/discussions/40806
+      supabase.auth.onAuthStateChange((event, session) => {
         const previousUser = user.value
         user.value = toUser(session?.user)
         
         // Load profile when user signs in
+        // 异步操作放在单独的函数中处理，不在回调中 await
         if (event === 'SIGNED_IN' && user.value) {
-          await loadProfile()
+          loadProfile() // 不使用 await
         } else if (event === 'SIGNED_OUT') {
           profile.value = null
         } else if (event === 'TOKEN_REFRESHED' && !session) {

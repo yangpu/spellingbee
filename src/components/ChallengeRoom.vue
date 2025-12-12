@@ -553,7 +553,6 @@ watch(() => challengeStore.connectionStatus, (status, oldStatus) => {
   // 从已连接变为未连接，自动取消准备（包括房主）
   if (oldStatus === 'connected' && status === 'disconnected') {
     if (challengeStore.myParticipant?.is_ready) {
-      console.log('[ChallengeRoom] Connection lost, auto cancelling ready status')
       // 本地立即更新状态（不依赖网络）
       if (challengeStore.myParticipant) {
         challengeStore.myParticipant.is_ready = false
@@ -564,7 +563,6 @@ watch(() => challengeStore.connectionStatus, (status, oldStatus) => {
   // 从未连接变为已连接，房主自动设置为已准备
   else if (oldStatus !== 'connected' && status === 'connected') {
     if (challengeStore.isCreator && challengeStore.myParticipant) {
-      console.log('[ChallengeRoom] Connection restored, host auto ready')
       challengeStore.myParticipant.is_ready = true
       // 同步到服务器
       challengeStore.toggleReady()

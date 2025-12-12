@@ -1,6 +1,6 @@
 {
   "name": "spellingbee",
-  "version": "1.9.11",
+  "version": "1.9.21",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,22 +15,23 @@
     "generate-icons": "node scripts/generate-pwa-icons.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.0",
+    "@supabase/supabase-js": "^2.87.1",
+    "fetch-retry": "^6.0.0",
     "peerjs": "^1.5.5",
     "pinia": "^3.0.4",
     "tdesign-vue-next": "^1.17.6",
     "vue": "^3.5.25",
-    "vue-router": "^4.6.3"
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "@vitejs/plugin-vue": "^6.0.2",
-    "sass": "^1.94.2",
+    "@types/node": "^25.0.1",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "sass": "^1.96.0",
     "sharp": "^0.34.5",
     "typescript": "^5.9.3",
-    "vite": "^7.2.6",
+    "vite": "^7.2.7",
     "vite-plugin-pwa": "^1.2.0",
-    "vue-tsc": "^2.2.12",
+    "vue-tsc": "^3.1.8",
     "xlsx": "^0.18.5"
   }
 }

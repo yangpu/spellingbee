@@ -1,14 +1,17 @@
 /**
  * 版本管理服务
- * 通过 Supabase Realtime 监听版本更新，提供自动升级提示
+ * 通过 RealtimeManager 监听版本更新，提供自动升级提示
  */
 
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
-import type { RealtimeChannel } from '@supabase/supabase-js'
+import { realtimeManager, type ChannelConfig } from '@/lib/realtime-manager'
 
 // 当前应用版本（构建时注入）
 const currentVersion = __APP_VERSION__
+
+// Channel 名称常量
+const VERSION_CHANNEL = 'app-version-updates'
 
 interface VersionInfo {
   id: number
@@ -25,12 +28,12 @@ interface VersionCheckResult {
 }
 
 class VersionService {
-  private channel: RealtimeChannel | null = null
   private _latestVersion = ref<string | null>(null)
   private _releaseNotes = ref<string | null>(null)
   private _hasUpdate = ref(false)
   private _isChecking = ref(false)
   private updateHandlers: Set<(info: VersionInfo) => void> = new Set()
+  private initialized = false
   
   get currentVersion() {
     return currentVersion
@@ -57,6 +60,9 @@ class VersionService {
    * 检查一次版本并订阅实时更新
    */
   async init(): Promise<void> {
+    if (this.initialized) return
+    this.initialized = true
+    
     // 检查当前版本
     await this.checkVersion()
     
@@ -122,50 +128,52 @@ class VersionService {
   }
   
   /**
-   * 订阅版本更新
+   * 订阅版本更新（使用 RealtimeManager）
    */
-  private subscribeToUpdates(): void {
-    if (this.channel) {
-      return
-    }
-    
-    this.channel = supabase
-      .channel('app-version-updates')
-      .on(
-        'postgres_changes',
+  private async subscribeToUpdates(): Promise<void> {
+    const config: ChannelConfig = {
+      name: VERSION_CHANNEL,
+      type: 'postgres_changes',
+      autoResubscribe: true,
+      timeout: 15000,
+      subscriptions: [
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'app_versions'
-        },
-        (payload) => {
-          const versionInfo = payload.new as VersionInfo
-          //console.log('[VersionService] New version detected:', versionInfo.version)
-          
-          this._latestVersion.value = versionInfo.version
-          this._releaseNotes.value = versionInfo.release_notes || null
-          
-          // 检查是否需要更新
-          const hasUpdate = this.compareVersions(versionInfo.version, currentVersion) > 0
-          this._hasUpdate.value = hasUpdate
-          
-          if (hasUpdate) {
-            // 通知所有处理器
-            this.updateHandlers.forEach(handler => {
-              try {
-                handler(versionInfo)
-              } catch (e) {
-                console.error('[VersionService] Handler error:', e)
-              }
-            })
+          type: 'postgres_changes',
+          postgresChanges: {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'app_versions'
+          },
+          callback: (payload) => {
+            const versionInfo = payload.new as VersionInfo
+            
+            this._latestVersion.value = versionInfo.version
+            this._releaseNotes.value = versionInfo.release_notes || null
+            
+            // 检查是否需要更新
+            const hasUpdate = this.compareVersions(versionInfo.version, currentVersion) > 0
+            this._hasUpdate.value = hasUpdate
+            
+            if (hasUpdate) {
+              // 通知所有处理器
+              this.updateHandlers.forEach(handler => {
+                try {
+                  handler(versionInfo)
+                } catch (e) {
+                  console.error('[VersionService] Handler error:', e)
+                }
+              })
+            }
           }
         }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          //console.log('[VersionService] Subscribed to version updates')
-        }
-      })
+      ]
+    }
+    
+    try {
+      await realtimeManager.subscribe(config)
+    } catch (error) {
+      // 订阅失败时静默处理
+    }
   }
   
   /**
@@ -203,12 +211,9 @@ class VersionService {
    * 清理
    */
   async destroy(): Promise<void> {
-    if (this.channel) {
-      await this.channel.unsubscribe()
-      await supabase.removeChannel(this.channel)
-      this.channel = null
-    }
+    await realtimeManager.unsubscribe(VERSION_CHANNEL)
     this.updateHandlers.clear()
+    this.initialized = false
   }
 }
 

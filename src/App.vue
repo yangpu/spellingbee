@@ -371,8 +371,6 @@ const destroyNotificationService = async () => {
 // 处理页面可见性变化（应用从后台恢复）
 const handleVisibilityChange = async () => {
   if (document.visibilityState === 'visible') {
-    console.log('[App] Visibility changed to visible');
-
     // 立即强制重置所有 store 的 loading 状态
     wordsStore.loading = false;
     challengeStore.loading = false;
