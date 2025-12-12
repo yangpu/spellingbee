@@ -37,9 +37,12 @@
         </t-button>
         <t-button v-else variant="text" shape="round" class="user-avatar-btn" @click="showProfileDialog = true">
           <template #icon>
-            <t-avatar size="small" :image="authStore.profile?.avatar_url">
-              {{ avatarText }}
-            </t-avatar>
+            <div class="avatar-wrapper">
+              <t-avatar size="small" :image="authStore.profile?.avatar_url">
+                {{ avatarText }}
+              </t-avatar>
+              <span class="avatar-status-dot" :class="{ connected: supabaseConnected }"></span>
+            </div>
           </template>
           <span class="user-name">{{ displayName }}</span>
         </t-button>
@@ -522,6 +525,28 @@ const dialogHeader = () => {
       cursor: pointer;
       border: none !important;
       background: none !important;
+
+      .avatar-wrapper {
+        position: relative;
+        display: inline-flex;
+
+        .avatar-status-dot {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #ef4444;
+          border: 1.5px solid var(--bg-card);
+          transition: background-color 0.3s;
+          z-index: 1;
+
+          &.connected {
+            background: #22c55e;
+          }
+        }
+      }
 
       .user-name {
         max-width: 100px;

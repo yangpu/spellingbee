@@ -699,6 +699,7 @@ function setValueInternal(value) {
         font-weight: 700;
         text-transform: uppercase;
         outline: none;
+        color: var(--text-primary);
 
         &:disabled {
           cursor: not-allowed;

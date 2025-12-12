@@ -48,15 +48,29 @@
             <t-icon name="chevron-right" class="arrow-icon" />
           </div>
         </div>
+
+        <!-- 当前版本 -->
+        <div class="setting-item clickable" @click="showVersionDialog">
+          <div class="setting-info">
+            <t-icon name="info-circle" />
+            <span class="setting-label">当前版本</span>
+          </div>
+          <div class="setting-control">
+            <span class="version-text">v{{ appVersion }}</span>
+            <t-icon name="chevron-right" class="arrow-icon" />
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
+import { versionService } from '@/lib/version-service'
 
 defineEmits<{
   (e: 'open-speech-settings'): void
@@ -65,11 +79,114 @@ defineEmits<{
 
 const authStore = useAuthStore()
 
+// 应用版本
+const appVersion = __APP_VERSION__
+
+// 版本更新订阅
+let unsubscribeVersionUpdate: (() => void) | null = null
+
 // 主题存储键
 const THEME_KEY = 'spellingbee_theme'
 
 // 当前主题
 const currentTheme = ref<'light' | 'dark'>('light')
+
+// 显示版本信息对话框
+const showVersionDialog = async () => {
+  const dialog = DialogPlugin.confirm({
+    header: '版本信息',
+    body: `当前版本：v${appVersion}\n\n是否检测最新版本？\n\n如遇到更新问题，可点击"立即升级"强制刷新。`,
+    confirmBtn: '检测更新',
+    cancelBtn: '立即升级',
+    onConfirm: async () => {
+      dialog.destroy()
+      await checkAndPromptUpdate()
+    },
+    onCancel: () => {
+      dialog.destroy()
+      startUpgrade()
+    },
+    onClose: () => {
+      dialog.destroy()
+    }
+  })
+}
+
+// 检测并提示更新
+const checkAndPromptUpdate = async () => {
+  MessagePlugin.loading('正在检测最新版本...')
+  
+  try {
+    const result = await versionService.checkVersion()
+    MessagePlugin.closeAll()
+    
+    if (result.hasUpdate && result.latestVersion) {
+      showUpdateDialog(result.latestVersion, result.releaseNotes)
+    } else {
+      MessagePlugin.success('当前已是最新版本')
+    }
+  } catch (error) {
+    MessagePlugin.closeAll()
+    MessagePlugin.error('检测更新失败，请稍后重试')
+  }
+}
+
+// 显示更新对话框
+const showUpdateDialog = (newVersion: string, releaseNotes?: string) => {
+  let body = `发现新版本：v${newVersion}\n当前版本：v${appVersion}`
+  if (releaseNotes) {
+    body += `\n\n更新说明：${releaseNotes}`
+  }
+  body += '\n\n是否立即更新？'
+  
+  const dialog = DialogPlugin.confirm({
+    header: '发现新版本',
+    body,
+    confirmBtn: '立即更新',
+    cancelBtn: '稍后再说',
+    onConfirm: () => {
+      dialog.destroy()
+      startUpgrade()
+    },
+    onClose: () => {
+      dialog.destroy()
+    }
+  })
+}
+
+// 开始升级
+const startUpgrade = () => {
+  DialogPlugin({
+    header: '正在更新',
+    body: '正在清理缓存并刷新页面，请稍候...',
+    footer: false,
+    closeOnOverlayClick: false,
+    closeOnEscKeydown: false
+  })
+  
+  forceRefresh()
+}
+
+// 强制刷新页面
+const forceRefresh = () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      registrations.forEach(registration => {
+        registration.unregister()
+      })
+    })
+  }
+  if ('caches' in window) {
+    caches.keys().then(names => {
+      names.forEach(name => {
+        caches.delete(name)
+      })
+    })
+  }
+  setTimeout(() => {
+    window.location.reload()
+  }, 100)
+}
 
 // 应用主题到 DOM
 function applyTheme(theme: 'light' | 'dark') {
@@ -159,6 +276,19 @@ onMounted(async () => {
       saveToLocal(cloudTheme)
     }
   }
+  
+  // 3. 初始化版本服务并订阅更新
+  await versionService.init()
+  unsubscribeVersionUpdate = versionService.onUpdate((versionInfo) => {
+    showUpdateDialog(versionInfo.version, versionInfo.release_notes)
+  })
+})
+
+onUnmounted(async () => {
+  if (unsubscribeVersionUpdate) {
+    unsubscribeVersionUpdate()
+    unsubscribeVersionUpdate = null
+  }
 })
 </script>
 
@@ -218,6 +348,16 @@ onMounted(async () => {
       }
 
       .setting-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .version-text {
+          font-family: 'SF Mono', Monaco, monospace;
+          font-size: 0.85rem;
+          color: var(--text-muted);
+        }
+
         .arrow-icon {
           color: var(--text-muted);
         }
