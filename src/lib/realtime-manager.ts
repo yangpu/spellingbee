@@ -82,15 +82,21 @@ const CONFIG = {
   // 最大硬重连次数
   MAX_HARD_RECONNECT_ATTEMPTS: 5,
   // 基础重连延迟（毫秒）
-  BASE_RECONNECT_DELAY: 1000,
+  BASE_RECONNECT_DELAY: 500,
   // 最大重连延迟（毫秒）
-  MAX_RECONNECT_DELAY: 30000,
+  MAX_RECONNECT_DELAY: 15000,
   // 默认 channel 超时（毫秒）
-  DEFAULT_CHANNEL_TIMEOUT: 15000,
+  DEFAULT_CHANNEL_TIMEOUT: 10000,
   // 连接稳定等待时间（毫秒）
-  CONNECTION_STABLE_DELAY: 500,
+  CONNECTION_STABLE_DELAY: 200,
   // 清理等待时间（毫秒）
-  CLEANUP_DELAY: 100,
+  CLEANUP_DELAY: 50,
+  // 网络恢复后立即重连延迟（毫秒）
+  NETWORK_RECOVERY_DELAY: 100,
+  // 等待重连完成的最大时间（毫秒）
+  WAIT_FOR_RECONNECT_TIMEOUT: 10000,
+  // 网络状态检测间隔（毫秒）
+  NETWORK_CHECK_INTERVAL: 200,
 } as const
 
 // ==================== RealtimeManager 类 ====================
@@ -119,6 +125,9 @@ class RealtimeManager {
   
   // channel ID 计数器（用于生成唯一名称）
   private channelIdCounter = 0
+  
+  // 页面是否正在卸载
+  private isUnloading = false
   
   // ==================== 公共 API ====================
   
@@ -210,7 +219,7 @@ class RealtimeManager {
   /**
    * 等待重连完成
    */
-  private async waitForReconnect(maxWait = 30000): Promise<void> {
+  private async waitForReconnect(maxWait = CONFIG.WAIT_FOR_RECONNECT_TIMEOUT): Promise<void> {
     const startTime = Date.now()
     let waitCount = 0
     while (this.isReconnecting && Date.now() - startTime < maxWait) {
@@ -218,7 +227,7 @@ class RealtimeManager {
       if (waitCount % 10 === 0) {
         this.log(`Still waiting for reconnect... (${Math.round((Date.now() - startTime) / 1000)}s)`)
       }
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, CONFIG.NETWORK_CHECK_INTERVAL))
     }
     if (this.isReconnecting) {
       this.warn('Reconnect wait timeout, proceeding anyway')
@@ -264,12 +273,14 @@ class RealtimeManager {
    * 强制重连所有 channel
    */
   async forceReconnect(): Promise<void> {
-    if (this.isReconnecting) {
-      this.log('Already reconnecting, skip')
-      return
-    }
-    
     this.log('Force reconnecting all channels...')
+    
+    // 重置所有重连计数器
+    this.clearReconnectTimer()
+    this.softReconnectAttempts = 0
+    this.hardReconnectAttempts = 0
+    this.isReconnecting = false  // 强制重置，允许立即重连
+    
     await this.hardReconnect()
   }
   
@@ -510,6 +521,14 @@ class RealtimeManager {
     document.addEventListener('visibilitychange', this.handleVisibilityChange)
     window.addEventListener('beforeunload', this.handleBeforeUnload)
     window.addEventListener('pagehide', this.handlePageHide)
+    
+    // 监听网络连接变化（包括网络切换、休眠恢复等）
+    if ('connection' in navigator) {
+      const connection = (navigator as any).connection
+      if (connection) {
+        connection.addEventListener('change', this.handleNetworkChange)
+      }
+    }
   }
   
   /**
@@ -523,6 +542,41 @@ class RealtimeManager {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
     window.removeEventListener('beforeunload', this.handleBeforeUnload)
     window.removeEventListener('pagehide', this.handlePageHide)
+    
+    // 移除网络连接变化监听
+    if ('connection' in navigator) {
+      const connection = (navigator as any).connection
+      if (connection) {
+        connection.removeEventListener('change', this.handleNetworkChange)
+      }
+    }
+  }
+  
+  /**
+   * 处理网络连接变化（休眠恢复、网络切换等）
+   */
+  private handleNetworkChange = async (): Promise<void> => {
+    this.log('Network connection changed')
+    
+    // 检查当前网络状态
+    if (!navigator.onLine) {
+      this.handleOffline()
+      return
+    }
+    
+    // 网络已恢复，立即尝试重连
+    this._isOnline.value = true
+    
+    // 如果连接已断开，立即重连
+    if (!this.isAllConnected() && !this.isReconnecting) {
+      this.log('Network changed and not all connected, triggering immediate reconnect')
+      this.clearReconnectTimer()
+      this.softReconnectAttempts = 0
+      this.hardReconnectAttempts = 0
+      
+      // 立即重连，不等待
+      await this.hardReconnect()
+    }
   }
   
   /**
@@ -537,10 +591,11 @@ class RealtimeManager {
     this.softReconnectAttempts = 0
     this.hardReconnectAttempts = 0
     
-    // 延迟后检查并重连
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    // 立即检查连接状态，快速重连
+    await new Promise(resolve => setTimeout(resolve, CONFIG.NETWORK_RECOVERY_DELAY))
     
     if (this._isOnline.value && !this.isAllConnected()) {
+      this.log('Network online and not all connected, triggering immediate reconnect')
       await this.hardReconnect()
     }
   }
@@ -578,17 +633,18 @@ class RealtimeManager {
       // 只有在网络在线时才处理
       if (!this._isOnline.value) return
       
+      // 重置重连计数
+      this.softReconnectAttempts = 0
+      this.hardReconnectAttempts = 0
+      
       // 如果隐藏时间超过阈值，强制硬重连
       if (hiddenDuration > CONFIG.VISIBILITY_RECONNECT_THRESHOLD) {
         this.log('Triggering hard reconnect due to long visibility change')
-        this.softReconnectAttempts = 0
-        this.hardReconnectAttempts = 0
         await this.hardReconnect()
       } else if (!this.isAllConnected()) {
-        // 短时间隐藏但连接已断开，尝试软重连
-        this.log('Triggering soft reconnect due to disconnected channels')
-        this.softReconnectAttempts = 0
-        await this.softReconnect()
+        // 短时间隐藏但连接已断开，立即尝试硬重连（更可靠）
+        this.log('Triggering hard reconnect due to disconnected channels after visibility change')
+        await this.hardReconnect()
       }
       // 短时间隐藏且连接正常，不做任何操作
     }
@@ -598,6 +654,9 @@ class RealtimeManager {
    * 处理页面关闭
    */
   private handleBeforeUnload = (): void => {
+    // 标记页面正在卸载，阻止任何重连尝试
+    this.isUnloading = true
+    
     // 同步离开所有 presence
     for (const managed of this.channels.values()) {
       if (managed.channel) {
@@ -611,7 +670,11 @@ class RealtimeManager {
   /**
    * 处理页面隐藏（移动端）
    */
-  private handlePageHide = (): void => {
+  private handlePageHide = (event: PageTransitionEvent): void => {
+    // 如果是页面卸载（刷新/关闭），标记为正在卸载
+    if (event.persisted === false) {
+      this.isUnloading = true
+    }
     this.handleBeforeUnload()
   }
   
@@ -619,6 +682,7 @@ class RealtimeManager {
    * 安排重连
    */
   private scheduleReconnect(): void {
+    if (this.isUnloading) return  // 页面正在卸载，不重连
     if (this.isReconnecting || this.reconnectTimer) return
     if (!this._isOnline.value) return
     
@@ -641,6 +705,7 @@ class RealtimeManager {
     this.reconnectTimer = setTimeout(async () => {
       this.reconnectTimer = null
       
+      if (this.isUnloading) return  // 页面正在卸载，不重连
       if (!this._isOnline.value || this.isAllConnected()) return
       
       this.softReconnectAttempts++
@@ -652,6 +717,7 @@ class RealtimeManager {
    * 软重连：只重连断开的 channel
    */
   private async softReconnect(): Promise<void> {
+    if (this.isUnloading) return  // 页面正在卸载，不重连
     if (this.isReconnecting) return
     this.isReconnecting = true
     this._status.value = 'reconnecting'
@@ -699,9 +765,18 @@ class RealtimeManager {
    * 硬重连：彻底销毁所有连接并重建
    */
   private async hardReconnect(): Promise<void> {
+    // 页面正在卸载，不重连
+    if (this.isUnloading) return
+    
     if (this.hardReconnectAttempts >= CONFIG.MAX_HARD_RECONNECT_ATTEMPTS) {
       this.warn('Max hard reconnect attempts reached, giving up')
       this.hardReconnectAttempts = 0
+      return
+    }
+    
+    // 防止并发重连
+    if (this.isReconnecting) {
+      this.log('Already reconnecting, skip duplicate call')
       return
     }
     
@@ -717,6 +792,7 @@ class RealtimeManager {
       const hasSession = await this.refreshSession()
       if (!hasSession) {
         this.warn('No valid session, cannot reconnect')
+        this.isReconnecting = false
         this.scheduleHardReconnect()
         return
       }
@@ -739,7 +815,7 @@ class RealtimeManager {
         this.warn('Error removing all channels:', e)
       }
       
-      // 5. 断开并重连 Realtime
+      // 5. 断开并重连 Realtime（快速重连）
       try {
         // @ts-ignore
         if (supabase.realtime?.disconnect) {
@@ -750,7 +826,8 @@ class RealtimeManager {
         this.warn('Error disconnecting realtime:', e)
       }
       
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // 短暂等待后立即重连
+      await new Promise(resolve => setTimeout(resolve, CONFIG.CONNECTION_STABLE_DELAY))
       
       try {
         // @ts-ignore
@@ -764,7 +841,9 @@ class RealtimeManager {
       
       await new Promise(resolve => setTimeout(resolve, CONFIG.CONNECTION_STABLE_DELAY))
       
-      // 6. 重新订阅所有 channel
+      // 6. 重新订阅所有 channel（标记为非重连状态以避免死锁）
+      this.isReconnecting = false
+      
       for (const config of channelsToResubscribe) {
         try {
           await this.subscribe(config)
@@ -784,9 +863,8 @@ class RealtimeManager {
       }
     } catch (e) {
       this.error('Hard reconnect failed:', e)
-      this.scheduleHardReconnect()
-    } finally {
       this.isReconnecting = false
+      this.scheduleHardReconnect()
     }
   }
   
@@ -794,20 +872,23 @@ class RealtimeManager {
    * 安排硬重连
    */
   private scheduleHardReconnect(): void {
+    if (this.isUnloading) return  // 页面正在卸载，不重连
     if (this.hardReconnectAttempts >= CONFIG.MAX_HARD_RECONNECT_ATTEMPTS) {
       this.warn('Max hard reconnect attempts reached')
       return
     }
     
+    // 快速指数退避：500ms, 1s, 2s, 4s...
     const delay = Math.min(
-      2000 * Math.pow(2, this.hardReconnectAttempts),
+      CONFIG.BASE_RECONNECT_DELAY * Math.pow(2, this.hardReconnectAttempts),
       CONFIG.MAX_RECONNECT_DELAY
     )
     
     this.log(`Scheduling hard reconnect in ${delay}ms`)
     
     setTimeout(() => {
-      if (this._isOnline.value && !this.isAllConnected()) {
+      if (this.isUnloading) return  // 页面正在卸载，不重连
+      if (this._isOnline.value && !this.isAllConnected() && !this.isReconnecting) {
         this.hardReconnect()
       }
     }, delay)
