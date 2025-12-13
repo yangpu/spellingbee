@@ -88,8 +88,21 @@ let unsubscribeVersionUpdate: (() => void) | null = null
 // 主题存储键
 const THEME_KEY = 'spellingbee_theme'
 
-// 当前主题
-const currentTheme = ref<'light' | 'dark'>('light')
+// 获取初始主题（从 localStorage 或系统偏好）
+function getInitialTheme(): 'light' | 'dark' {
+  const savedTheme = localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null
+  if (savedTheme) {
+    return savedTheme
+  }
+  // 检测系统主题偏好
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'dark'
+  }
+  return 'light'
+}
+
+// 当前主题（初始值从 localStorage 读取，避免闪烁）
+const currentTheme = ref<'light' | 'dark'>(getInitialTheme())
 
 // 显示版本信息对话框
 const showVersionDialog = async () => {
@@ -255,17 +268,8 @@ watch(currentTheme, async (newTheme) => {
 
 // 初始化主题
 onMounted(async () => {
-  // 1. 先尝试从本地加载（快速响应）
-  const localTheme = localStorage.getItem(THEME_KEY) as 'light' | 'dark' | null
-  if (localTheme) {
-    currentTheme.value = localTheme
-    applyTheme(localTheme)
-  } else {
-    // 检测系统主题偏好
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    currentTheme.value = prefersDark ? 'dark' : 'light'
-    applyTheme(currentTheme.value)
-  }
+  // 1. 应用当前主题到 DOM（初始值已从 localStorage 读取）
+  applyTheme(currentTheme.value)
   
   // 2. 如果已登录，从云端加载（可能覆盖本地）
   if (authStore.user) {

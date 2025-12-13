@@ -456,87 +456,127 @@ const randomCoverUrl = ref('')
 const loadingRandomCover = ref(false)
 const defaultCoverUrl = `${import.meta.env.BASE_URL}challenge-default.svg`
 
-// 图片预缓存机制
-const IMAGE_CACHE_KEY = 'spellingbee_cover_cache'
-const MAX_CACHE_SIZE = 5 // 最多缓存5张图片
-const cachedImages = ref([])
+// 图片预缓存机制（单词-图片对）
+const IMAGE_CACHE_KEY = 'spellingbee_cover_cache_v2'
+const CURRENT_COVER_KEY = 'spellingbee_current_cover' // 当前使用的单词-图片对
+const MAX_CACHE_SIZE = 5 // 最多缓存5个单词-图片对
+// 缓存结构: { word: string, imageUrl: string }[]
+const cachedCovers = ref([])
+// 当前使用的单词-图片对（打开弹窗时使用，创建成功后清除）
+const currentCover = ref(null)
 
-// 加载缓存的图片
+// 加载缓存
 function loadImageCache() {
   try {
+    // 加载缓存列表
     const cached = localStorage.getItem(IMAGE_CACHE_KEY)
     if (cached) {
-      cachedImages.value = JSON.parse(cached)
+      cachedCovers.value = JSON.parse(cached)
+    }
+    // 加载当前使用的封面
+    const current = localStorage.getItem(CURRENT_COVER_KEY)
+    if (current) {
+      currentCover.value = JSON.parse(current)
     }
   } catch (e) {
     console.warn('Failed to load image cache:', e)
-    cachedImages.value = []
+    cachedCovers.value = []
+    currentCover.value = null
   }
 }
 
-// 保存图片缓存
+// 保存缓存列表
 function saveImageCache() {
   try {
-    localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(cachedImages.value))
+    localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(cachedCovers.value))
   } catch (e) {
     console.warn('Failed to save image cache:', e)
   }
 }
 
-// 从缓存获取一张图片
-function getImageFromCache() {
-  if (cachedImages.value.length > 0) {
-    const url = cachedImages.value.shift()
+// 保存当前使用的封面
+function saveCurrentCover() {
+  try {
+    if (currentCover.value) {
+      localStorage.setItem(CURRENT_COVER_KEY, JSON.stringify(currentCover.value))
+    } else {
+      localStorage.removeItem(CURRENT_COVER_KEY)
+    }
+  } catch (e) {
+    console.warn('Failed to save current cover:', e)
+  }
+}
+
+// 从缓存获取一个单词-图片对（不删除，只是取出使用）
+function getCoverFromCache() {
+  if (cachedCovers.value.length > 0) {
+    // 取出第一个作为当前使用
+    const cover = cachedCovers.value.shift()
     saveImageCache()
-    return url
+    return cover
   }
   return null
 }
 
-// 添加图片到缓存
-function addImageToCache(url) {
-  if (!url || cachedImages.value.includes(url)) return
-  cachedImages.value.push(url)
+// 添加单词-图片对到缓存
+function addCoverToCache(word, imageUrl) {
+  if (!word || !imageUrl) return
+  // 检查是否已存在相同单词
+  if (cachedCovers.value.some(c => c.word === word)) return
+  cachedCovers.value.push({ word, imageUrl })
   // 保持缓存大小
-  while (cachedImages.value.length > MAX_CACHE_SIZE) {
-    cachedImages.value.shift()
+  while (cachedCovers.value.length > MAX_CACHE_SIZE) {
+    cachedCovers.value.shift()
   }
   saveImageCache()
 }
 
-// 后台预加载图片到缓存
+// 清除当前使用的封面（创建成功后调用）
+function clearCurrentCover() {
+  currentCover.value = null
+  saveCurrentCover()
+}
+
+// 后台预加载单词-图片对到缓存
 async function prefetchImages() {
   // 如果缓存已满，不需要预加载
-  if (cachedImages.value.length >= MAX_CACHE_SIZE) return
+  if (cachedCovers.value.length >= MAX_CACHE_SIZE) return
 
-  const needCount = MAX_CACHE_SIZE - cachedImages.value.length
+  const needCount = MAX_CACHE_SIZE - cachedCovers.value.length
 
-  // 并行获取多张图片
-  const fetchPromises = []
+  // 先生成随机单词列表
+  const words = []
   for (let i = 0; i < needCount; i++) {
-    fetchPromises.push(fetchSingleImage())
+    const word = await getRandomWordForName()
+    // 避免重复单词
+    if (!words.includes(word) && !cachedCovers.value.some(c => c.word === word)) {
+      words.push(word)
+    }
   }
 
+  // 并行获取每个单词对应的图片
+  const fetchPromises = words.map(word => fetchImageForWord(word))
+
   const results = await Promise.allSettled(fetchPromises)
-  results.forEach(result => {
+  results.forEach((result, index) => {
     if (result.status === 'fulfilled' && result.value) {
-      addImageToCache(result.value)
+      addCoverToCache(words[index], result.value)
     }
   })
 }
 
-// 获取单张图片（不更新UI状态）
-async function fetchSingleImage() {
-  // 尝试 Unsplash
+// 根据单词获取对应主题的图片
+async function fetchImageForWord(word) {
+  // 尝试 Unsplash（使用单词作为查询主题）
   try {
     const url = await Promise.race([
-      fetchFromUnsplash(),
+      fetchFromUnsplashWithWord(word),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
     ])
     if (url) return url
   } catch { }
 
-  // 尝试 Picsum
+  // 尝试 Picsum（不支持主题，作为备用）
   try {
     const url = await Promise.race([
       fetchFromPicsum(),
@@ -545,10 +585,10 @@ async function fetchSingleImage() {
     if (url) return url
   } catch { }
 
-  // 尝试 LoremFlickr（第三备选）
+  // 尝试 LoremFlickr（使用单词作为主题）
   try {
     const url = await Promise.race([
-      fetchFromLoremFlickr(),
+      fetchFromLoremFlickrWithWord(word),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
     ])
     if (url) return url
@@ -722,26 +762,41 @@ async function getRandomWordForName() {
 
 // 打开创建对话框
 async function openCreateDialog() {
-  // 获取新的随机单词并保存
-  savedRandomWord.value = await getRandomWordForName()
-  createData.name = `挑战赛-${savedRandomWord.value.toUpperCase()}`
-  // 根据保存的封面类型设置
+  // 重置自定义封面状态
   customCoverUrl.value = ''
-  randomCoverUrl.value = ''
   coverFiles.value = []
 
-  // 根据封面类型设置 image_url
+  // 根据封面类型设置
   if (coverType.value === 'none') {
+    // 无封面模式：生成新的随机单词
+    savedRandomWord.value = await getRandomWordForName()
+    createData.name = `挑战赛-${savedRandomWord.value.toUpperCase()}`
     createData.image_url = ''
+    randomCoverUrl.value = ''
   } else if (coverType.value === 'default') {
+    // 默认封面模式：生成新的随机单词
+    savedRandomWord.value = await getRandomWordForName()
+    createData.name = `挑战赛-${savedRandomWord.value.toUpperCase()}`
     createData.image_url = 'default'
+    randomCoverUrl.value = ''
   } else if (coverType.value === 'random') {
-    // 随机封面：自动获取新图片
-    createData.image_url = ''
-    fetchRandomCover()
+    // 随机封面模式：优先使用当前封面，否则从缓存获取或实时获取
+    if (currentCover.value) {
+      // 使用已有的当前封面
+      savedRandomWord.value = currentCover.value.word
+      createData.name = `挑战赛-${currentCover.value.word.toUpperCase()}`
+      randomCoverUrl.value = currentCover.value.imageUrl
+      createData.image_url = currentCover.value.imageUrl
+    } else {
+      // 从缓存获取或实时获取
+      createData.image_url = ''
+      randomCoverUrl.value = ''
+      fetchRandomCover()
+    }
   } else if (coverType.value === 'custom') {
-    // 自定义封面：需要重新上传，回退到随机
+    // 自定义封面：需要重新上传，回退到随机模式
     createData.image_url = ''
+    randomCoverUrl.value = ''
     coverType.value = 'random'
     fetchRandomCover()
   }
@@ -938,18 +993,20 @@ function selectCoverType(type) {
   }
 }
 
-// 选择随机封面
+// 选择随机封面（点击时切换到下一个随机单词和图片）
 async function selectRandomCover() {
   coverType.value = 'random'
+  // 清除当前封面，强制获取下一个
+  currentCover.value = null
+  saveCurrentCover()
+  randomCoverUrl.value = ''
   await fetchRandomCover()
 }
 
 // Unsplash API 配置
 const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY
-// 随机封面主题列表
-const randomCoverTopics = ['technology', 'artificial-intelligence', 'sports', 'nature']
 
-// 获取随机封面图片（优先使用缓存）
+// 获取随机封面图片（优先使用当前封面或缓存）
 async function fetchRandomCover() {
   // 如果正在加载，允许重新点击（取消当前加载）
   if (loadingRandomCover.value) {
@@ -961,24 +1018,44 @@ async function fetchRandomCover() {
   loadingRandomCover.value = true
 
   try {
-    // 优先从缓存获取
-    const cachedUrl = getImageFromCache()
-    if (cachedUrl) {
-      randomCoverUrl.value = cachedUrl
-      createData.image_url = cachedUrl
+    // 1. 如果已有当前封面，直接使用
+    if (currentCover.value) {
+      randomCoverUrl.value = currentCover.value.imageUrl
+      createData.image_url = currentCover.value.imageUrl
       loadingRandomCover.value = false
       // 后台补充缓存
       prefetchImages()
       return
     }
 
-    // 缓存为空，实时获取（总超时6秒）
+    // 2. 从缓存获取
+    const cached = getCoverFromCache()
+    if (cached) {
+      currentCover.value = cached
+      saveCurrentCover()
+      savedRandomWord.value = cached.word
+      createData.name = `挑战赛-${cached.word.toUpperCase()}`
+      randomCoverUrl.value = cached.imageUrl
+      createData.image_url = cached.imageUrl
+      loadingRandomCover.value = false
+      // 后台补充缓存
+      prefetchImages()
+      return
+    }
+
+    // 3. 缓存为空，实时获取（使用当前的随机单词）
+    const word = savedRandomWord.value || await getRandomWordForName()
+    savedRandomWord.value = word
+    createData.name = `挑战赛-${word.toUpperCase()}`
+    
     const imageUrl = await Promise.race([
-      fetchSingleImage(),
+      fetchImageForWord(word),
       new Promise((resolve) => setTimeout(() => resolve(null), 6000))
     ])
 
     if (imageUrl) {
+      currentCover.value = { word, imageUrl }
+      saveCurrentCover()
       randomCoverUrl.value = imageUrl
       createData.image_url = imageUrl
       // 后台补充缓存
@@ -996,11 +1073,10 @@ async function fetchRandomCover() {
   }
 }
 
-// 从 Unsplash 获取图片
-async function fetchFromUnsplash() {
-  const topic = randomCoverTopics[Math.floor(Math.random() * randomCoverTopics.length)]
+// 从 Unsplash 获取图片（使用单词作为主题）
+async function fetchFromUnsplashWithWord(word) {
   const response = await fetch(
-    `https://api.unsplash.com/photos/random?query=${topic}&orientation=landscape&w=800&h=400`,
+    `https://api.unsplash.com/photos/random?query=${encodeURIComponent(word)}&orientation=landscape&w=800&h=400`,
     {
       headers: {
         'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}`
@@ -1034,10 +1110,9 @@ async function fetchFromPicsum() {
   return imageUrl
 }
 
-// 从 LoremFlickr 获取图片（备用服务2）
-async function fetchFromLoremFlickr() {
-  const topic = randomCoverTopics[Math.floor(Math.random() * randomCoverTopics.length)]
-  const imageUrl = `https://loremflickr.com/800/400/${topic}?random=${Date.now()}`
+// 从 LoremFlickr 获取图片（使用单词作为主题）
+async function fetchFromLoremFlickrWithWord(word) {
+  const imageUrl = `https://loremflickr.com/800/400/${encodeURIComponent(word)}?random=${Date.now()}`
 
   // 预加载图片（2秒超时）
   await preloadImage(imageUrl, 2000)
@@ -1210,8 +1285,15 @@ async function quickCreate(playerCount) {
   quickCreating.value = playerCount
 
   try {
-    // 使用已保存的随机单词（如果没有则重新获取）
-    const randomWord = savedRandomWord.value || await getRandomWordForName()
+    // 使用当前封面的单词，或已保存的随机单词，或重新获取
+    let randomWord = ''
+    if (currentCover.value) {
+      randomWord = currentCover.value.word
+    } else if (savedRandomWord.value) {
+      randomWord = savedRandomWord.value
+    } else {
+      randomWord = await getRandomWordForName()
+    }
     // 直接使用带时间戳的名称，避免重复检查的数据库请求
     const timestamp = Date.now().toString(36).slice(-4)
     const finalName = `${playerCount}人对战-${randomWord.toUpperCase()}-${timestamp}`
@@ -1226,8 +1308,8 @@ async function quickCreate(playerCount) {
     } else if (coverType.value === 'default') {
       imageUrl = 'default'
     } else if (coverType.value === 'random') {
-      // 随机封面：只使用已加载成功的图片，否则留空
-      imageUrl = randomCoverUrl.value || ''
+      // 随机封面：优先使用当前封面，否则使用已加载的图片
+      imageUrl = currentCover.value?.imageUrl || randomCoverUrl.value || ''
     } else if (coverType.value === 'custom' && customCoverUrl.value) {
       imageUrl = customCoverUrl.value
     }
@@ -1258,6 +1340,11 @@ async function quickCreate(playerCount) {
     if (challengeStore.currentChallenge) {
       router.push({ name: 'ChallengeRoom', params: { id: challengeStore.currentChallenge.id } })
     }
+
+    // 创建成功后清除当前封面（下次打开会使用新的）
+    clearCurrentCover()
+    savedRandomWord.value = ''
+    randomCoverUrl.value = ''
   } catch (error) {
     MessagePlugin.error(error.message || '创建失败')
     // 超时或失败时清理可能的残留状态
@@ -1310,6 +1397,9 @@ async function handleCreate({ validateResult }) {
       router.push({ name: 'ChallengeRoom', params: { id: challengeStore.currentChallenge.id } })
     }
 
+    // 创建成功后清除当前封面（下次打开会使用新的）
+    clearCurrentCover()
+    
     // 重置名称和封面，保留其他设置
     createData.name = ''
     createData.description = ''
@@ -1317,6 +1407,7 @@ async function handleCreate({ validateResult }) {
     coverFiles.value = []
     customCoverUrl.value = ''
     randomCoverUrl.value = ''
+    savedRandomWord.value = ''
     coverType.value = 'random'
   } catch (error) {
     MessagePlugin.error(error.message || '创建失败')
