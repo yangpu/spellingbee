@@ -93,7 +93,7 @@ export const useChallengeStore = defineStore('challenge', () => {
   function initRealtimeStatusListener(): void {
     if (unsubscribeRealtimeStatus) return
     
-    unsubscribeRealtimeStatus = realtimeManager.onStatusChange((status) => {
+    unsubscribeRealtimeStatus = realtimeManager.onStatusChange(async (status) => {
       realtimeStatus.value = status
       
       // 更新本地用户的在线状态
@@ -106,6 +106,22 @@ export const useChallengeStore = defineStore('challenge', () => {
             myParticipant.is_online = true
             if (isHost.value) {
               myParticipant.is_ready = true
+            }
+            
+            // 重连成功后，重新发送 Presence 状态到服务器
+            // 这样其他用户才能看到我们的在线状态
+            if (currentChannelName.value) {
+              try {
+                await updatePresence({ 
+                  is_ready: myParticipant.is_ready,
+                  score: myParticipant.score || 0
+                })
+                
+                // 同时触发一次 Presence 同步，获取其他用户的最新状态
+                handlePresenceSync()
+              } catch (e) {
+                console.warn('[Challenge] Failed to update presence after reconnect:', e)
+              }
             }
           } else if (status === 'disconnected') {
             myParticipant.is_online = false
@@ -315,12 +331,25 @@ export const useChallengeStore = defineStore('challenge', () => {
     let participant = currentChallenge.value.participants.find(p => p.user_id === userId)
     
     if (participant) {
+      // 更新已存在的参与者状态
       participant.is_online = true
       if (userId === currentChallenge.value.creator_id) {
         participant.is_ready = true
       } else {
         participant.is_ready = presence.is_ready || false
       }
+    } else {
+      // 添加新参与者（通过 Presence 发现的新用户）
+      const newParticipant: ChallengeParticipant = {
+        user_id: userId,
+        nickname: presence.nickname || '未知用户',
+        avatar_url: presence.avatar_url,
+        is_online: true,
+        is_ready: presence.is_ready || false,
+        score: presence.score || 0,
+        joined_at: new Date().toISOString()
+      }
+      currentChallenge.value.participants.push(newParticipant)
     }
     
     if (isHost.value) {

@@ -123,9 +123,6 @@ class RealtimeManager {
   // 事件监听器是否已添加
   private listenersInitialized = false
   
-  // channel ID 计数器（用于生成唯一名称）
-  private channelIdCounter = 0
-  
   // 页面是否正在卸载
   private isUnloading = false
   
@@ -397,9 +394,9 @@ class RealtimeManager {
     const { config } = managed
     const timeout = config.timeout || CONFIG.DEFAULT_CHANNEL_TIMEOUT
     
-    // 生成唯一的 channel 名称（避免冲突）
-    this.channelIdCounter++
-    const uniqueName = `${config.name}-${this.channelIdCounter}`
+    // 使用配置的 channel 名称作为 Supabase channel 名称
+    // 注意：所有客户端必须使用相同的 channel 名称才能互相通信
+    const channelName = config.name
     
     // 创建 channel
     const channelOptions: any = {
@@ -412,7 +409,7 @@ class RealtimeManager {
       channelOptions.config.presence = { key: config.presenceConfig.key }
     }
     
-    const channel = supabase.channel(uniqueName, channelOptions)
+    const channel = supabase.channel(channelName, channelOptions)
     
     // 添加订阅
     for (const sub of config.subscriptions) {
