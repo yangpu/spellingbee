@@ -8,233 +8,436 @@
     @close="handleClose"
   >
     <div class="speech-settings">
-      <!-- 平台信息 -->
-      <div class="platform-info">
-        <t-tag theme="primary" variant="light">
-          {{ platformLabel }}
-        </t-tag>
-        <div class="voice-counts">
-          <span class="voice-count">英文: {{ speechStore.englishVoiceCount }} 个</span>
-          <span class="voice-count">中文: {{ speechStore.chineseVoiceCount }} 个</span>
+      <!-- 语音源选择 -->
+      <div class="provider-section">
+        <div class="section-header">
+          <span class="section-title">语音源</span>
+          <div class="cache-info" v-if="cacheStats && cacheStats.count > 0">
+            <span class="cache-text">缓存: {{ formatSize(cacheStats.totalSize) }}</span>
+            <t-button variant="text" size="small" @click="handleClearCache" :loading="clearingCache">
+              <template #icon><t-icon name="delete" size="14px" /></template>
+            </t-button>
+          </div>
+        </div>
+        <div class="provider-list">
+          <div 
+            class="provider-item" 
+            :class="{ active: currentProvider === 'browser' }"
+            @click="selectProvider('browser')"
+          >
+            <t-icon name="laptop" />
+            <span class="provider-name">浏览器语音</span>
+            <t-tag theme="default" size="small" variant="light">默认</t-tag>
+          </div>
+          
+          <div 
+            class="provider-item" 
+            :class="{ active: currentProvider === 'online' }"
+            @click="selectProvider('online')"
+          >
+            <t-icon name="cloud" />
+            <span class="provider-name">在线语音</span>
+            <t-tag v-if="!hasOnlineApiKey" theme="warning" size="small" variant="light">需配置</t-tag>
+            <t-tag v-else theme="success" size="small" variant="light">已配置</t-tag>
+          </div>
+          
+          <div 
+            class="provider-item" 
+            :class="{ active: currentProvider === 'ai' }"
+            @click="selectProvider('ai')"
+          >
+            <t-icon name="root-list" />
+            <span class="provider-name">AI 语音</span>
+            <t-tag v-if="!hasAIApiKey" theme="warning" size="small" variant="light">需配置</t-tag>
+            <t-tag v-else theme="success" size="small" variant="light">已配置</t-tag>
+          </div>
         </div>
       </div>
 
-      <!-- 标签页切换 -->
-      <t-tabs v-model="activeTab">
-        <t-tab-panel value="english" label="英文语音">
-          <div class="voice-config">
-            <!-- 语音选择 -->
+      <!-- 浏览器语音配置 -->
+      <div class="config-panel" v-show="currentProvider === 'browser'">
+        <!-- 平台信息 -->
+        <div class="platform-info">
+          <t-tag theme="primary" variant="light" size="small">
+            {{ platformLabel }}
+          </t-tag>
+          <div class="voice-counts">
+            <span>英文: {{ speechStore.englishVoiceCount }} 个</span>
+            <span>中文: {{ speechStore.chineseVoiceCount }} 个</span>
+          </div>
+        </div>
+
+        <t-tabs v-model="browserLangTab">
+          <t-tab-panel value="english" label="英文语音">
+            <div class="lang-config">
+              <div class="config-item">
+                <label>语音音色</label>
+                <t-select
+                  v-model="browserEnglishConfig.voiceName"
+                  placeholder="选择英文语音"
+                  filterable
+                  :loading="speechStore.loading"
+                >
+                  <t-option
+                    v-for="voice in speechStore.englishVoices"
+                    :key="voice.name"
+                    :value="voice.name"
+                    :label="`${voice.name} (${voice.lang})`"
+                  />
+                </t-select>
+                <span class="config-hint">推荐用于教育场景的清晰发音语音</span>
+              </div>
+              
+              <div class="config-item">
+                <label>语速: {{ browserEnglishConfig.rate.toFixed(2) }}</label>
+                <t-slider v-model="browserEnglishConfig.rate" :min="0.5" :max="1.5" :step="0.05" />
+                <span class="config-hint">学习单词建议使用 0.7-0.9 的较慢语速</span>
+              </div>
+              
+              <div class="config-item">
+                <label>音高: {{ browserEnglishConfig.pitch.toFixed(2) }}</label>
+                <t-slider v-model="browserEnglishConfig.pitch" :min="0.5" :max="1.5" :step="0.05" />
+              </div>
+              
+              <div class="config-item">
+                <label>音量: {{ Math.round(browserEnglishConfig.volume * 100) }}%</label>
+                <t-slider v-model="browserEnglishConfig.volume" :min="0.1" :max="1" :step="0.1" />
+              </div>
+              
+              <div class="preview-section">
+                <t-button variant="outline" size="small" @click="previewBrowserEnglish" :loading="isPreviewing">
+                  <template #icon><t-icon name="sound" /></template>
+                  试听英文
+                </t-button>
+                <t-button variant="outline" size="small" @click="previewWord" :loading="isPreviewing">
+                  <template #icon><t-icon name="play-circle" /></template>
+                  试听单词
+                </t-button>
+              </div>
+            </div>
+          </t-tab-panel>
+          
+          <t-tab-panel value="chinese" label="中文语音">
+            <div class="lang-config">
+              <div class="config-item">
+                <label>语音音色</label>
+                <t-select
+                  v-model="browserChineseConfig.voiceName"
+                  placeholder="选择中文语音"
+                  filterable
+                  :loading="speechStore.loading"
+                >
+                  <t-option
+                    v-for="voice in speechStore.chineseVoices"
+                    :key="voice.name"
+                    :value="voice.name"
+                    :label="`${voice.name} (${voice.lang})`"
+                  />
+                </t-select>
+                <span class="config-hint">用于朗读中文释义</span>
+              </div>
+              
+              <div class="config-item">
+                <label>语速: {{ browserChineseConfig.rate.toFixed(2) }}</label>
+                <t-slider v-model="browserChineseConfig.rate" :min="0.5" :max="1.5" :step="0.05" />
+              </div>
+              
+              <div class="config-item">
+                <label>音高: {{ browserChineseConfig.pitch.toFixed(2) }}</label>
+                <t-slider v-model="browserChineseConfig.pitch" :min="0.5" :max="1.5" :step="0.05" />
+              </div>
+              
+              <div class="config-item">
+                <label>音量: {{ Math.round(browserChineseConfig.volume * 100) }}%</label>
+                <t-slider v-model="browserChineseConfig.volume" :min="0.1" :max="1" :step="0.1" />
+              </div>
+              
+              <div class="preview-section">
+                <t-button variant="outline" size="small" @click="previewBrowserChinese" :loading="isPreviewing">
+                  <template #icon><t-icon name="sound" /></template>
+                  试听中文
+                </t-button>
+              </div>
+            </div>
+          </t-tab-panel>
+          
+          <t-tab-panel value="spelling" label="字母拼读">
+            <div class="lang-config">
+              <div class="spelling-intro">
+                <t-icon name="info-circle" />
+                <span>自动学习模式下逐个字母拼读的语音配置</span>
+              </div>
+              
+              <div class="config-item">
+                <label>字母语速: {{ spellingConfig.rate.toFixed(2) }}</label>
+                <t-slider v-model="spellingConfig.rate" :min="0.8" :max="2.0" :step="0.05" />
+                <span class="config-hint">Windows 建议 1.3-1.6，macOS/iOS 建议 1.0-1.2</span>
+              </div>
+              
+              <div class="config-item">
+                <label>字母音高: {{ spellingConfig.pitch.toFixed(2) }}</label>
+                <t-slider v-model="spellingConfig.pitch" :min="0.8" :max="1.5" :step="0.05" />
+                <span class="config-hint">稍高的音高让字母发音更清晰</span>
+              </div>
+              
+              <div class="config-item">
+                <label>字母间隔: {{ spellingConfig.interval }}ms</label>
+                <t-slider v-model="spellingConfig.interval" :min="50" :max="400" :step="10" />
+                <span class="config-hint">字母之间的停顿时间，Windows 建议 60-100ms</span>
+              </div>
+              
+              <div class="preview-section">
+                <t-button variant="outline" size="small" @click="previewSpelling" :loading="isPreviewing">
+                  <template #icon><t-icon name="sound" /></template>
+                  试听拼读 "APPLE"
+                </t-button>
+              </div>
+            </div>
+          </t-tab-panel>
+        </t-tabs>
+      </div>
+
+      <!-- 在线语音配置 -->
+      <div class="config-panel" v-show="currentProvider === 'online'">
+        <div class="provider-select">
+          <label>选择供应商</label>
+          <t-select v-model="onlineProvider" placeholder="选择在线语音供应商">
+            <t-option
+              v-for="provider in onlineProviders"
+              :key="provider.id"
+              :value="provider.id"
+              :label="provider.name"
+            >
+              <div class="provider-option">
+                <span>{{ provider.name }}</span>
+                <t-tag v-if="provider.free" theme="success" size="small" variant="light">免费试用</t-tag>
+              </div>
+            </t-option>
+          </t-select>
+        </div>
+        
+        <div class="provider-detail" v-if="selectedOnlineProvider">
+          <div class="provider-meta">
+            <a :href="selectedOnlineProvider.website" target="_blank" class="provider-link">
+              <t-icon name="link" size="14px" />
+              {{ selectedOnlineProvider.name }} 官网
+            </a>
+            <span class="provider-desc">{{ selectedOnlineProvider.description }}</span>
+          </div>
+          
+          <div class="api-config" v-if="!selectedOnlineProvider.free">
             <div class="config-item">
-              <label>语音音色</label>
-              <t-select
-                v-model="englishSettings.voice"
-                placeholder="选择英文语音"
-                filterable
-                :loading="speechStore.loading"
-                @change="handleEnglishVoiceChange"
-              >
+              <label>API Key</label>
+              <t-input
+                v-model="onlineEnglishConfig.apiKey"
+                type="password"
+                placeholder="输入 API Key"
+                clearable
+              />
+            </div>
+            
+            <div class="config-item" v-if="onlineProvider === 'azure'">
+              <label>区域 (Region)</label>
+              <t-input v-model="onlineEnglishConfig.region" placeholder="例如: eastus" />
+            </div>
+          </div>
+          
+          <t-tabs v-model="onlineLangTab">
+            <t-tab-panel value="english" label="英文语音">
+              <div class="lang-config">
+                <div class="config-item">
+                  <label>语音音色</label>
+                  <t-select v-model="onlineEnglishConfig.voiceId" placeholder="选择语音">
+                    <t-option
+                      v-for="voice in onlineEnglishVoices"
+                      :key="voice.id"
+                      :value="voice.id"
+                      :label="voice.name"
+                    />
+                  </t-select>
+                </div>
+                
+                <div class="config-item">
+                  <label>语速: {{ onlineEnglishConfig.rate.toFixed(2) }}</label>
+                  <t-slider v-model="onlineEnglishConfig.rate" :min="0.5" :max="2.0" :step="0.1" />
+                </div>
+                
+                <div class="preview-section">
+                  <t-button 
+                    variant="outline" 
+                    size="small"
+                    @click="previewOnlineEnglish" 
+                    :loading="isPreviewing"
+                  >
+                    <template #icon><t-icon name="sound" /></template>
+                    试听英文
+                  </t-button>
+                </div>
+              </div>
+            </t-tab-panel>
+            
+            <t-tab-panel value="chinese" label="中文语音">
+              <div class="lang-config">
+                <div class="config-item">
+                  <label>语音音色</label>
+                  <t-select v-model="onlineChineseConfig.voiceId" placeholder="选择语音">
+                    <t-option
+                      v-for="voice in onlineChineseVoices"
+                      :key="voice.id"
+                      :value="voice.id"
+                      :label="voice.name"
+                    />
+                  </t-select>
+                </div>
+                
+                <div class="config-item">
+                  <label>语速: {{ onlineChineseConfig.rate.toFixed(2) }}</label>
+                  <t-slider v-model="onlineChineseConfig.rate" :min="0.5" :max="2.0" :step="0.1" />
+                </div>
+                
+                <div class="preview-section">
+                  <t-button 
+                    variant="outline" 
+                    size="small"
+                    @click="previewOnlineChinese" 
+                    :loading="isPreviewing"
+                  >
+                    <template #icon><t-icon name="sound" /></template>
+                    试听中文
+                  </t-button>
+                </div>
+              </div>
+            </t-tab-panel>
+          </t-tabs>
+        </div>
+      </div>
+
+      <!-- AI 语音配置 -->
+      <div class="config-panel" v-show="currentProvider === 'ai'">
+        <div class="provider-select">
+          <label>选择供应商</label>
+          <t-select v-model="aiProvider" placeholder="选择 AI 语音供应商">
+            <t-option
+              v-for="provider in aiProviders"
+              :key="provider.id"
+              :value="provider.id"
+              :label="provider.name"
+            >
+              <div class="provider-option">
+                <span>{{ provider.name }}</span>
+                <t-tag v-if="provider.free" theme="success" size="small" variant="light">免费试用</t-tag>
+              </div>
+            </t-option>
+          </t-select>
+        </div>
+        
+        <div class="provider-detail" v-if="selectedAIProvider">
+          <div class="provider-meta">
+            <a :href="selectedAIProvider.website" target="_blank" class="provider-link">
+              <t-icon name="link" size="14px" />
+              {{ selectedAIProvider.name }} 官网
+            </a>
+            <span class="provider-desc">{{ selectedAIProvider.description }}</span>
+          </div>
+          
+          <div class="api-config" v-if="!selectedAIProvider.free">
+            <div class="config-item">
+              <label>API Key</label>
+              <t-input
+                v-model="aiEnglishConfig.apiKey"
+                type="password"
+                placeholder="输入 API Key"
+                clearable
+              />
+            </div>
+            
+            <div class="config-item" v-if="aiProvider === 'openai'">
+              <label>API Base URL (可选)</label>
+              <t-input v-model="aiEnglishConfig.baseUrl" placeholder="默认: https://api.openai.com/v1" />
+            </div>
+            
+            <div class="config-item">
+              <label>模型</label>
+              <t-select v-model="aiEnglishConfig.model" placeholder="选择模型">
                 <t-option
-                  v-for="voice in speechStore.englishVoices"
-                  :key="voice.name"
-                  :value="voice.name"
-                  :label="`${voice.name} (${voice.lang})`"
+                  v-for="model in selectedAIProvider.models"
+                  :key="model"
+                  :value="model"
+                  :label="model"
                 />
               </t-select>
-              <span class="config-hint">推荐用于教育场景的清晰发音语音</span>
-            </div>
-
-            <!-- 语速 -->
-            <div class="config-item slider-item">
-              <label>语速 (Rate): {{ englishSettings.rate.toFixed(2) }}</label>
-              <t-slider
-                v-model="englishSettings.rate"
-                :min="0.5"
-                :max="1.5"
-                :step="0.05"
-                :marks="rateMarks"
-              />
-              <span class="config-hint">学习单词建议使用 0.7-0.9 的较慢语速</span>
-            </div>
-
-            <!-- 音高 -->
-            <div class="config-item slider-item">
-              <label>音高 (Pitch): {{ englishSettings.pitch.toFixed(2) }}</label>
-              <t-slider
-                v-model="englishSettings.pitch"
-                :min="0.5"
-                :max="1.5"
-                :step="0.05"
-                :marks="pitchMarks"
-              />
-              <span class="config-hint">标准音高为 1.0</span>
-            </div>
-
-            <!-- 音量 -->
-            <div class="config-item slider-item">
-              <label>音量 (Volume): {{ Math.round(englishSettings.volume * 100) }}%</label>
-              <t-slider
-                v-model="englishSettings.volume"
-                :min="0.1"
-                :max="1"
-                :step="0.1"
-                :marks="volumeMarks"
-              />
-            </div>
-
-            <!-- 试听按钮 -->
-            <div class="preview-section">
-              <t-button
-                variant="outline"
-                @click="previewEnglish"
-                :loading="isPreviewing"
-              >
-                <template #icon><t-icon name="sound" /></template>
-                试听英文
-              </t-button>
-              <t-button
-                variant="outline"
-                @click="previewEnglishWord"
-                :loading="isPreviewing"
-              >
-                <template #icon><t-icon name="play-circle" /></template>
-                试听单词
-              </t-button>
             </div>
           </div>
-        </t-tab-panel>
-
-        <t-tab-panel value="chinese" label="中文语音">
-          <div class="voice-config">
-            <!-- 语音选择 -->
-            <div class="config-item">
-              <label>语音音色</label>
-              <t-select
-                v-model="chineseSettings.voice"
-                placeholder="选择中文语音"
-                filterable
-                :loading="speechStore.loading"
-                @change="handleChineseVoiceChange"
-              >
-                <t-option
-                  v-for="voice in speechStore.chineseVoices"
-                  :key="voice.name"
-                  :value="voice.name"
-                  :label="`${voice.name} (${voice.lang})`"
-                />
-              </t-select>
-              <span class="config-hint">用于朗读中文释义</span>
-            </div>
-
-            <!-- 语速 -->
-            <div class="config-item">
-              <label>语速 (Rate): {{ chineseSettings.rate.toFixed(2) }}</label>
-              <t-slider
-                v-model="chineseSettings.rate"
-                :min="0.5"
-                :max="1.5"
-                :step="0.05"
-                :marks="rateMarks"
-              />
-            </div>
-
-            <!-- 音高 -->
-            <div class="config-item">
-              <label>音高 (Pitch): {{ chineseSettings.pitch.toFixed(2) }}</label>
-              <t-slider
-                v-model="chineseSettings.pitch"
-                :min="0.5"
-                :max="1.5"
-                :step="0.05"
-                :marks="pitchMarks"
-              />
-            </div>
-
-            <!-- 音量 -->
-            <div class="config-item">
-              <label>音量 (Volume): {{ Math.round(chineseSettings.volume * 100) }}%</label>
-              <t-slider
-                v-model="chineseSettings.volume"
-                :min="0.1"
-                :max="1"
-                :step="0.1"
-                :marks="volumeMarks"
-              />
-            </div>
-
-            <!-- 试听按钮 -->
-            <div class="preview-section">
-              <t-button
-                variant="outline"
-                @click="previewChinese"
-                :loading="isPreviewing"
-              >
-                <template #icon><t-icon name="sound" /></template>
-                试听中文
-              </t-button>
-            </div>
-          </div>
-        </t-tab-panel>
-
-        <t-tab-panel value="spelling" label="字母拼读">
-          <div class="voice-config">
-            <div class="spelling-intro">
-              <t-icon name="info-circle" />
-              <span>自动学习模式下逐个字母拼读的语音配置</span>
-            </div>
-
-            <!-- 字母语速 -->
-            <div class="config-item slider-item">
-              <label>字母语速: {{ spellingSettings.rate.toFixed(2) }}</label>
-              <t-slider
-                v-model="spellingSettings.rate"
-                :min="0.8"
-                :max="2.0"
-                :step="0.05"
-                :marks="spellingRateMarks"
-              />
-              <span class="config-hint">Windows 建议 1.3-1.6，macOS/iOS 建议 1.0-1.2</span>
-            </div>
-
-            <!-- 字母音高 -->
-            <div class="config-item slider-item">
-              <label>字母音高: {{ spellingSettings.pitch.toFixed(2) }}</label>
-              <t-slider
-                v-model="spellingSettings.pitch"
-                :min="0.8"
-                :max="1.5"
-                :step="0.05"
-                :marks="spellingPitchMarks"
-              />
-              <span class="config-hint">稍高的音高让字母发音更清晰</span>
-            </div>
-
-            <!-- 字母间隔 -->
-            <div class="config-item slider-item">
-              <label>字母间隔: {{ spellingSettings.interval }}ms</label>
-              <t-slider
-                v-model="spellingSettings.interval"
-                :min="50"
-                :max="400"
-                :step="10"
-                :marks="intervalMarks"
-              />
-              <span class="config-hint">字母之间的停顿时间，Windows 建议 60-100ms</span>
-            </div>
-
-            <!-- 试听按钮 -->
-            <div class="preview-section">
-              <t-button
-                variant="outline"
-                @click="previewSpelling"
-                :loading="isPreviewing"
-              >
-                <template #icon><t-icon name="sound" /></template>
-                试听拼读 "APPLE"
-              </t-button>
-            </div>
-          </div>
-        </t-tab-panel>
-      </t-tabs>
+          
+          <t-tabs v-model="aiLangTab">
+            <t-tab-panel value="english" label="英文语音">
+              <div class="lang-config">
+                <div class="config-item">
+                  <label>语音音色</label>
+                  <t-select v-model="aiEnglishConfig.voiceId" placeholder="选择语音">
+                    <t-option
+                      v-for="voice in aiEnglishVoices"
+                      :key="voice.id"
+                      :value="voice.id"
+                      :label="voice.name"
+                    />
+                  </t-select>
+                </div>
+                
+                <div class="config-item">
+                  <label>语速: {{ aiEnglishConfig.rate.toFixed(2) }}</label>
+                  <t-slider v-model="aiEnglishConfig.rate" :min="0.5" :max="2.0" :step="0.1" />
+                </div>
+                
+                <div class="preview-section">
+                  <t-button 
+                    variant="outline" 
+                    size="small"
+                    @click="previewAIEnglish" 
+                    :loading="isPreviewing"
+                  >
+                    <template #icon><t-icon name="sound" /></template>
+                    试听英文
+                  </t-button>
+                </div>
+              </div>
+            </t-tab-panel>
+            
+            <t-tab-panel value="chinese" label="中文语音">
+              <div class="lang-config">
+                <div class="config-item">
+                  <label>语音音色</label>
+                  <t-select v-model="aiChineseConfig.voiceId" placeholder="选择语音">
+                    <t-option
+                      v-for="voice in aiChineseVoices"
+                      :key="voice.id"
+                      :value="voice.id"
+                      :label="voice.name"
+                    />
+                  </t-select>
+                </div>
+                
+                <div class="config-item">
+                  <label>语速: {{ aiChineseConfig.rate.toFixed(2) }}</label>
+                  <t-slider v-model="aiChineseConfig.rate" :min="0.5" :max="2.0" :step="0.1" />
+                </div>
+                
+                <div class="preview-section">
+                  <t-button 
+                    variant="outline" 
+                    size="small"
+                    @click="previewAIChinese" 
+                    :loading="isPreviewing"
+                  >
+                    <template #icon><t-icon name="sound" /></template>
+                    试听中文
+                  </t-button>
+                </div>
+              </div>
+            </t-tab-panel>
+          </t-tabs>
+        </div>
+      </div>
 
       <!-- 底部操作 -->
       <div class="dialog-footer">
@@ -257,10 +460,18 @@
   </t-dialog>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useSpeechStore } from '@/stores/speech'
+import type { 
+  TTSProviderType, 
+  BrowserTTSConfig, 
+  OnlineTTSConfig, 
+  AITTSConfig,
+  OnlineTTSProvider,
+  AITTSProvider
+} from '@/lib/tts'
 
 const props = defineProps({
   modelValue: {
@@ -279,89 +490,149 @@ const visible = computed({
   set: (val) => emit('update:modelValue', val)
 })
 
-// 当前标签页
-const activeTab = ref('english')
+// 状态
+const isPreviewing = ref(false)
+const isSaving = ref(false)
+const clearingCache = ref(false)
+const cacheStats = ref<{ count: number; totalSize: number } | null>(null)
 
-// 本地设置副本（用于编辑）
-const englishSettings = reactive({
-  voice: null,
+// 标签页
+const browserLangTab = ref('english')
+const onlineLangTab = ref('english')
+const aiLangTab = ref('english')
+
+// 当前语音源
+const currentProvider = ref<TTSProviderType>('browser')
+
+// 浏览器语音配置
+const browserEnglishConfig = reactive<BrowserTTSConfig>({
+  voiceName: null,
   rate: 0.85,
   pitch: 1.0,
   volume: 1.0
 })
 
-const chineseSettings = reactive({
-  voice: null,
+const browserChineseConfig = reactive<BrowserTTSConfig>({
+  voiceName: null,
   rate: 1.0,
   pitch: 1.0,
   volume: 1.0
 })
 
-const spellingSettings = reactive({
+const spellingConfig = reactive({
   rate: 1.1,
   pitch: 1.1,
   interval: 120
 })
 
-// 状态
-const isPreviewing = ref(false)
-const isSaving = ref(false)
+// 在线语音配置
+const onlineProvider = ref<OnlineTTSProvider>('youdao')
+const onlineEnglishConfig = reactive<OnlineTTSConfig>({
+  provider: 'youdao',
+  voiceId: 'en-US-1',
+  rate: 1.0,
+  pitch: 1.0,
+  volume: 1.0
+})
 
-// 滑块标记
-const rateMarks = {
-  0.5: '0.5',
-  0.75: '0.75',
-  1.0: '1.0',
-  1.25: '1.25',
-  1.5: '1.5'
-}
+const onlineChineseConfig = reactive<OnlineTTSConfig>({
+  provider: 'youdao',
+  voiceId: 'zh-CN-1',
+  rate: 1.0,
+  pitch: 1.0,
+  volume: 1.0
+})
 
-const pitchMarks = {
-  0.5: '低',
-  1.0: '标准',
-  1.5: '高'
-}
+// AI 语音配置
+const aiProvider = ref<AITTSProvider>('minimax')
+const aiEnglishConfig = reactive<AITTSConfig>({
+  provider: 'minimax',
+  voiceId: 'male-qn-qingse',
+  model: 'speech-01',
+  rate: 1.0,
+  pitch: 1.0,
+  volume: 1.0
+})
 
-const volumeMarks = {
-  0.1: '10%',
-  0.5: '50%',
-  1: '100%'
-}
+const aiChineseConfig = reactive<AITTSConfig>({
+  provider: 'minimax',
+  voiceId: 'female-shaonv',
+  model: 'speech-01',
+  rate: 1.0,
+  pitch: 1.0,
+  volume: 1.0
+})
 
-// 字母拼读专用滑块标记
-const spellingRateMarks = {
-  0.8: '0.8',
-  1.0: '1.0',
-  1.2: '1.2',
-  1.5: '1.5',
-  2.0: '2.0'
-}
+// 供应商列表（免费的排在前面）
+const onlineProviders = computed(() => {
+  const providers = speechStore.getOnlineProviders()
+  // 按 free 属性排序，免费的在前面
+  return [...providers].sort((a, b) => {
+    if (a.free && !b.free) return -1
+    if (!a.free && b.free) return 1
+    return 0
+  })
+})
 
-const spellingPitchMarks = {
-  0.8: '低',
-  1.0: '标准',
-  1.2: '高',
-  1.5: '更高'
-}
+const aiProviders = computed(() => {
+  const providers = speechStore.getAIProviders()
+  return [...providers].sort((a, b) => {
+    if (a.free && !b.free) return -1
+    if (!a.free && b.free) return 1
+    return 0
+  })
+})
 
-const intervalMarks = {
-  50: '50',
-  100: '100',
-  200: '200',
-  400: '400'
-}
+// 当前选中的供应商详情
+const selectedOnlineProvider = computed(() => 
+  onlineProviders.value.find(p => p.id === onlineProvider.value)
+)
+
+const selectedAIProvider = computed(() => 
+  aiProviders.value.find(p => p.id === aiProvider.value)
+)
+
+// 供应商语音列表
+const onlineEnglishVoices = computed(() => 
+  selectedOnlineProvider.value?.voices.filter(v => v.language === 'en') || []
+)
+
+const onlineChineseVoices = computed(() => 
+  selectedOnlineProvider.value?.voices.filter(v => v.language === 'zh') || []
+)
+
+const aiEnglishVoices = computed(() => 
+  selectedAIProvider.value?.voices.filter(v => v.language === 'en') || []
+)
+
+const aiChineseVoices = computed(() => 
+  selectedAIProvider.value?.voices.filter(v => v.language === 'zh') || []
+)
+
+// 检查是否配置了 API Key（免费供应商不需要 API Key）
+const hasOnlineApiKey = computed(() => {
+  const provider = selectedOnlineProvider.value
+  if (provider?.free) return true
+  return !!onlineEnglishConfig.apiKey
+})
+
+const hasAIApiKey = computed(() => {
+  const provider = selectedAIProvider.value
+  if (provider?.free) return true
+  return !!aiEnglishConfig.apiKey
+})
 
 // 平台标签
 const platformLabel = computed(() => {
-  const p = speechStore.settings.platform
-  const osMap = {
+  const p = speechStore.ttsSettings.platform
+  const osMap: Record<string, string> = {
     macos: 'macOS',
     windows: 'Windows',
     ios: 'iOS',
     android: 'Android',
     linux: 'Linux'
   }
-  const browserMap = {
+  const browserMap: Record<string, string> = {
     chrome: 'Chrome',
     safari: 'Safari',
     firefox: 'Firefox',
@@ -370,103 +641,172 @@ const platformLabel = computed(() => {
   return `${osMap[p.os] || p.os} / ${browserMap[p.browser] || p.browser}`
 })
 
-// 初始化本地设置
-function initLocalSettings() {
-  Object.assign(englishSettings, speechStore.settings.english)
-  Object.assign(chineseSettings, speechStore.settings.chinese)
-  Object.assign(spellingSettings, speechStore.settings.spelling)
+// 格式化大小
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-// 监听对话框打开
-watch(visible, async (val) => {
-  if (val) {
-    // 确保 speechStore 已初始化
-    if (!speechStore.initialized) {
-      await speechStore.init()
-    }
-    initLocalSettings()
+// 初始化配置
+function initConfigs() {
+  const settings = speechStore.ttsSettings
+  
+  currentProvider.value = settings.activeProvider
+  
+  // 浏览器配置
+  Object.assign(browserEnglishConfig, settings.english.browser)
+  Object.assign(browserChineseConfig, settings.chinese.browser)
+  Object.assign(spellingConfig, settings.spelling)
+  
+  // 在线配置
+  Object.assign(onlineEnglishConfig, settings.english.online)
+  Object.assign(onlineChineseConfig, settings.chinese.online)
+  onlineProvider.value = settings.english.online.provider
+  
+  // AI 配置
+  Object.assign(aiEnglishConfig, settings.english.ai)
+  Object.assign(aiChineseConfig, settings.chinese.ai)
+  aiProvider.value = settings.english.ai.provider
+}
+
+// 加载缓存统计
+async function loadCacheStats() {
+  try {
+    cacheStats.value = await speechStore.getCacheStats()
+  } catch (e) {
+    console.error('Failed to load cache stats:', e)
   }
-})
-
-// 语音变化处理
-function handleEnglishVoiceChange(val) {
-  englishSettings.voice = val
 }
 
-function handleChineseVoiceChange(val) {
-  chineseSettings.voice = val
+// 选择语音源
+function selectProvider(provider: TTSProviderType) {
+  currentProvider.value = provider
 }
 
-// 试听英文
-async function previewEnglish() {
+// 清理缓存
+async function handleClearCache() {
+  clearingCache.value = true
+  try {
+    await speechStore.clearCache()
+    await loadCacheStats()
+    MessagePlugin.success('缓存已清理')
+  } catch (e) {
+    MessagePlugin.error('清理缓存失败')
+  } finally {
+    clearingCache.value = false
+  }
+}
+
+// 试听方法
+async function previewBrowserEnglish() {
   isPreviewing.value = true
   try {
     await speechStore.previewEnglish(
-      englishSettings.voice,
-      englishSettings.rate,
-      englishSettings.pitch,
-      englishSettings.volume
+      browserEnglishConfig.voiceName || undefined,
+      browserEnglishConfig.rate,
+      browserEnglishConfig.pitch,
+      browserEnglishConfig.volume
     )
-  } catch (e) {
-    console.error('Preview error:', e)
   } finally {
     isPreviewing.value = false
   }
 }
 
-// 试听英文单词
-async function previewEnglishWord() {
-  isPreviewing.value = true
-  try {
-    // 使用稍慢的语速朗读单词
-    const wordRate = Math.max(0.6, englishSettings.rate - 0.15)
-    await speechStore.speakEnglish('beautiful', {
-      voice: englishSettings.voice,
-      rate: wordRate,
-      pitch: englishSettings.pitch,
-      volume: englishSettings.volume
-    })
-  } catch (e) {
-    console.error('Preview error:', e)
-  } finally {
-    isPreviewing.value = false
-  }
-}
-
-// 试听中文
-async function previewChinese() {
+async function previewBrowserChinese() {
   isPreviewing.value = true
   try {
     await speechStore.previewChinese(
-      chineseSettings.voice,
-      chineseSettings.rate,
-      chineseSettings.pitch,
-      chineseSettings.volume
+      browserChineseConfig.voiceName || undefined,
+      browserChineseConfig.rate,
+      browserChineseConfig.pitch,
+      browserChineseConfig.volume
     )
-  } catch (e) {
-    console.error('Preview error:', e)
   } finally {
     isPreviewing.value = false
   }
 }
 
-// 试听字母拼读
+async function previewWord() {
+  isPreviewing.value = true
+  try {
+    const wordRate = Math.max(0.6, browserEnglishConfig.rate - 0.15)
+    await speechStore.speakEnglish('beautiful', {
+      voice: browserEnglishConfig.voiceName || undefined,
+      rate: wordRate,
+      pitch: browserEnglishConfig.pitch,
+      volume: browserEnglishConfig.volume
+    })
+  } finally {
+    isPreviewing.value = false
+  }
+}
+
 async function previewSpelling() {
   isPreviewing.value = true
   try {
     const letters = 'APPLE'.split('')
     for (let i = 0; i < letters.length; i++) {
       await speechStore.speakEnglish(letters[i], {
-        rate: spellingSettings.rate,
-        pitch: spellingSettings.pitch
+        rate: spellingConfig.rate,
+        pitch: spellingConfig.pitch
       })
-      // 等待间隔时间
       if (i < letters.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, spellingSettings.interval))
+        await new Promise(resolve => setTimeout(resolve, spellingConfig.interval))
       }
     }
-  } catch (e) {
-    console.error('Preview error:', e)
+  } finally {
+    isPreviewing.value = false
+  }
+}
+
+async function previewOnlineEnglish() {
+  isPreviewing.value = true
+  try {
+    speechStore.updateOnlineSettings('en', onlineEnglishConfig)
+    speechStore.setLanguageProvider('en', 'online')
+    await speechStore.speakEnglish('Hello, this is a test of the online English voice.')
+  } catch (e: any) {
+    MessagePlugin.error(e.message || '试听失败')
+  } finally {
+    isPreviewing.value = false
+  }
+}
+
+async function previewOnlineChinese() {
+  isPreviewing.value = true
+  try {
+    speechStore.updateOnlineSettings('zh', onlineChineseConfig)
+    speechStore.setLanguageProvider('zh', 'online')
+    await speechStore.speakChinese('你好，这是在线中文语音测试。')
+  } catch (e: any) {
+    MessagePlugin.error(e.message || '试听失败')
+  } finally {
+    isPreviewing.value = false
+  }
+}
+
+async function previewAIEnglish() {
+  isPreviewing.value = true
+  try {
+    speechStore.updateAISettings('en', aiEnglishConfig)
+    speechStore.setLanguageProvider('en', 'ai')
+    await speechStore.speakEnglish('Hello, this is a test of the AI English voice.')
+  } catch (e: any) {
+    MessagePlugin.error(e.message || '试听失败')
+  } finally {
+    isPreviewing.value = false
+  }
+}
+
+async function previewAIChinese() {
+  isPreviewing.value = true
+  try {
+    speechStore.updateAISettings('zh', aiChineseConfig)
+    speechStore.setLanguageProvider('zh', 'ai')
+    await speechStore.speakChinese('你好，这是AI中文语音测试。')
+  } catch (e: any) {
+    MessagePlugin.error(e.message || '试听失败')
   } finally {
     isPreviewing.value = false
   }
@@ -475,7 +815,7 @@ async function previewSpelling() {
 // 恢复默认
 function resetToDefaults() {
   speechStore.resetToDefaults()
-  initLocalSettings()
+  initConfigs()
   MessagePlugin.success('已恢复默认设置')
 }
 
@@ -483,9 +823,38 @@ function resetToDefaults() {
 async function handleSave() {
   isSaving.value = true
   try {
-    speechStore.updateEnglishSettings(englishSettings)
-    speechStore.updateChineseSettings(chineseSettings)
-    speechStore.updateSpellingSettings(spellingSettings)
+    // 更新所有配置
+    speechStore.setActiveProvider(currentProvider.value)
+    
+    // 浏览器配置
+    speechStore.updateEnglishSettings(browserEnglishConfig)
+    speechStore.updateChineseSettings(browserChineseConfig)
+    speechStore.updateSpellingSettings(spellingConfig)
+    
+    // 在线配置
+    onlineEnglishConfig.provider = onlineProvider.value
+    onlineChineseConfig.provider = onlineProvider.value
+    speechStore.updateOnlineSettings('en', onlineEnglishConfig)
+    speechStore.updateOnlineSettings('zh', onlineChineseConfig)
+    
+    // AI 配置
+    aiEnglishConfig.provider = aiProvider.value
+    aiChineseConfig.provider = aiProvider.value
+    speechStore.updateAISettings('en', aiEnglishConfig)
+    speechStore.updateAISettings('zh', aiChineseConfig)
+    
+    // 设置语言对应的语音源
+    if (currentProvider.value === 'browser') {
+      speechStore.setLanguageProvider('en', 'browser')
+      speechStore.setLanguageProvider('zh', 'browser')
+    } else if (currentProvider.value === 'online') {
+      speechStore.setLanguageProvider('en', 'online')
+      speechStore.setLanguageProvider('zh', 'online')
+    } else if (currentProvider.value === 'ai') {
+      speechStore.setLanguageProvider('en', 'ai')
+      speechStore.setLanguageProvider('zh', 'ai')
+    }
+    
     await speechStore.saveSettings()
     MessagePlugin.success('语音设置已保存')
     emit('saved')
@@ -500,11 +869,51 @@ async function handleSave() {
 
 // 关闭对话框
 function handleClose() {
-  speechSynthesis.cancel()
+  speechStore.stop()
   visible.value = false
 }
 
-// 组件挂载时初始化
+// 监听对话框打开
+watch(visible, async (val) => {
+  if (val) {
+    if (!speechStore.initialized) {
+      await speechStore.init()
+    }
+    initConfigs()
+    loadCacheStats()
+  }
+})
+
+// 监听在线供应商变化
+watch(onlineProvider, (newProvider) => {
+  onlineEnglishConfig.provider = newProvider
+  onlineChineseConfig.provider = newProvider
+  const provider = onlineProviders.value.find(p => p.id === newProvider)
+  if (provider) {
+    const enVoice = provider.voices.find(v => v.language === 'en')
+    const zhVoice = provider.voices.find(v => v.language === 'zh')
+    if (enVoice) onlineEnglishConfig.voiceId = enVoice.id
+    if (zhVoice) onlineChineseConfig.voiceId = zhVoice.id
+  }
+})
+
+// 监听 AI 供应商变化
+watch(aiProvider, (newProvider) => {
+  aiEnglishConfig.provider = newProvider
+  aiChineseConfig.provider = newProvider
+  const provider = aiProviders.value.find(p => p.id === newProvider)
+  if (provider) {
+    const enVoice = provider.voices.find(v => v.language === 'en')
+    const zhVoice = provider.voices.find(v => v.language === 'zh')
+    if (enVoice) aiEnglishConfig.voiceId = enVoice.id
+    if (zhVoice) aiChineseConfig.voiceId = zhVoice.id
+    if (provider.models.length > 0) {
+      aiEnglishConfig.model = provider.models[0]
+      aiChineseConfig.model = provider.models[0]
+    }
+  }
+})
+
 onMounted(async () => {
   if (!speechStore.initialized) {
     await speechStore.init()
@@ -514,79 +923,215 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .speech-settings {
+  .provider-section {
+    margin-bottom: 1rem;
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+
+      .section-title {
+        font-weight: 500;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+
+      .cache-info {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+
+        .cache-text {
+          font-size: 0.8rem;
+          color: var(--text-muted);
+        }
+      }
+    }
+
+    .provider-list {
+      display: flex;
+      gap: 0.5rem;
+
+      .provider-item {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--bg-card);
+
+        .t-icon {
+          color: var(--text-secondary);
+          font-size: 1rem;
+        }
+
+        .provider-name {
+          flex: 1;
+          font-size: 0.85rem;
+          white-space: nowrap;
+        }
+
+        &:hover {
+          border-color: var(--brand-color);
+          background: var(--hover-bg);
+        }
+
+        &.active {
+          border-color: var(--brand-color);
+          background: var(--brand-color-light, rgba(var(--brand-color-rgb), 0.1));
+
+          .t-icon {
+            color: var(--brand-color);
+          }
+
+          .provider-name {
+            color: var(--brand-color);
+            font-weight: 500;
+          }
+        }
+      }
+    }
+  }
+
+  .config-panel {
+    background: var(--hover-bg);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
   .platform-info {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 1rem;
-    padding: 0.75rem 1rem;
-    background: var(--hover-bg);
-    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-card);
+    border-radius: 6px;
 
     .voice-counts {
       display: flex;
       gap: 1rem;
-    }
-
-    .voice-count {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
+      font-size: 0.8rem;
+      color: var(--text-muted);
     }
   }
 
-  .voice-config {
-    padding: 1rem 0;
+  .lang-config {
+    padding: 0.75rem 0;
+  }
 
-    .config-item {
-      margin-bottom: 1.5rem;
+  .config-item {
+    margin-bottom: 1.25rem;
 
-      label {
-        display: block;
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-        color: var(--text-primary);
-      }
-
-      .config-hint {
-        display: block;
-        margin-top: 0.5rem;
-        font-size: 0.8rem;
-        color: var(--text-muted);
-      }
-
-      :deep(.t-slider) {
-        margin-top: 0.5rem;
-      }
-
-      &.slider-item {
-        .config-hint {
-          margin-top: 1.5rem;
-        }
-      }
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+      font-size: 0.9rem;
     }
 
-    .preview-section {
-      display: flex;
-      gap: 1rem;
-      margin-top: 1.5rem;
-      padding-top: 1rem;
-      border-top: 1px dashed var(--border-color);
+    .config-hint {
+      display: block;
+      margin-top: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
     }
+
+    :deep(.t-slider) {
+      margin-top: 0.5rem;
+    }
+  }
+
+  .preview-section {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--border-color);
   }
 
   .spelling-intro {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    background: var(--hover-bg);
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-    font-size: 0.9rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-card);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
 
     .t-icon {
       color: var(--brand-color);
+    }
+  }
+
+  .provider-select {
+    margin-bottom: 1rem;
+
+    label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .provider-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+  }
+
+  .provider-detail {
+    .provider-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+
+      .provider-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        color: var(--brand-color);
+        font-size: 0.85rem;
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+
+      .provider-desc {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+    }
+
+    .api-config {
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+
+      .config-item {
+        margin-bottom: 0.75rem;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
     }
   }
 
@@ -595,7 +1140,6 @@ onMounted(async () => {
     justify-content: space-between;
     align-items: center;
     padding-top: 1rem;
-    margin-top: 1rem;
     border-top: 1px solid var(--border-color);
 
     .footer-right {
@@ -603,24 +1147,46 @@ onMounted(async () => {
       gap: 0.75rem;
     }
   }
+
+  // 修复 tabs 样式
+  :deep(.t-tabs) {
+    .t-tabs__nav {
+      background: transparent;
+    }
+
+    .t-tabs__nav-item {
+      &.t-is-active {
+        background: var(--bg-card);
+      }
+    }
+  }
 }
 
 @media (max-width: 640px) {
   .speech-settings {
+    .provider-section {
+      .provider-list {
+        flex-direction: column;
+
+        .provider-item {
+          .provider-name {
+            flex: 1;
+          }
+        }
+      }
+    }
+
     .platform-info {
       flex-direction: column;
       gap: 0.5rem;
       text-align: center;
     }
 
-    .voice-config {
-      .preview-section {
-        flex-direction: column;
-      }
+    .preview-section {
+      flex-direction: column;
     }
 
     .dialog-footer {
-      flex-direction: row;
       flex-wrap: wrap;
       gap: 0.5rem;
 
@@ -630,7 +1196,6 @@ onMounted(async () => {
       }
 
       .footer-right {
-        display: flex;
         flex: 2;
         gap: 0.5rem;
 

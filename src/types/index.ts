@@ -93,7 +93,7 @@ export interface CompetitionSession {
   userInput?: string  // 当前单词用户已输入的字母
 }
 
-// Speech types
+// Speech types (Legacy - 保持向后兼容)
 export interface SpeechSettings {
   english: VoiceSettings
   chinese: VoiceSettings
@@ -114,6 +114,19 @@ export interface SpellingSettings {
   pitch: number     // 字母音高 (0.5-1.5)
   interval: number  // 字母之间间隔时间 (毫秒, 50-500)
 }
+
+// 新版 TTS 类型从 lib/tts 导出
+export type { 
+  TTSProviderType,
+  TTSLanguage,
+  TTSSettings,
+  BrowserTTSConfig,
+  OnlineTTSConfig,
+  AITTSConfig,
+  TTSVoice,
+  OnlineTTSProvider,
+  AITTSProvider
+} from '@/lib/tts'
 
 // Announcer types
 export interface AnnouncerSettings {

@@ -27,13 +27,14 @@
           </div>
         </div>
 
-        <!-- 语音配置按钮 -->
+        <!-- 语音朗读配置按钮 -->
         <div class="setting-item clickable" @click="$emit('open-speech-settings')">
           <div class="setting-info">
             <t-icon name="sound" />
-            <span class="setting-label">语音配置</span>
+            <span class="setting-label">语音朗读</span>
           </div>
           <div class="setting-control">
+            <span class="setting-hint">浏览器/在线/AI语音</span>
             <t-icon name="chevron-right" class="arrow-icon" />
           </div>
         </div>
@@ -355,6 +356,11 @@ onUnmounted(async () => {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+
+        .setting-hint {
+          font-size: 0.8rem;
+          color: var(--text-muted);
+        }
 
         .version-text {
           font-family: 'SF Mono', Monaco, monospace;
