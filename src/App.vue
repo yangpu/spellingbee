@@ -69,33 +69,7 @@
     <NetworkStatus v-model:visible="showNetworkStatus" :is-logged-in="!!authStore.user" />
 
     <!-- Auth Dialog -->
-    <t-dialog v-model:visible="showAuthDialog" :header="dialogHeader()" :footer="false" width="400px"
-      @close="authMode = 'login'">
-      <t-form ref="authForm" :data="authData" :rules="authRules" @submit="handleAuth">
-        <t-form-item name="email" label="邮箱">
-          <t-input v-model="authData.email" placeholder="请输入邮箱" />
-        </t-form-item>
-        <t-form-item v-if="authMode !== 'forgot'" name="password" label="密码">
-          <t-input v-model="authData.password" type="password" placeholder="请输入密码" />
-        </t-form-item>
-        <t-form-item v-if="authMode === 'register'" name="confirmPassword" label="确认密码">
-          <t-input v-model="authData.confirmPassword" type="password" placeholder="请再次输入密码" />
-        </t-form-item>
-        <div class="auth-actions">
-          <t-button theme="primary" type="submit" :loading="authLoading" block>
-            {{ authMode === 'login' ? '登录' : authMode === 'register' ? '注册' : '发送重置邮件' }}
-          </t-button>
-          <div class="auth-links">
-            <t-button variant="text" @click="toggleAuthMode">
-              {{ authMode === 'login' ? '没有账号？去注册' : authMode === 'register' ? '已有账号？去登录' : '返回登录' }}
-            </t-button>
-            <t-button v-if="authMode === 'login'" variant="text" @click="showForgotPassword">
-              忘记密码？
-            </t-button>
-          </div>
-        </div>
-      </t-form>
-    </t-dialog>
+    <AuthDialog v-model:visible="showAuthDialog" @success="handleAuthSuccess" />
 
     <!-- User Profile Dialog -->
     <UserProfile v-model:visible="showProfileDialog" @logout="handleLogout" />
@@ -103,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next';
 import { useAuthStore } from '@/stores/auth';
@@ -116,6 +90,7 @@ import { useAnnouncerStore } from '@/stores/announcer';
 import { useChallengeNotifications, notificationService } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 import UserProfile from '@/components/UserProfile.vue';
+import AuthDialog from '@/components/AuthDialog.vue';
 import NetworkStatus from '@/components/NetworkStatus.vue';
 import VersionInfo from '@/components/VersionInfo.vue';
 
@@ -184,33 +159,6 @@ const isChallengeActive = computed(() => {
 
 const showAuthDialog = ref(false);
 const showProfileDialog = ref(false);
-const authMode = ref('login'); // 'login', 'register', 'forgot'
-const authLoading = ref(false);
-
-const authData = reactive({
-  email: '',
-  password: '',
-  confirmPassword: '',
-});
-
-const authRules = {
-  email: [
-    { required: true, message: '请输入邮箱', type: 'error' },
-    { email: true, message: '请输入有效的邮箱地址', type: 'error' },
-  ],
-  password: [
-    { required: true, message: '请输入密码', type: 'error' },
-    { min: 6, message: '密码至少6个字符', type: 'error' },
-  ],
-  confirmPassword: [
-    { required: true, message: '请确认密码', type: 'error' },
-    {
-      validator: (val) => val === authData.password,
-      message: '两次密码不一致',
-      type: 'error',
-    },
-  ],
-};
 
 // 显示名称
 const displayName = computed(() => {
@@ -228,45 +176,9 @@ const avatarText = computed(() => {
   return authStore.user?.email?.charAt(0).toUpperCase() || '';
 });
 
-const toggleAuthMode = () => {
-  if (authMode.value === 'login') {
-    authMode.value = 'register';
-  } else if (authMode.value === 'register') {
-    authMode.value = 'login';
-  } else {
-    authMode.value = 'login';
-  }
-};
-
-const showForgotPassword = () => {
-  authMode.value = 'forgot';
-};
-
-const handleAuth = async ({ validateResult }) => {
-  if (validateResult !== true) return;
-
-  authLoading.value = true;
-  try {
-    if (authMode.value === 'login') {
-      await authStore.login(authData.email, authData.password);
-      MessagePlugin.success('登录成功');
-      showAuthDialog.value = false;
-      // Sync data after login
-      await syncAllData();
-    } else if (authMode.value === 'register') {
-      await authStore.register(authData.email, authData.password);
-      MessagePlugin.success('注册成功，请查收验证邮件后登录');
-      authMode.value = 'login';
-    } else if (authMode.value === 'forgot') {
-      await authStore.resetPassword(authData.email);
-      MessagePlugin.success('重置密码邮件已发送，请查收');
-      authMode.value = 'login';
-    }
-  } catch (error) {
-    MessagePlugin.error(error.message || '操作失败');
-  } finally {
-    authLoading.value = false;
-  }
+// 处理登录成功
+const handleAuthSuccess = async () => {
+  await syncAllData();
 };
 
 // 处理退出登录
@@ -481,13 +393,6 @@ watch(() => authStore.user, async (newUser, oldUser) => {
     await destroyNotificationService();
   }
 });
-
-// Dialog header computed
-const dialogHeader = () => {
-  if (authMode.value === 'login') return '登录';
-  if (authMode.value === 'register') return '注册';
-  return '忘记密码';
-};
 </script>
 
 <style lang="scss" scoped>

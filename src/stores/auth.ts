@@ -186,6 +186,17 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
+  async function loginWithGitHub() {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${window.location.origin}${window.location.pathname}`
+      }
+    })
+    if (error) throw error
+    return data
+  }
+
   async function updatePassword(newPassword: string) {
     const { data, error } = await supabase.auth.updateUser({
       password: newPassword
@@ -201,6 +212,7 @@ export const useAuthStore = defineStore('auth', () => {
     initialized,
     init,
     login,
+    loginWithGitHub,
     register,
     logout,
     resetPassword,
