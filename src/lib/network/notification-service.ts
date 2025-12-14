@@ -27,6 +27,9 @@ class ChallengeNotificationService {
   // 状态变化回调取消函数
   private unsubscribeStatus: (() => void) | null = null
   
+  // 状态同步定时器
+  private statusSyncTimer: ReturnType<typeof setInterval> | null = null
+  
   get isConnected() {
     return this._isConnected.value
   }
@@ -47,13 +50,46 @@ class ChallengeNotificationService {
     
     // 监听 RealtimeManager 状态变化
     this.unsubscribeStatus = realtimeManager.onStatusChange((status) => {
-      const channelStatus = realtimeManager.getChannelStatus(NOTIFICATION_CHANNEL)
-      this._isConnected.value = channelStatus === 'connected'
-      this._isReconnecting.value = status === 'reconnecting'
+      this.syncStatus()
     })
+    
+    // 启动状态同步定时器，确保状态始终正确
+    this.startStatusSync()
     
     // 订阅通知 channel
     await this.connect()
+  }
+  
+  /**
+   * 同步状态
+   */
+  private syncStatus(): void {
+    const channelStatus = realtimeManager.getChannelStatus(NOTIFICATION_CHANNEL)
+    const managerStatus = realtimeManager.status.value
+    
+    this._isConnected.value = channelStatus === 'connected'
+    this._isReconnecting.value = managerStatus === 'reconnecting' || channelStatus === 'connecting'
+  }
+  
+  /**
+   * 启动状态同步定时器
+   */
+  private startStatusSync(): void {
+    if (this.statusSyncTimer) return
+    
+    this.statusSyncTimer = setInterval(() => {
+      this.syncStatus()
+    }, 1000)
+  }
+  
+  /**
+   * 停止状态同步定时器
+   */
+  private stopStatusSync(): void {
+    if (this.statusSyncTimer) {
+      clearInterval(this.statusSyncTimer)
+      this.statusSyncTimer = null
+    }
   }
   
   /**
@@ -230,6 +266,8 @@ class ChallengeNotificationService {
       this.unsubscribeStatus()
       this.unsubscribeStatus = null
     }
+    
+    this.stopStatusSync()
     
     await realtimeManager.unsubscribe(NOTIFICATION_CHANNEL)
     

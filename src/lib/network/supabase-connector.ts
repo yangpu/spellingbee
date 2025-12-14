@@ -1,9 +1,11 @@
 /**
  * Supabase Realtime 连接器
  * 使用 Supabase 的 Realtime 服务实现多人挑战赛通信
+ * 通过 RealtimeManager 统一管理连接，确保可靠的重连机制
  */
 
 import { supabase } from '@/lib/supabase'
+import { realtimeManager, type ChannelConfig } from '@/lib/realtime-manager'
 import type { RealtimeChannel, RealtimePresenceState } from '@supabase/supabase-js'
 import type { ChallengeMessage, ChallengeParticipant } from '@/types'
 import type {
@@ -20,7 +22,7 @@ export class SupabaseConnector implements NetworkConnector {
   
   private _status: ConnectionStatus = 'disconnected'
   private _connectionId: string = ''
-  private channel: RealtimeChannel | null = null
+  private channelName: string = ''
   private challengeId: string = ''
   private userId: string = ''
   private userInfo: { nickname: string; avatar_url?: string } = { nickname: '' }
@@ -30,6 +32,9 @@ export class SupabaseConnector implements NetworkConnector {
   private messageHandler: MessageHandler | null = null
   private statusChangeHandler: StatusChangeHandler | null = null
   private participantChangeHandler: ParticipantChangeHandler | null = null
+  
+  // 状态变化回调取消函数
+  private unsubscribeStatus: (() => void) | null = null
   
   get status(): ConnectionStatus {
     return this._status
@@ -93,92 +98,140 @@ export class SupabaseConnector implements NetworkConnector {
   
   /**
    * 设置 Realtime Channel
+   * 使用 RealtimeManager 统一管理，确保可靠的重连机制
    */
   private async setupChannel(): Promise<void> {
-    if (this.channel) {
-      await this.channel.unsubscribe()
+    // 先清理旧的 channel
+    if (this.channelName) {
+      await realtimeManager.unsubscribe(this.channelName)
+    }
+    
+    // 取消旧的状态监听
+    if (this.unsubscribeStatus) {
+      this.unsubscribeStatus()
+      this.unsubscribeStatus = null
     }
     
     this._status = 'connecting'
     this.notifyStatusChange('connecting')
     
-    const channelName = `challenge:${this.challengeId}`
+    this.channelName = `challenge:${this.challengeId}`
     
-    this.channel = supabase.channel(channelName, {
-      config: {
-        broadcast: { self: false }, // 不接收自己发送的消息
-        presence: { key: this.userId }
-      }
-    })
-    
-    // 监听广播消息
-    this.channel.on('broadcast', { event: 'message' }, (payload) => {
-      const message = payload.payload as ChallengeMessage
-      if (this.messageHandler && message.sender_id !== this.userId) {
-        this.messageHandler(message, message.sender_id)
-      }
-    })
-    
-    // 监听定向消息（发给特定用户）
-    this.channel.on('broadcast', { event: `message:${this.userId}` }, (payload) => {
-      const message = payload.payload as ChallengeMessage
-      if (this.messageHandler) {
-        this.messageHandler(message, message.sender_id)
-      }
-    })
-    
-    // 监听 Presence 状态变化
-    this.channel.on('presence', { event: 'sync' }, () => {
-      const state = this.channel?.presenceState() as RealtimePresenceState
-      this.handlePresenceSync(state)
-    })
-    
-    this.channel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
-      if (key !== this.userId && newPresences.length > 0) {
-        const presence = newPresences[0] as any
-        this.notifyParticipantChange('join', {
-          user_id: key,
-          nickname: presence.nickname,
-          avatar_url: presence.avatar_url,
-          is_online: true,
-          is_ready: presence.is_ready || false,
-          score: presence.score || 0
-        })
-      }
-    })
-    
-    this.channel.on('presence', { event: 'leave' }, ({ key }) => {
-      if (key !== this.userId) {
-        this.notifyParticipantChange('leave', {
-          user_id: key,
-          is_online: false
-        })
-      }
-    })
-    
-    // 订阅频道
-    const status = await this.channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
+    // 监听 RealtimeManager 状态变化
+    this.unsubscribeStatus = realtimeManager.onStatusChange((status) => {
+      const channelStatus = realtimeManager.getChannelStatus(this.channelName)
+      if (channelStatus === 'connected') {
         this._status = 'connected'
         this.notifyStatusChange('connected')
-        
-        // 发送 Presence 状态
-        await this.channel?.track({
+      } else if (channelStatus === 'disconnected' && status !== 'reconnecting') {
+        this._status = 'disconnected'
+        this.notifyStatusChange('disconnected')
+      } else if (status === 'reconnecting') {
+        this._status = 'connecting'
+        this.notifyStatusChange('connecting')
+      }
+    })
+    
+    // 使用 RealtimeManager 订阅 channel
+    const config: ChannelConfig = {
+      name: this.channelName,
+      type: 'mixed',
+      autoResubscribe: true,
+      timeout: 15000,
+      presenceConfig: {
+        key: this.userId,
+        initialState: {
           user_id: this.userId,
           nickname: this.userInfo.nickname,
           avatar_url: this.userInfo.avatar_url,
           is_ready: false,
           score: 0,
           online_at: new Date().toISOString()
-        })
-      } else if (status === 'CHANNEL_ERROR') {
-        this._status = 'error'
-        this.notifyStatusChange('error', new Error('Channel subscription failed'))
-      } else if (status === 'TIMED_OUT') {
-        this._status = 'error'
-        this.notifyStatusChange('error', new Error('Channel subscription timed out'))
-      }
-    })
+        }
+      },
+      subscriptions: [
+        // 监听广播消息
+        {
+          type: 'broadcast',
+          event: 'message',
+          callback: (payload) => {
+            const message = payload.payload as ChallengeMessage
+            if (this.messageHandler && message.sender_id !== this.userId) {
+              this.messageHandler(message, message.sender_id)
+            }
+          }
+        },
+        // 监听定向消息（发给特定用户）
+        {
+          type: 'broadcast',
+          event: `message:${this.userId}`,
+          callback: (payload) => {
+            const message = payload.payload as ChallengeMessage
+            if (this.messageHandler) {
+              this.messageHandler(message, message.sender_id)
+            }
+          }
+        },
+        // 监听 Presence 同步
+        {
+          type: 'presence',
+          presenceEvent: 'sync',
+          callback: () => {
+            const state = realtimeManager.getPresenceState(this.channelName) as RealtimePresenceState
+            this.handlePresenceSync(state)
+          }
+        },
+        // 监听 Presence 加入
+        {
+          type: 'presence',
+          presenceEvent: 'join',
+          callback: ({ key, newPresences }: any) => {
+            if (key !== this.userId && newPresences && newPresences.length > 0) {
+              const presence = newPresences[0] as any
+              this.notifyParticipantChange('join', {
+                user_id: key,
+                nickname: presence.nickname,
+                avatar_url: presence.avatar_url,
+                is_online: true,
+                is_ready: presence.is_ready || false,
+                score: presence.score || 0
+              })
+            }
+          }
+        },
+        // 监听 Presence 离开
+        {
+          type: 'presence',
+          presenceEvent: 'leave',
+          callback: ({ key }: any) => {
+            // 【关键】如果正在重连中，忽略 leave 事件
+            // 重连过程中会触发虚假的 leave 事件
+            const managerStatus = realtimeManager.status.value
+            if (managerStatus === 'reconnecting' || managerStatus === 'connecting') {
+              return
+            }
+            
+            if (key !== this.userId) {
+              this.notifyParticipantChange('leave', {
+                user_id: key,
+                is_online: false
+              })
+            }
+          }
+        }
+      ]
+    }
+    
+    try {
+      await realtimeManager.subscribe(config)
+      this._status = 'connected'
+      this.notifyStatusChange('connected')
+    } catch (error) {
+      console.error('Failed to setup channel:', error)
+      this._status = 'error'
+      this.notifyStatusChange('error', error as Error)
+      throw error
+    }
   }
   
   /**
@@ -187,7 +240,7 @@ export class SupabaseConnector implements NetworkConnector {
   private handlePresenceSync(state: RealtimePresenceState): void {
     // 遍历所有在线用户
     Object.entries(state).forEach(([userId, presences]) => {
-      if (userId !== this.userId && presences.length > 0) {
+      if (userId !== this.userId && presences && presences.length > 0) {
         const presence = presences[0] as any
         this.notifyParticipantChange('update', {
           user_id: userId,
@@ -205,10 +258,15 @@ export class SupabaseConnector implements NetworkConnector {
    * 离开房间
    */
   async leaveRoom(): Promise<void> {
-    if (this.channel) {
-      await this.channel.untrack()
-      await this.channel.unsubscribe()
-      this.channel = null
+    if (this.unsubscribeStatus) {
+      this.unsubscribeStatus()
+      this.unsubscribeStatus = null
+    }
+    
+    if (this.channelName) {
+      await realtimeManager.untrackPresence(this.channelName)
+      await realtimeManager.unsubscribe(this.channelName)
+      this.channelName = ''
     }
     
     this.challengeId = ''
@@ -220,45 +278,35 @@ export class SupabaseConnector implements NetworkConnector {
    * 发送消息给指定用户
    */
   sendTo(userId: string, message: ChallengeMessage): void {
-    if (!this.channel || this._status !== 'connected') {
-      console.warn('Cannot send message: not connected')
+    if (!this.channelName) {
       return
     }
     
-    this.channel.send({
-      type: 'broadcast',
-      event: `message:${userId}`,
-      payload: message
-    })
+    realtimeManager.broadcast(this.channelName, `message:${userId}`, message)
   }
   
   /**
    * 广播消息给所有用户
    */
   broadcast(message: ChallengeMessage): void {
-    if (!this.channel || this._status !== 'connected') {
-      console.warn('Cannot broadcast: not connected')
+    if (!this.channelName) {
       return
     }
     
-    this.channel.send({
-      type: 'broadcast',
-      event: 'message',
-      payload: message
-    })
+    realtimeManager.broadcast(this.channelName, 'message', message)
   }
   
   /**
    * 更新 Presence 状态（如准备状态、分数等）
    */
   async updatePresence(data: Partial<{ is_ready: boolean; score: number }>): Promise<void> {
-    if (!this.channel || this._status !== 'connected') {
+    if (!this.channelName) {
       return
     }
     
-    const currentState = this.channel.presenceState()[this.userId]?.[0] || {}
+    const currentState = realtimeManager.getPresenceState(this.channelName)[this.userId]?.[0] || {}
     
-    await this.channel.track({
+    await realtimeManager.trackPresence(this.channelName, {
       ...currentState,
       user_id: this.userId,
       nickname: this.userInfo.nickname,

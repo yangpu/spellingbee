@@ -7,7 +7,7 @@
   >
     <div class="network-status-content">
       <div class="status-item">
-        <template v-if="supabaseReconnecting">
+        <template v-if="showLoading">
           <t-loading size="small" />
         </template>
         <template v-else>
@@ -17,8 +17,8 @@
           />
         </template>
         <span>Supabase 实时服务</span>
-        <span class="status-text" :class="supabaseConnected ? 'text-ok' : supabaseReconnecting ? 'text-reconnecting' : 'text-error'">
-          {{ supabaseConnected ? '已连接' : supabaseReconnecting ? '连接中' : '未连接' }}
+        <span class="status-text" :class="supabaseConnected ? 'text-ok' : showLoading ? 'text-reconnecting' : 'text-error'">
+          {{ supabaseConnected ? '已连接' : showLoading ? '连接中' : '未连接' }}
         </span>
       </div>
       <div class="status-item">
@@ -52,8 +52,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useChallengeNotifications, notificationService } from '@/lib/network'
+import { realtimeManager } from '@/lib/realtime-manager'
 
 const props = defineProps<{
   visible: boolean
@@ -72,6 +73,19 @@ const dialogVisible = computed({
 // Supabase 连接状态
 const { isConnected: supabaseConnected, isReconnecting: supabaseReconnecting } = useChallengeNotifications()
 
+// 额外的状态检查，确保 UI 正确显示
+const isActuallyReconnecting = computed(() => {
+  return supabaseReconnecting.value || realtimeManager.status.value === 'reconnecting'
+})
+
+const isActuallyConnecting = computed(() => {
+  return realtimeManager.status.value === 'connecting'
+})
+
+const showLoading = computed(() => {
+  return isActuallyReconnecting.value || isActuallyConnecting.value || reconnecting.value
+})
+
 // 网络状态
 const isOnline = ref(navigator.onLine)
 const reconnecting = ref(false)
@@ -79,11 +93,6 @@ const reconnecting = ref(false)
 // 监听网络状态
 const updateOnlineStatus = () => {
   isOnline.value = navigator.onLine
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', updateOnlineStatus)
-  window.addEventListener('offline', updateOnlineStatus)
 }
 
 // 手动重连
@@ -95,10 +104,23 @@ const handleReconnect = async () => {
     } catch (e) {
       console.error('[NetworkStatus] Reconnect error:', e)
     } finally {
-      reconnecting.value = false
+      // 延迟重置状态，让用户看到重连过程
+      setTimeout(() => {
+        reconnecting.value = false
+      }, 1000)
     }
   }
 }
+
+onMounted(() => {
+  window.addEventListener('online', updateOnlineStatus)
+  window.addEventListener('offline', updateOnlineStatus)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('online', updateOnlineStatus)
+  window.removeEventListener('offline', updateOnlineStatus)
+})
 </script>
 
 <style lang="scss" scoped>

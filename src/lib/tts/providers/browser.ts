@@ -12,21 +12,97 @@ import type {
   BrowserTTSConfig
 } from '../types'
 
-// 优选英文语音列表（教育场景优先）
-const PREFERRED_ENGLISH_VOICES = [
-  'Samantha', 'Alex', 'Daniel', 'Karen', 'Moira', 'Tessa',
-  'Microsoft Zira', 'Microsoft David', 'Microsoft Mark',
-  'Google US English', 'Google UK English Female', 'Google UK English Male',
-  'English United States', 'English'
-]
+// 按平台优选的英文语音列表
+const PLATFORM_ENGLISH_VOICES: Record<string, string[]> = {
+  // macOS - 系统自带高质量语音
+  macos: [
+    'Samantha', 'Alex', 'Daniel', 'Karen', 'Moira', 'Tessa', 'Fiona',
+    'Google US English', 'Google UK English Female'
+  ],
+  // iOS - Safari 使用系统语音
+  ios: [
+    'Samantha', 'Daniel', 'Karen', 'Moira', 'Tessa',
+    'en-US', 'en-GB'
+  ],
+  // Windows - Microsoft 语音
+  windows: [
+    'Microsoft Zira', 'Microsoft David', 'Microsoft Mark', 'Microsoft Aria',
+    'Google US English', 'Google UK English Female', 'Google UK English Male'
+  ],
+  // Android - Google 语音
+  android: [
+    'Google US English', 'Google UK English Female', 'Google UK English Male',
+    'English United States', 'en-US', 'en_US'
+  ],
+  // Linux - 通用
+  linux: [
+    'Google US English', 'English United States', 'English'
+  ],
+  // 通用回退
+  default: [
+    'Samantha', 'Alex', 'Daniel', 'Karen',
+    'Microsoft Zira', 'Microsoft David',
+    'Google US English', 'Google UK English Female',
+    'English United States', 'English', 'en-US'
+  ]
+}
 
-// 优选中文语音列表
-const PREFERRED_CHINESE_VOICES = [
-  'Tingting', 'Sinji', 'Meijia', 'Lili',
-  'Microsoft Xiaoxiao', 'Microsoft Yunxi', 'Microsoft Huihui', 'Microsoft Kangkang',
-  'Google 普通话', 'Google 中文',
-  'Chinese', '中文'
-]
+// 按平台优选的中文语音列表
+const PLATFORM_CHINESE_VOICES: Record<string, string[]> = {
+  // macOS - 系统自带高质量语音
+  macos: [
+    'Tingting', 'Sinji', 'Meijia', 'Lili',
+    'Google 普通话', 'Google 中文'
+  ],
+  // iOS - Safari 使用系统语音
+  ios: [
+    'Tingting', 'Sinji', 'Meijia', 'Lili',
+    'zh-CN', 'zh-TW'
+  ],
+  // Windows - Microsoft 语音
+  windows: [
+    'Microsoft Xiaoxiao', 'Microsoft Yunxi', 'Microsoft Huihui', 'Microsoft Kangkang',
+    'Microsoft Yaoyao', 'Microsoft Xiaoyu',
+    'Google 普通话', 'Google 中文'
+  ],
+  // Android - Google 语音
+  android: [
+    'Google 普通话', 'Google 中文',
+    'Chinese', 'zh-CN', 'zh_CN', 'cmn-Hans-CN'
+  ],
+  // Linux - 通用
+  linux: [
+    'Google 普通话', 'Google 中文', 'Chinese', '中文'
+  ],
+  // 通用回退
+  default: [
+    'Tingting', 'Sinji', 'Meijia', 'Lili',
+    'Microsoft Xiaoxiao', 'Microsoft Yunxi', 'Microsoft Huihui',
+    'Google 普通话', 'Google 中文',
+    'Chinese', '中文', 'zh-CN'
+  ]
+}
+
+// 检测当前平台
+function detectPlatform(): string {
+  if (typeof navigator === 'undefined') return 'default'
+  
+  const ua = navigator.userAgent
+  
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    return 'ios'
+  } else if (/Android/i.test(ua)) {
+    return 'android'
+  } else if (/Mac/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua)) {
+    return 'macos'
+  } else if (/Windows/i.test(ua)) {
+    return 'windows'
+  } else if (/Linux/i.test(ua) && !/Android/i.test(ua)) {
+    return 'linux'
+  }
+  
+  return 'default'
+}
 
 export class BrowserTTSProvider implements TTSProvider {
   readonly type = 'browser' as const
@@ -113,22 +189,47 @@ export class BrowserTTSProvider implements TTSProvider {
 
   /**
    * 获取最优语音
+   * 根据当前平台选择最合适的默认语音
    */
   getBestVoice(language: TTSLanguage): string | null {
     const langPrefix = language === 'en' ? 'en' : 'zh'
     const langVoices = this.voices.filter(v => v.lang.startsWith(langPrefix))
     
+    // 如果没有可用语音，返回 null
     if (langVoices.length === 0) return null
 
-    const preferredList = language === 'en' ? PREFERRED_ENGLISH_VOICES : PREFERRED_CHINESE_VOICES
+    // 检测当前平台
+    const platform = detectPlatform()
+    
+    // 获取当前平台的优选语音列表，如果没有则使用默认列表
+    const platformVoices = language === 'en' 
+      ? PLATFORM_ENGLISH_VOICES 
+      : PLATFORM_CHINESE_VOICES
+    
+    const preferredList = platformVoices[platform] || platformVoices['default']
 
+    // 尝试按优先级匹配语音
     for (const preferred of preferredList) {
       const voice = langVoices.find(v => 
-        v.name.toLowerCase().includes(preferred.toLowerCase())
+        v.name.toLowerCase().includes(preferred.toLowerCase()) ||
+        v.lang.toLowerCase().includes(preferred.toLowerCase())
       )
       if (voice) return voice.name
     }
 
+    // 如果优选列表都没匹配到，回退到默认列表
+    if (platform !== 'default') {
+      const defaultList = platformVoices['default']
+      for (const preferred of defaultList) {
+        const voice = langVoices.find(v => 
+          v.name.toLowerCase().includes(preferred.toLowerCase()) ||
+          v.lang.toLowerCase().includes(preferred.toLowerCase())
+        )
+        if (voice) return voice.name
+      }
+    }
+
+    // 最终回退：返回第一个可用语音
     return langVoices[0].name
   }
 
@@ -167,6 +268,15 @@ export class BrowserTTSProvider implements TTSProvider {
     return new Promise((resolve, reject) => {
       this.stop()
 
+      // iOS Safari 需要特殊处理
+      const platform = detectPlatform()
+      const isIOS = platform === 'ios'
+
+      // 确保语音列表已加载
+      if (this.voices.length === 0) {
+        this.voices = speechSynthesis.getVoices()
+      }
+
       const utterance = new SpeechSynthesisUtterance(request.text)
       this.currentUtterance = utterance
 
@@ -187,13 +297,29 @@ export class BrowserTTSProvider implements TTSProvider {
         if (voice) utterance.voice = voice
       }
 
-      utterance.onend = () => {
+      // iOS Safari 有时 onend 不触发，需要添加超时处理
+      let timeoutId: ReturnType<typeof setTimeout> | null = null
+      let resolved = false
+
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+          timeoutId = null
+        }
         this.currentUtterance = null
+      }
+
+      utterance.onend = () => {
+        if (resolved) return
+        resolved = true
+        cleanup()
         resolve()
       }
 
       utterance.onerror = (e) => {
-        this.currentUtterance = null
+        if (resolved) return
+        resolved = true
+        cleanup()
         // 忽略取消错误
         if (e.error === 'canceled' || e.error === 'interrupted') {
           resolve()
@@ -202,7 +328,42 @@ export class BrowserTTSProvider implements TTSProvider {
         }
       }
 
-      speechSynthesis.speak(utterance)
+      // iOS 特殊处理：添加 onstart 确认播放已开始
+      utterance.onstart = () => {
+        // 播放开始后设置超时（基于文本长度估算）
+        const estimatedDuration = Math.max(3000, request.text.length * 150)
+        if (isIOS) {
+          timeoutId = setTimeout(() => {
+            if (!resolved) {
+              resolved = true
+              cleanup()
+              // iOS 上超时后静默完成，不报错
+              resolve()
+            }
+          }, estimatedDuration)
+        }
+      }
+
+      // iOS Safari 有时需要先 cancel 再 speak
+      if (isIOS) {
+        speechSynthesis.cancel()
+        // 短暂延迟后再播放
+        setTimeout(() => {
+          speechSynthesis.speak(utterance)
+        }, 50)
+      } else {
+        speechSynthesis.speak(utterance)
+      }
+
+      // 全局超时保护（防止永久卡住）
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          cleanup()
+          speechSynthesis.cancel()
+          resolve()  // 超时后静默完成
+        }
+      }, 30000)  // 30秒最大超时
     })
   }
 

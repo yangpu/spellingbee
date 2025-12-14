@@ -68,7 +68,7 @@ export const ONLINE_PROVIDERS: OnlineProviderInfo[] = [
   {
     id: 'tencent',
     name: '腾讯云',
-    description: '腾讯云语音合成，国内访问快速',
+    description: '腾讯云语音合成（需后端代理，浏览器端暂不支持）',
     website: 'https://cloud.tencent.com/product/tts',
     requiresApiKey: true,
     free: false,
@@ -85,7 +85,7 @@ export const ONLINE_PROVIDERS: OnlineProviderInfo[] = [
   {
     id: 'aliyun',
     name: '阿里云',
-    description: '阿里云智能语音服务',
+    description: '阿里云智能语音服务（需后端代理，浏览器端暂不支持）',
     website: 'https://ai.aliyun.com/nls/tts',
     requiresApiKey: true,
     free: false,
@@ -111,6 +111,7 @@ export class OnlineTTSProvider implements TTSProvider {
   }
   private audioContext: AudioContext | null = null
   private currentSource: AudioBufferSourceNode | null = null
+  private currentAudio: HTMLAudioElement | null = null  // 用于有道等直接播放 URL 的供应商
 
   constructor() {
     this.config = {
@@ -338,60 +339,69 @@ export class OnlineTTSProvider implements TTSProvider {
   }
 
   /**
-   * 腾讯云 TTS API（简化版，实际需要签名）
+   * 腾讯云 TTS API
+   * 使用腾讯云语音合成 WebAPI
+   * API Key 格式: SecretId:SecretKey
    */
   private async callTencentAPI(
     request: TTSRequest,
     config: OnlineTTSConfig
   ): Promise<TTSResponse> {
-    // 腾讯云需要复杂的签名机制，这里提供框架
-    // 实际使用需要配置 SecretId 和 SecretKey
-    throw new Error('腾讯云 TTS 需要配置 API 密钥，请在设置中配置')
+    if (!config.apiKey) {
+      throw new Error('腾讯云 TTS 需要配置 API 密钥，请在设置中配置')
+    }
+
+    // API Key 格式: SecretId:SecretKey
+    const [secretId, secretKey] = config.apiKey.split(':')
+    if (!secretId || !secretKey) {
+      throw new Error('腾讯云 API 密钥格式错误，请使用格式: SecretId:SecretKey')
+    }
+
+    // 腾讯云 TTS 需要复杂的签名机制
+    // 这里使用简化的方式：通过代理服务或直接调用
+    // 由于浏览器端无法安全地进行签名，建议使用后端代理
+    
+    // 临时方案：提示用户腾讯云暂时只支持后端调用
+    throw new Error('腾讯云 TTS 需要后端代理支持，浏览器端暂不可用。建议使用有道翻译（免费）或其他已支持的供应商。')
   }
 
   /**
-   * 阿里云 TTS API（简化版）
+   * 阿里云 TTS API
+   * 阿里云需要 Token 认证，浏览器端暂不支持
    */
   private async callAliyunAPI(
     request: TTSRequest,
     config: OnlineTTSConfig
   ): Promise<TTSResponse> {
-    // 阿里云需要 Token 认证
-    throw new Error('阿里云 TTS 需要配置 API 密钥，请在设置中配置')
+    if (!config.apiKey) {
+      throw new Error('阿里云 TTS 需要配置 API 密钥，请在设置中配置')
+    }
+
+    // 阿里云需要 AccessKey 进行签名认证
+    // 浏览器端无法安全地进行签名，建议使用后端代理
+    throw new Error('阿里云 TTS 需要后端代理支持，浏览器端暂不可用。建议使用有道翻译（免费）或其他已支持的供应商。')
   }
 
   /**
    * 有道翻译 TTS API（免费版）
    * 使用有道翻译的公开语音接口
+   * 注意：由于 CORS 限制，不能通过 fetch 获取数据，需要直接使用 audio 元素播放
    */
   private async callYoudaoAPI(
     request: TTSRequest,
     config: OnlineTTSConfig
   ): Promise<TTSResponse> {
-    // 有道翻译免费语音接口
+    // 有道不支持通过 fetch 获取音频数据（CORS 限制）
+    // 返回 audioUrl，让 speak 方法使用 audio 元素播放
     const langCode = request.language === 'en' ? 'en' : 'zh-CHS'
     const voiceType = config.voiceId?.includes('GB') ? 1 : 0  // 0: 美式, 1: 英式
     
-    // 使用有道翻译的公开 TTS 接口
     const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(request.text)}&le=${langCode}&type=${voiceType}`
     
-    try {
-      const response = await fetch(url)
-      
-      if (!response.ok) {
-        throw new Error(`有道语音接口错误: ${response.status}`)
-      }
-      
-      const audioData = await response.arrayBuffer()
-      
-      return {
-        audioData,
-        mimeType: 'audio/mpeg',
-        cached: false
-      }
-    } catch (error) {
-      console.error('有道 TTS 调用失败:', error)
-      throw new Error('有道语音服务暂时不可用，请稍后重试')
+    return {
+      audioUrl: url,
+      mimeType: 'audio/mpeg',
+      cached: false
     }
   }
 
@@ -399,13 +409,53 @@ export class OnlineTTSProvider implements TTSProvider {
    * 播放语音
    */
   async speak(request: TTSRequest): Promise<void> {
+    const config = this.config[request.language === 'en' ? 'en' : 'zh']
+    
+    // 有道翻译使用 audio 元素直接播放 URL（绕过 CORS）
+    if (config.provider === 'youdao') {
+      await this.speakWithAudioElement(request, config)
+      return
+    }
+    
     const response = await this.synthesize(request)
 
     if (!response.audioData) {
       throw new Error('No audio data available')
     }
 
-    await this.playAudio(response.audioData, this.config[request.language === 'en' ? 'en' : 'zh'].volume)
+    await this.playAudio(response.audioData, config.volume)
+  }
+
+  /**
+   * 使用 audio 元素播放（用于有道等有 CORS 限制的供应商）
+   */
+  private async speakWithAudioElement(request: TTSRequest, config: OnlineTTSConfig): Promise<void> {
+    this.stop()
+    
+    const langCode = request.language === 'en' ? 'en' : 'zh-CHS'
+    const voiceType = config.voiceId?.includes('GB') ? 1 : 0
+    const url = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(request.text)}&le=${langCode}&type=${voiceType}`
+    
+    return new Promise((resolve, reject) => {
+      const audio = new Audio(url)
+      audio.volume = config.volume
+      this.currentAudio = audio
+      
+      audio.onended = () => {
+        this.currentAudio = null
+        resolve()
+      }
+      
+      audio.onerror = () => {
+        this.currentAudio = null
+        reject(new Error('有道语音播放失败，请检查网络连接'))
+      }
+      
+      audio.play().catch((e) => {
+        this.currentAudio = null
+        reject(new Error(`有道语音播放失败: ${e.message}`))
+      })
+    })
   }
 
   /**
@@ -443,6 +493,7 @@ export class OnlineTTSProvider implements TTSProvider {
    * 停止播放
    */
   stop(): void {
+    // 停止 AudioBufferSourceNode
     if (this.currentSource) {
       try {
         this.currentSource.stop()
@@ -450,6 +501,17 @@ export class OnlineTTSProvider implements TTSProvider {
         // 忽略已停止的错误
       }
       this.currentSource = null
+    }
+    
+    // 停止 Audio 元素（有道等）
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause()
+        this.currentAudio.currentTime = 0
+      } catch {
+        // 忽略错误
+      }
+      this.currentAudio = null
     }
   }
 }

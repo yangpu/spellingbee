@@ -252,11 +252,11 @@ export const useChallengeStore = defineStore('challenge', () => {
             handleMessage(message, message.sender_id)
           }
         },
-        // Presence 同步
+        // Presence 同步（使用节流版本减少频繁调用）
         {
           type: 'presence',
           presenceEvent: 'sync',
-          callback: () => handlePresenceSync()
+          callback: () => throttledPresenceSync()
         },
         // Presence 加入
         {
@@ -273,6 +273,7 @@ export const useChallengeStore = defineStore('challenge', () => {
           type: 'presence',
           presenceEvent: 'leave',
           callback: ({ key }: any) => {
+            // 忽略自己的 leave 事件
             if (key !== authStore.user?.id) {
               handlePresenceLeave(key)
             }
@@ -291,21 +292,48 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
   }
   
-  // 处理 Presence 同步
+  // Presence 同步节流（减少频繁调用）
+  let presenceSyncTimer: ReturnType<typeof setTimeout> | null = null
+  const PRESENCE_SYNC_THROTTLE = 100  // 100ms 节流
+  
+  // 用于追踪用户连续离线的次数（防止 track 更新时的瞬时离线）
+  const offlineCountMap = new Map<string, number>()
+  const OFFLINE_CONFIRM_COUNT = 3  // 连续 3 次 sync 都不在线才确认离线
+  
+  // 节流版本的 Presence 同步处理
+  function throttledPresenceSync(): void {
+    if (presenceSyncTimer) {
+      clearTimeout(presenceSyncTimer)
+    }
+    presenceSyncTimer = setTimeout(() => {
+      presenceSyncTimer = null
+      handlePresenceSync()
+    }, PRESENCE_SYNC_THROTTLE)
+  }
+  
+  // 处理 Presence 同步 - 这是唯一可靠的状态来源
+  // sync 事件包含当前 channel 的完整 Presence 状态快照
   function handlePresenceSync(): void {
     if (!currentChallenge.value || !currentChannelName.value) return
     
     const state = realtimeManager.getPresenceState(currentChannelName.value)
     const creatorId = currentChallenge.value.creator_id
+    const myUserId = authStore.user?.id
     
-    // 更新所有参与者的在线状态
+    // 更新所有参与者的在线状态 - 基于 Presence 状态快照
     currentChallenge.value.participants.forEach(participant => {
       const userId = participant.user_id
       const presences = state[userId] as any[]
       const isCreator = userId === creatorId
       
+      // 不要修改自己的状态（自己的状态由本地控制）
+      if (userId === myUserId) {
+        return
+      }
+      
       if (presences && presences.length > 0) {
         const presence = presences[0]
+        // 用户在 Presence 中存在，说明在线
         participant.is_online = true
         if (isCreator) {
           participant.is_ready = true
@@ -315,10 +343,24 @@ export const useChallengeStore = defineStore('challenge', () => {
         if (presence.score !== undefined) {
           participant.score = presence.score
         }
+        // 重置离线计数
+        offlineCountMap.delete(userId)
       } else {
-        if (userId !== authStore.user?.id) {
+        // 用户不在 Presence 中
+        // 使用计数器确认用户真的离线，而不是 track 更新时的瞬时状态
+        const count = (offlineCountMap.get(userId) || 0) + 1
+        offlineCountMap.set(userId, count)
+        
+        // 只有连续多次 sync 都不在线才确认离线
+        if (count >= OFFLINE_CONFIRM_COUNT && participant.is_online) {
           participant.is_online = false
           participant.is_ready = false
+          offlineCountMap.delete(userId)
+          
+          // 如果是主机，处理玩家离线逻辑
+          if (isHost.value && gameStatus.value === 'playing') {
+            handleExitGameAsHost(userId)
+          }
         }
       }
     })
@@ -357,24 +399,13 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
   }
   
-  // 处理参与者离开
-  function handlePresenceLeave(userId: string): void {
-    if (!currentChallenge.value) return
-    
-    const participant = currentChallenge.value.participants.find(p => p.user_id === userId)
-    if (participant) {
-      participant.is_online = false
-      participant.is_ready = false
-    }
-    
-    if (isHost.value) {
-      broadcastSync()
-      syncParticipantsToDb()
-      
-      if (gameStatus.value === 'playing') {
-        handleExitGameAsHost(userId)
-      }
-    }
+  // 处理参与者离开 - 不再使用，离线状态完全由 sync 事件处理
+  // 保留此函数是为了兼容性，但实际上不做任何处理
+  // 因为 track() 更新状态时会触发虚假的 leave 事件
+  function handlePresenceLeave(_userId: string): void {
+    // 不再处理 leave 事件
+    // 离线状态完全由 handlePresenceSync 基于完整状态快照来判断
+    // 这样可以避免 track() 更新时产生的虚假 leave 事件
   }
   
   // 更新 Presence 状态
@@ -1999,6 +2030,15 @@ export const useChallengeStore = defineStore('challenge', () => {
     stopRoundTimer()
     unsubscribeFromDbChanges() // 清理数据库订阅
     cleanupRealtimeStatusListener() // 清理 RealtimeManager 状态监听
+    
+    // 清理 Presence 同步节流定时器
+    if (presenceSyncTimer) {
+      clearTimeout(presenceSyncTimer)
+      presenceSyncTimer = null
+    }
+    
+    // 清理离线计数器
+    offlineCountMap.clear()
     
     // 清理 Supabase Realtime Channel（通过 RealtimeManager）
     if (currentChannelName.value) {

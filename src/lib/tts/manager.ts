@@ -23,6 +23,7 @@ import { browserTTS, onlineTTS, aiTTS } from './providers'
 function detectPlatform(): { os: string; browser: string } {
   const ua = navigator.userAgent
   
+  // 检测操作系统
   let os = 'unknown'
   if (/iPhone|iPad|iPod/i.test(ua)) {
     os = 'ios'
@@ -36,15 +37,32 @@ function detectPlatform(): { os: string; browser: string } {
     os = 'linux'
   }
   
+  // 检测浏览器
+  // 注意：iOS 上所有浏览器都使用 WebKit 内核，UA 中都包含 Safari
+  // iOS Chrome 的 UA 包含 CriOS，iOS Firefox 包含 FxiOS，iOS Edge 包含 EdgiOS
   let browser = 'unknown'
-  if (/Edg/i.test(ua)) {
-    browser = 'edge'
-  } else if (/Firefox/i.test(ua)) {
-    browser = 'firefox'
-  } else if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) {
-    browser = 'chrome'
-  } else if (/Safari/i.test(ua) && !/Chrome/i.test(ua) && !/Edg/i.test(ua)) {
-    browser = 'safari'
+  if (os === 'ios') {
+    // iOS 浏览器检测
+    if (/CriOS/i.test(ua)) {
+      browser = 'chrome'  // iOS Chrome
+    } else if (/FxiOS/i.test(ua)) {
+      browser = 'firefox'  // iOS Firefox
+    } else if (/EdgiOS/i.test(ua)) {
+      browser = 'edge'  // iOS Edge
+    } else if (/Safari/i.test(ua)) {
+      browser = 'safari'  // iOS Safari
+    }
+  } else {
+    // 桌面/Android 浏览器检测
+    if (/Edg/i.test(ua)) {
+      browser = 'edge'
+    } else if (/Firefox/i.test(ua)) {
+      browser = 'firefox'
+    } else if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) {
+      browser = 'chrome'
+    } else if (/Safari/i.test(ua) && !/Chrome/i.test(ua) && !/Edg/i.test(ua)) {
+      browser = 'safari'
+    }
   }
   
   return { os, browser }
