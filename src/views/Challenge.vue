@@ -286,15 +286,22 @@
               </div>
             </t-form-item>
             <t-form-item name="max_participants" label="参赛人数">
-              <t-input-number v-model="createData.max_participants" :min="2" :max="10" />
+              <t-input-number v-model="createData.max_participants" :min="2" :max="100" @blur="validateMaxParticipants" />
+              <span class="form-hint" :class="{ 'form-hint-error': createData.max_participants > 100 }">
+                {{ createData.max_participants > 100 ? '参赛人数不能超过100人' : '2-100人' }}
+              </span>
             </t-form-item>
             <t-form-item name="entry_fee" label="参赛积分">
-              <t-input-number v-model="createData.entry_fee" :min="0" :max="1000" :step="10" />
-              <span class="form-hint">赢家将获得所有参赛积分</span>
+              <t-input-number v-model="createData.entry_fee" :min="0" :max="10000" :step="10" @blur="validateEntryFee" />
+              <span class="form-hint" :class="{ 'form-hint-error': createData.entry_fee > 10000 }">
+                {{ createData.entry_fee > 10000 ? '参赛积分不能超过10000分' : '赢家将获得所有参赛积分' }}
+              </span>
             </t-form-item>
             <t-form-item name="word_count" label="单词数量">
-              <t-input-number v-model="createData.word_count" :min="5" :max="500" :step="5" />
-              <span class="form-hint">5-500个单词</span>
+              <t-input-number v-model="createData.word_count" :min="5" :max="500" :step="5" @blur="validateWordCount" />
+              <span class="form-hint" :class="{ 'form-hint-error': createData.word_count > 500 }">
+                {{ createData.word_count > 500 ? '单词数量不能超过500个' : '5-500个单词' }}
+              </span>
             </t-form-item>
             <t-form-item name="time_limit" label="答题时间">
               <t-slider v-model="createData.time_limit" :min="15" :max="60" :step="5" :marks="timeLimitMarks" />
@@ -313,6 +320,7 @@
               <t-radio-group v-model="createData.word_mode" variant="default-filled">
                 <t-radio-button value="simulate">模拟</t-radio-button>
                 <t-radio-button value="new">新题</t-radio-button>
+                <t-radio-button value="wrong">错题</t-radio-button>
                 <t-radio-button value="random">随机</t-radio-button>
                 <t-radio-button value="sequential">顺序</t-radio-button>
                 <t-radio-button value="reverse">倒序</t-radio-button>
@@ -811,6 +819,47 @@ const createRules = {
   ]
 }
 
+// 参数限制常量
+const MAX_PARTICIPANTS = 100
+const MAX_ENTRY_FEE = 10000
+const MAX_WORD_COUNT = 500
+
+// 验证函数
+function validateMaxParticipants() {
+  if (createData.max_participants > MAX_PARTICIPANTS) {
+    createData.max_participants = MAX_PARTICIPANTS
+  }
+}
+
+function validateEntryFee() {
+  if (createData.entry_fee > MAX_ENTRY_FEE) {
+    createData.entry_fee = MAX_ENTRY_FEE
+  }
+}
+
+function validateWordCount() {
+  if (createData.word_count > MAX_WORD_COUNT) {
+    createData.word_count = MAX_WORD_COUNT
+  }
+}
+
+// 创建前验证参数
+function validateCreateParams() {
+  if (createData.max_participants > MAX_PARTICIPANTS) {
+    MessagePlugin.error(`参赛人数不能超过${MAX_PARTICIPANTS}人`)
+    return false
+  }
+  if (createData.entry_fee > MAX_ENTRY_FEE) {
+    MessagePlugin.error(`参赛积分不能超过${MAX_ENTRY_FEE}分`)
+    return false
+  }
+  if (createData.word_count > MAX_WORD_COUNT) {
+    MessagePlugin.error(`单词数量不能超过${MAX_WORD_COUNT}个`)
+    return false
+  }
+  return true
+}
+
 const timeLimitMarks = { 15: '15s', 30: '30s', 45: '45s', 60: '60s' }
 
 // 出题模式提示
@@ -820,6 +869,8 @@ const wordModeHint = computed(() => {
       return '模拟真实比赛，按难度递进出题'
     case 'new':
       return '优先出现未考过的单词'
+    case 'wrong':
+      return '专门挑选容易错误的题目'
     case 'random':
       return '完全随机打乱顺序'
     case 'sequential':
@@ -1282,6 +1333,11 @@ async function handleDelete(challenge) {
 
 // 快速创建挑战赛（两人/三人对战）
 async function quickCreate(playerCount) {
+  // 验证参数
+  if (!validateCreateParams()) {
+    return
+  }
+
   quickCreating.value = playerCount
 
   try {
@@ -1358,6 +1414,11 @@ async function quickCreate(playerCount) {
 
 async function handleCreate({ validateResult }) {
   if (validateResult !== true) return
+
+  // 验证参数
+  if (!validateCreateParams()) {
+    return
+  }
 
   creating.value = true
   try {
@@ -2054,6 +2115,11 @@ watch(() => route.params.id, async (newId, oldId) => {
   margin-left: 0.5rem;
   font-size: 0.85rem;
   color: var(--text-secondary);
+  
+  &.form-hint-error {
+    color: var(--error, #e53935);
+    font-weight: 500;
+  }
 }
 
 .hint-options {

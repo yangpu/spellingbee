@@ -990,13 +990,17 @@ class RealtimeManager {
       this.reconnectLockTime = 0
       
       // 串行订阅 channel，避免并发冲突
-      // 按优先级排序：challenge channel 优先
+      // 按优先级排序：
+      // 1. challenge room channel（最高优先级，游戏核心功能）
+      // 2. challenge-notifications（挑战赛通知）
+      // 3. 其他 channel（如 app-version-updates）
       const sortedChannels = channelsToResubscribe.sort((a, b) => {
-        const aIsChallengeRoom = a.name.startsWith('challenge:')
-        const bIsChallengeRoom = b.name.startsWith('challenge:')
-        if (aIsChallengeRoom && !bIsChallengeRoom) return -1
-        if (!aIsChallengeRoom && bIsChallengeRoom) return 1
-        return 0
+        const getPriority = (name: string) => {
+          if (name.startsWith('challenge:')) return 0  // 挑战赛房间最高优先级
+          if (name === 'challenge-notifications') return 1  // 挑战赛通知次之
+          return 2  // 其他 channel 最低优先级
+        }
+        return getPriority(a.name) - getPriority(b.name)
       })
       
       for (const config of sortedChannels) {
@@ -1005,7 +1009,10 @@ class RealtimeManager {
           // 短暂延迟，避免并发订阅冲突
           await new Promise(resolve => setTimeout(resolve, CONFIG.CHANNEL_SUBSCRIBE_DELAY))
         } catch (e) {
+          // 订阅失败不阻塞其他 channel
           this.warn(`Failed to resubscribe channel ${config.name}:`, e)
+          // 如果是非关键 channel（如 app-version-updates），继续处理其他 channel
+          // 关键 channel 失败会在后续健康检查中重试
         }
       }
       

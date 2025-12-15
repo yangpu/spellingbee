@@ -58,16 +58,18 @@ class VersionService {
   /**
    * 初始化版本服务
    * 检查一次版本并订阅实时更新
+   * 注意：订阅是异步的，不会阻塞初始化
    */
   async init(): Promise<void> {
     if (this.initialized) return
     this.initialized = true
     
-    // 检查当前版本
+    // 检查当前版本（这个需要等待）
     await this.checkVersion()
     
-    // 订阅版本更新
-    this.subscribeToUpdates()
+    // 订阅版本更新（异步执行，不阻塞）
+    // 使用 Promise.resolve().then() 确保不阻塞
+    Promise.resolve().then(() => this.subscribeToUpdates())
   }
   
   /**
@@ -129,13 +131,14 @@ class VersionService {
   
   /**
    * 订阅版本更新（使用 RealtimeManager）
+   * 注意：此订阅是可选的，失败不应影响其他功能
    */
   private async subscribeToUpdates(): Promise<void> {
     const config: ChannelConfig = {
       name: VERSION_CHANNEL,
       type: 'postgres_changes',
-      autoResubscribe: true,
-      timeout: 15000,
+      autoResubscribe: false,  // 版本更新订阅失败不自动重试，避免阻塞其他 channel
+      timeout: 8000,  // 缩短超时时间，快速失败
       subscriptions: [
         {
           type: 'postgres_changes',
@@ -172,7 +175,9 @@ class VersionService {
     try {
       await realtimeManager.subscribe(config)
     } catch (error) {
-      // 订阅失败时静默处理
+      // 版本更新订阅失败是可接受的，不影响核心功能
+      // 用户仍可通过手动刷新页面获取更新
+      console.warn('[VersionService] Version update subscription failed, will rely on manual refresh')
     }
   }
   

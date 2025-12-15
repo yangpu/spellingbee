@@ -943,6 +943,7 @@ function getWordModeText(mode) {
   const map = {
     simulate: '模拟',
     new: '新题',
+    wrong: '错题',
     random: '随机',
     sequential: '顺序',
     reverse: '倒序'

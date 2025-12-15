@@ -44,6 +44,7 @@ class ChallengeNotificationService {
   
   /**
    * 初始化通知服务
+   * 注意：连接失败不会抛出错误，允许应用继续运行
    */
   async init(userId: string): Promise<void> {
     this.userId = userId
@@ -56,8 +57,13 @@ class ChallengeNotificationService {
     // 启动状态同步定时器，确保状态始终正确
     this.startStatusSync()
     
-    // 订阅通知 channel
-    await this.connect()
+    // 订阅通知 channel（不阻塞，失败也继续）
+    try {
+      await this.connect()
+    } catch (error) {
+      // 连接失败不影响应用启动
+      console.warn('[NotificationService] Initial connection failed, will retry on reconnect')
+    }
   }
   
   /**
@@ -94,6 +100,7 @@ class ChallengeNotificationService {
   
   /**
    * 建立连接
+   * 挑战赛通知是核心功能，需要确保订阅成功
    */
   private async connect(): Promise<void> {
     if (!this.userId) {
@@ -104,7 +111,7 @@ class ChallengeNotificationService {
       name: NOTIFICATION_CHANNEL,
       type: 'postgres_changes',
       autoResubscribe: true,
-      timeout: 15000,
+      timeout: 20000,  // 增加超时时间，确保有足够时间建立连接
       subscriptions: [
         {
           type: 'postgres_changes',
@@ -136,7 +143,9 @@ class ChallengeNotificationService {
       this._isConnected.value = true
     } catch (error) {
       this._isConnected.value = false
-      throw error
+      console.warn('[NotificationService] Failed to subscribe to challenge notifications:', error)
+      // 不抛出错误，允许应用继续运行
+      // 用户可以通过手动刷新列表获取新挑战赛
     }
   }
   

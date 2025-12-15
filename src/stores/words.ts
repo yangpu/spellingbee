@@ -283,6 +283,209 @@ export const useWordsStore = defineStore('words', () => {
     return filtered.slice(0, count)
   }
 
+  /**
+   * 根据出题模式获取单词
+   * @param count 单词数量
+   * @param difficulty 难度筛选
+   * @param mode 出题模式：simulate, new, wrong, random, sequential, reverse
+   * @param learningRecords 学习记录（用于 new 和 wrong 模式）
+   * @param competitionRecords 比赛记录（用于 wrong 模式）
+   * @param challengeRecords 挑战赛记录（用于 wrong 模式）
+   */
+  function getWordsForChallenge(
+    count = 10,
+    difficulty: number | null = null,
+    mode: string = 'simulate',
+    learningRecords: { word: string; is_correct: boolean }[] = [],
+    competitionRecords: { incorrect_words: string[] }[] = [],
+    challengeRecords: { word: string; is_correct: boolean }[] = []
+  ): Word[] {
+    // 先按难度筛选
+    let filtered = [...words.value]
+    if (difficulty !== null) {
+      filtered = filtered.filter(w => w.difficulty === difficulty)
+    }
+
+    if (filtered.length === 0) {
+      return []
+    }
+
+    switch (mode) {
+      case 'simulate':
+        // 模拟模式：按难度递进出题
+        return getSimulateWords(filtered, count)
+
+      case 'new':
+        // 新题模式：优先出现未考过的单词
+        return getNewWords(filtered, count, learningRecords, competitionRecords, challengeRecords)
+
+      case 'wrong':
+        // 错题模式：专门挑选容易错误的题目
+        return getWrongWords(filtered, count, learningRecords, competitionRecords, challengeRecords)
+
+      case 'random':
+        // 随机模式：完全随机打乱顺序
+        return shuffleArray(filtered).slice(0, count)
+
+      case 'sequential':
+        // 顺序模式：按词库顺序依次出题
+        return filtered.slice(0, count)
+
+      case 'reverse':
+        // 倒序模式：按词库倒序依次出题
+        return [...filtered].reverse().slice(0, count)
+
+      default:
+        // 默认使用随机模式
+        return shuffleArray(filtered).slice(0, count)
+    }
+  }
+
+  // Fisher-Yates 洗牌算法
+  function shuffleArray<T>(array: T[]): T[] {
+    const result = [...array]
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[result[i], result[j]] = [result[j], result[i]]
+    }
+    return result
+  }
+
+  // 模拟模式：按难度递进出题
+  function getSimulateWords(filtered: Word[], count: number): Word[] {
+    // 按难度分组
+    const byDifficulty: Record<number, Word[]> = {}
+    filtered.forEach(w => {
+      const d = w.difficulty || 1
+      if (!byDifficulty[d]) byDifficulty[d] = []
+      byDifficulty[d].push(w)
+    })
+
+    // 对每个难度组内随机打乱
+    Object.keys(byDifficulty).forEach(d => {
+      byDifficulty[Number(d)] = shuffleArray(byDifficulty[Number(d)])
+    })
+
+    // 按难度从低到高依次取单词
+    const result: Word[] = []
+    const difficulties = Object.keys(byDifficulty).map(Number).sort((a, b) => a - b)
+    
+    // 计算每个难度应该取多少个（尽量均匀分布，但按难度递进）
+    // 简单难度多一些，困难难度少一些
+    const weights = difficulties.map((_, i) => Math.max(1, difficulties.length - i))
+    const totalWeight = weights.reduce((a, b) => a + b, 0)
+    
+    let remaining = count
+    difficulties.forEach((d, i) => {
+      const available = byDifficulty[d]
+      // 最后一个难度取剩余所有
+      const toTake = i === difficulties.length - 1 
+        ? Math.min(remaining, available.length)
+        : Math.min(Math.ceil(count * weights[i] / totalWeight), available.length, remaining)
+      
+      result.push(...available.slice(0, toTake))
+      remaining -= toTake
+    })
+
+    // 如果还不够，从剩余单词中补充
+    if (result.length < count) {
+      const usedWords = new Set(result.map(w => w.word))
+      const unused = filtered.filter(w => !usedWords.has(w.word))
+      result.push(...shuffleArray(unused).slice(0, count - result.length))
+    }
+
+    return result.slice(0, count)
+  }
+
+  // 新题模式：优先出现未考过的单词
+  function getNewWords(
+    filtered: Word[],
+    count: number,
+    learningRecords: { word: string; is_correct: boolean }[],
+    competitionRecords: { incorrect_words: string[] }[],
+    challengeRecords: { word: string; is_correct: boolean }[]
+  ): Word[] {
+    // 收集所有已考过的单词
+    const testedWords = new Set<string>()
+    
+    // 从学习记录中收集
+    learningRecords.forEach(r => testedWords.add(r.word.toLowerCase()))
+    
+    // 从比赛记录中收集
+    competitionRecords.forEach(r => {
+      r.incorrect_words?.forEach(w => testedWords.add(w.toLowerCase()))
+    })
+    
+    // 从挑战赛记录中收集
+    challengeRecords.forEach(r => testedWords.add(r.word.toLowerCase()))
+
+    // 分为未考过和已考过
+    const newWords = filtered.filter(w => !testedWords.has(w.word.toLowerCase()))
+    const oldWords = filtered.filter(w => testedWords.has(w.word.toLowerCase()))
+
+    // 优先取未考过的，不够再从已考过的补充
+    const result = shuffleArray(newWords).slice(0, count)
+    if (result.length < count) {
+      result.push(...shuffleArray(oldWords).slice(0, count - result.length))
+    }
+
+    return result
+  }
+
+  // 错题模式：专门挑选容易错误的题目
+  function getWrongWords(
+    filtered: Word[],
+    count: number,
+    learningRecords: { word: string; is_correct: boolean }[],
+    competitionRecords: { incorrect_words: string[] }[],
+    challengeRecords: { word: string; is_correct: boolean }[]
+  ): Word[] {
+    // 统计每个单词的错误次数
+    const errorCount: Record<string, number> = {}
+    
+    // 从学习记录中统计错误
+    learningRecords.forEach(r => {
+      if (!r.is_correct) {
+        const word = r.word.toLowerCase()
+        errorCount[word] = (errorCount[word] || 0) + 1
+      }
+    })
+    
+    // 从比赛记录中统计错误
+    competitionRecords.forEach(r => {
+      r.incorrect_words?.forEach(w => {
+        const word = w.toLowerCase()
+        errorCount[word] = (errorCount[word] || 0) + 1
+      })
+    })
+    
+    // 从挑战赛记录中统计错误
+    challengeRecords.forEach(r => {
+      if (!r.is_correct) {
+        const word = r.word.toLowerCase()
+        errorCount[word] = (errorCount[word] || 0) + 1
+      }
+    })
+
+    // 筛选出有错误记录的单词
+    const wrongWords = filtered.filter(w => errorCount[w.word.toLowerCase()] > 0)
+    
+    // 按错误次数排序（错误多的优先）
+    wrongWords.sort((a, b) => {
+      return (errorCount[b.word.toLowerCase()] || 0) - (errorCount[a.word.toLowerCase()] || 0)
+    })
+
+    // 如果错题不够，用随机单词补充
+    const result = wrongWords.slice(0, count)
+    if (result.length < count) {
+      const usedWords = new Set(result.map(w => w.word.toLowerCase()))
+      const unused = filtered.filter(w => !usedWords.has(w.word.toLowerCase()))
+      result.push(...shuffleArray(unused).slice(0, count - result.length))
+    }
+
+    return result
+  }
+
   // Get word by ID
   function getWordById(id: string): Word | undefined {
     return words.value.find(w => w.id === id)
@@ -365,6 +568,7 @@ export const useWordsStore = defineStore('words', () => {
     importWords,
     exportWords,
     getRandomWords,
+    getWordsForChallenge,
     getWordById,
     searchWords,
     loadWordList,

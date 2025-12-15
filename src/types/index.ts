@@ -166,7 +166,7 @@ export interface Challenge {
   word_count: number
   time_limit: number
   difficulty: number | null
-  word_mode?: string // 出题模式：simulate, new, random, sequential, reverse
+  word_mode?: string // 出题模式：simulate, new, wrong, random, sequential, reverse
   challenge_number?: number // 比赛序号
   show_chinese?: boolean // 显示中文词义，默认 true
   show_english?: boolean // 显示英文释义，默认 true

@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabase'
 import { realtimeManager, type ChannelConfig, type RealtimeStatus } from '@/lib/realtime-manager'
 import { useAuthStore } from './auth'
 import { useWordsStore } from './words'
+import { useLearningStore } from './learning'
+import { useCompetitionStore } from './competition'
 import { useAnnouncerStore } from './announcer'
 import type { Challenge, ChallengeParticipant, ChallengeWord, ChallengeMessage, ChallengeWordResult, Word } from '@/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
@@ -13,17 +15,19 @@ const HEARTBEAT_CONFIG = {
   // 选手向主持人发送心跳的间隔（毫秒）
   PLAYER_HEARTBEAT_INTERVAL: 3000,
   // 主持人广播状态的间隔（毫秒）- 正常情况
-  HOST_BROADCAST_INTERVAL: 5000,
+  HOST_BROADCAST_INTERVAL: 3000,  // 减少到3秒，更快同步状态
   // 主持人广播状态的间隔（毫秒）- 有离线选手时，提高频率以同步倒计时
   HOST_BROADCAST_INTERVAL_FAST: 1000,
   // 心跳超时时间（毫秒）- 超过此时间未收到心跳视为离线
-  HEARTBEAT_TIMEOUT: 10000,
+  HEARTBEAT_TIMEOUT: 15000,  // 增加到15秒，减少误判
   // 离线保护时间（毫秒）- 离线后等待此时间才判定为退赛
   OFFLINE_PROTECTION_TIME: 30000,
   // 快速离线检测时间（毫秒）- 用于 UI 显示离线状态
-  QUICK_OFFLINE_DETECTION: 8000,
+  QUICK_OFFLINE_DETECTION: 12000,  // 增加到12秒
   // 本地倒计时检查间隔（毫秒）- 所有客户端都检查
   LOCAL_COUNTDOWN_CHECK_INTERVAL: 1000,
+  // 房主离线检测容错次数 - 连续多次未收到广播才确认离线
+  HOST_OFFLINE_CONFIRM_COUNT: 3,
 } as const
 
 export const useChallengeStore = defineStore('challenge', () => {
@@ -191,6 +195,8 @@ export const useChallengeStore = defineStore('challenge', () => {
   let hostOfflineCheckTimer: ReturnType<typeof setInterval> | null = null
   // 非主机：标记主机是否被确认为离线（防止 Presence sync 覆盖）
   let hostConfirmedOffline = false
+  // 非主机：主机离线检测计数器（连续多次未收到广播才确认离线）
+  let hostOfflineCheckCount = 0
   // 本地倒计时检查定时器（所有客户端都运行）
   let localCountdownTimer: ReturnType<typeof setInterval> | null = null
   // 标记比赛是否已经由本客户端结束（防止重复结束）
@@ -380,12 +386,14 @@ export const useChallengeStore = defineStore('challenge', () => {
   
   // 处理 Presence 同步 - 这是唯一可靠的状态来源
   // sync 事件包含当前 channel 的完整 Presence 状态快照
+  // 注意：比赛进行中，分数只能由房主的 round_end 消息更新，不从 Presence 同步
   function handlePresenceSync(): void {
     if (!currentChallenge.value || !currentChannelName.value) return
     
     const state = realtimeManager.getPresenceState(currentChannelName.value)
     const creatorId = currentChallenge.value.creator_id
     const myUserId = authStore.user?.id
+    const isGameInProgress = gameStatus.value === 'playing' || gameStatus.value === 'round_result'
     
     // 更新所有参与者的在线状态 - 基于 Presence 状态快照
     currentChallenge.value.participants.forEach(participant => {
@@ -401,10 +409,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       // 如果是主机且已被确认离线，忽略 Presence sync 的状态
       // 主机离线检测的优先级更高
       if (isCreator && hostConfirmedOffline) {
-        // 只更新非在线状态相关的字段
-        if (presences && presences.length > 0 && presences[0].score !== undefined) {
-          participant.score = presences[0].score
-        }
+        // 不更新任何状态
         return
       }
       
@@ -415,10 +420,6 @@ export const useChallengeStore = defineStore('challenge', () => {
         // 心跳机制的优先级更高，因为它是应用层的主动检测
         if (heartbeatConfirmedOffline.has(userId)) {
           console.log(`[PresenceSync] 忽略用户 ${userId.slice(0,8)} 的 Presence（已在 heartbeatConfirmedOffline 中）`)
-          // 只更新非在线状态相关的字段
-          if (presence.score !== undefined) {
-            participant.score = presence.score
-          }
           return
         }
         
@@ -426,10 +427,6 @@ export const useChallengeStore = defineStore('challenge', () => {
         // Presence 可能有延迟或缓存，导致用户关闭页面后状态仍然存在
         if (offlineStartTimeMap.has(userId)) {
           console.log(`[PresenceSync] 忽略用户 ${userId.slice(0,8)} 的 Presence（已在 offlineStartTimeMap 中）`)
-          // 只更新非在线状态相关的字段
-          if (presence.score !== undefined) {
-            participant.score = presence.score
-          }
           return
         }
         
@@ -443,7 +440,9 @@ export const useChallengeStore = defineStore('challenge', () => {
         } else {
           participant.is_ready = presence.is_ready || false
         }
-        if (presence.score !== undefined) {
+        // 【重要】比赛进行中不从 Presence 更新分数，分数只能由房主的 round_end 消息更新
+        // 这样可以避免 Presence 的延迟数据覆盖最新分数
+        if (!isGameInProgress && presence.score !== undefined) {
           participant.score = presence.score
         }
         // 重置离线计数
@@ -739,17 +738,37 @@ export const useChallengeStore = defineStore('challenge', () => {
   }
 
   function handleWordMessage(message: ChallengeMessage): void {
-    const data = message.data as { word: Word; round: number; time_limit: number }
+    const data = message.data as { 
+      word: Word
+      round: number
+      time_limit: number
+      round_start_time?: number  // 房主的开始时间戳
+    }
+    
+    // 如果已经是这一轮了，忽略重复消息
+    if (currentRound.value === data.round && gameStatus.value === 'playing') {
+      return
+    }
     
     currentWord.value = data.word
     currentRound.value = data.round
-    roundTimeRemaining.value = data.time_limit
-    roundStartTime.value = Date.now()
     hasSubmitted.value = false
     myAnswer.value = ''
     roundResults.value = []
     roundEnded.value = false // 重置轮次结束标志
     gameStatus.value = 'playing'
+    
+    // 使用房主的开始时间同步倒计时，减少延迟
+    if (data.round_start_time) {
+      const elapsed = Date.now() - data.round_start_time
+      const remainingMs = Math.max(0, data.time_limit * 1000 - elapsed)
+      roundTimeRemaining.value = Math.ceil(remainingMs / 1000)
+      roundStartTime.value = data.round_start_time
+    } else {
+      // 兼容旧版本消息
+      roundTimeRemaining.value = data.time_limit
+      roundStartTime.value = Date.now()
+    }
     
     // 启动倒计时
     startRoundTimer()
@@ -786,11 +805,16 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     roundResults.value.push(result)
 
-    // 检查是否有人答对了
+    // 计算有效参与者数量（在线且未退赛的）
+    const activeParticipants = currentChallenge.value?.participants.filter(
+      p => p.is_online && !p.has_left
+    ).length || 0
+
+    // 检查是否有人答对了 - 立即结束本轮
     if (result.is_correct) {
       endRound(message.sender_id)
-    } else if (roundResults.value.length >= (currentChallenge.value?.participants.length || 0)) {
-      // 所有人都提交了
+    } else if (roundResults.value.length >= activeParticipants) {
+      // 所有在线参与者都提交了（都是错的）- 立即结束本轮
       endRound(null)
     }
   }
@@ -801,6 +825,11 @@ export const useChallengeStore = defineStore('challenge', () => {
       correct_answer: string
       results: ChallengeWordResult[]
       scores: { user_id: string; score: number }[]
+    }
+
+    // 如果已经是 round_result 状态，忽略重复消息
+    if (gameStatus.value === 'round_result') {
+      return
     }
 
     stopRoundTimer()
@@ -985,11 +1014,14 @@ export const useChallengeStore = defineStore('challenge', () => {
   }
   
   // 处理主机状态广播（选手接收）
+  // 注意：比赛进行中，分数只能由 round_end 消息更新，status_broadcast 不更新分数
   function handleStatusBroadcastMessage(message: ChallengeMessage): void {
     if (isHost.value || !currentChallenge.value) return
     
     // 记录收到主机广播的时间
     lastHostBroadcastTime = Date.now()
+    // 重置主机离线检测计数
+    hostOfflineCheckCount = 0
     
     // 收到主机广播，说明主机在线，重置离线确认标志
     hostConfirmedOffline = false
@@ -1027,8 +1059,11 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
     
     // 更新参与者状态（保留自己的本地状态）
+    // 【重要】比赛进行中，分数只能由 round_end 消息更新，status_broadcast 不更新分数
+    // 这样可以避免延迟的 status_broadcast 覆盖最新分数导致分数跳变
     const myUserId = authStore.user?.id
     const now = Date.now()
+    const isGameInProgress = gameStatus.value === 'playing' || gameStatus.value === 'round_result'
     
     data.participants.forEach(p => {
       if (p.user_id === myUserId) return  // 不覆盖自己的状态
@@ -1041,7 +1076,11 @@ export const useChallengeStore = defineStore('challenge', () => {
         }
         participant.is_online = p.is_online
         participant.is_ready = p.is_ready
-        participant.score = p.score
+        // 【重要】比赛进行中不从 status_broadcast 更新分数
+        // 分数只能由房主的 round_end 消息更新，避免分数跳变
+        if (!isGameInProgress) {
+          participant.score = p.score
+        }
         
         // 更新离线时间戳和退赛倒计时
         if (!p.is_online) {
@@ -1346,8 +1385,9 @@ export const useChallengeStore = defineStore('challenge', () => {
       clearInterval(hostOfflineCheckTimer)
       hostOfflineCheckTimer = null
     }
-    // 重置主机离线确认标志
+    // 重置主机离线确认标志和计数器
     hostConfirmedOffline = false
+    hostOfflineCheckCount = 0
   }
   
   // ==================== 本地倒计时检查（所有客户端都运行） ====================
@@ -1371,6 +1411,7 @@ export const useChallengeStore = defineStore('challenge', () => {
   
   // 检查本地倒计时（所有客户端都运行）
   // 当任何选手离线倒计时到0时，本客户端可以结束比赛
+  // 【重要】只有房主才能触发退赛，非房主只更新本地倒计时显示
   function checkLocalCountdowns(): void {
     if (!currentChallenge.value || gameStatus.value !== 'playing' || gameEndedByMe) return
     
@@ -1388,6 +1429,7 @@ export const useChallengeStore = defineStore('challenge', () => {
         if (offlineStartTimeMap.has(p.user_id)) {
           offlineStartTimeMap.delete(p.user_id)
           p.exit_countdown = undefined
+          p.offline_since = undefined
         }
         continue
       }
@@ -1398,6 +1440,7 @@ export const useChallengeStore = defineStore('challenge', () => {
         // 首次检测到离线，记录开始时间
         offlineStartTime = p.offline_since || now
         offlineStartTimeMap.set(p.user_id, offlineStartTime)
+        p.offline_since = offlineStartTime
       }
       
       const offlineDuration = now - offlineStartTime
@@ -1407,20 +1450,40 @@ export const useChallengeStore = defineStore('challenge', () => {
       // 更新本地倒计时显示
       p.exit_countdown = countdown
       
-      // 倒计时到0，需要结束比赛
-      if (remaining <= 0 && !p.has_left) {
-        console.log(`[Challenge] Player ${p.user_id} countdown reached 0, ending game`)
+      // 【重要】只有房主才能触发退赛逻辑
+      // 非房主只更新本地倒计时显示，等待房主广播退赛消息
+      // 这样可以避免多个客户端同时触发退赛导致的状态不一致
+      if (isHost.value && remaining <= 0 && !p.has_left) {
+        console.log(`[Challenge] Player ${p.user_id.slice(0,8)} countdown reached 0, host triggering exit`)
         p.has_left = true
         
-        // 任何客户端都可以触发结束比赛
-        // 但需要检查数据库状态，避免重复写入
-        handleGameEndDueToOffline(p.user_id)
+        // 房主触发退赛处理
+        handleExitGameAsHost(p.user_id)
         return  // 只处理一个离线超时
       }
     }
     
-    // 特殊情况：检查自己是否离线（网络断开时自己可能不知道）
-    // 这种情况下其他客户端会处理，自己不需要处理
+    // 特殊情况：房主离线超时，非房主需要结束比赛
+    // 只有当房主确认离线且倒计时到0时才触发
+    if (!isHost.value && hostConfirmedOffline) {
+      const creatorId = currentChallenge.value.creator_id
+      const hostOfflineStart = offlineStartTimeMap.get(creatorId)
+      if (hostOfflineStart) {
+        const hostOfflineDuration = now - hostOfflineStart
+        const hostRemaining = HEARTBEAT_CONFIG.OFFLINE_PROTECTION_TIME - hostOfflineDuration
+        
+        if (hostRemaining <= 0) {
+          const hostParticipant = currentChallenge.value.participants.find(
+            p => p.user_id === creatorId
+          )
+          if (hostParticipant && !hostParticipant.has_left) {
+            console.log(`[Challenge] Host offline timeout, non-host ending game`)
+            hostParticipant.has_left = true
+            handleGameEndDueToOffline(creatorId)
+          }
+        }
+      }
+    }
   }
   
   // 因离线超时结束比赛（任何客户端都可以调用）
@@ -1592,6 +1655,7 @@ export const useChallengeStore = defineStore('challenge', () => {
   }
   
   // 检查主机是否在线（非主机调用）
+  // 增加容错机制：连续多次未收到广播才确认离线，避免网络抖动导致的误判
   function checkHostOnline(): void {
     if (isHost.value || !currentChallenge.value) return
     
@@ -1599,39 +1663,52 @@ export const useChallengeStore = defineStore('challenge', () => {
     const timeSinceLastBroadcast = now - lastHostBroadcastTime
     const creatorId = currentChallenge.value.creator_id
     
-    // 如果超过心跳超时时间没有收到主机广播，认为主机离线
+    // 如果超过心跳超时时间没有收到主机广播
     if (timeSinceLastBroadcast > HEARTBEAT_CONFIG.HEARTBEAT_TIMEOUT) {
-      const hostParticipant = currentChallenge.value.participants.find(
-        p => p.user_id === creatorId
-      )
+      // 增加离线检测计数
+      hostOfflineCheckCount++
       
-      if (hostParticipant && hostParticipant.is_online) {
-        hostParticipant.is_online = false
-        hostParticipant.is_ready = false  // 房主离线时自动取消准备状态
+      // 只有连续多次检测都超时才确认离线（容错机制）
+      if (hostOfflineCheckCount >= HEARTBEAT_CONFIG.HOST_OFFLINE_CONFIRM_COUNT) {
+        const hostParticipant = currentChallenge.value.participants.find(
+          p => p.user_id === creatorId
+        )
         
-        // 记录离线开始时间（用于本地倒计时）
-        const offlineTime = lastHostBroadcastTime || now
-        if (!offlineStartTimeMap.has(creatorId)) {
-          offlineStartTimeMap.set(creatorId, offlineTime)
+        if (hostParticipant && hostParticipant.is_online) {
+          console.log(`[HostOfflineCheck] 房主离线确认（连续 ${hostOfflineCheckCount} 次未收到广播）`)
+          hostParticipant.is_online = false
+          hostParticipant.is_ready = false  // 房主离线时自动取消准备状态
+          
+          // 记录离线开始时间（用于本地倒计时）
+          // 使用第一次检测到超时的时间，而不是当前时间
+          const offlineTime = lastHostBroadcastTime + HEARTBEAT_CONFIG.HEARTBEAT_TIMEOUT
+          if (!offlineStartTimeMap.has(creatorId)) {
+            offlineStartTimeMap.set(creatorId, offlineTime)
+          }
+          hostParticipant.offline_since = offlineStartTimeMap.get(creatorId)
+          
+          // 标记主机已确认离线，防止 Presence sync 覆盖
+          hostConfirmedOffline = true
         }
-        hostParticipant.offline_since = offlineStartTimeMap.get(creatorId)
-        
-        // 标记主机已确认离线，防止 Presence sync 覆盖
-        hostConfirmedOffline = true
-        console.log('[Challenge] Host offline detected by player')
       }
-    } else if (hostConfirmedOffline) {
-      // 收到主机广播，说明主机恢复在线
-      const hostParticipant = currentChallenge.value.participants.find(
-        p => p.user_id === creatorId
-      )
-      if (hostParticipant) {
-        hostParticipant.is_online = true
-        hostParticipant.is_ready = true
-        hostParticipant.offline_since = undefined
-        hostParticipant.exit_countdown = undefined
-        offlineStartTimeMap.delete(creatorId)
-        hostConfirmedOffline = false
+    } else {
+      // 收到主机广播，重置计数和离线状态
+      hostOfflineCheckCount = 0
+      
+      if (hostConfirmedOffline) {
+        // 房主恢复在线
+        const hostParticipant = currentChallenge.value.participants.find(
+          p => p.user_id === creatorId
+        )
+        if (hostParticipant) {
+          console.log(`[HostOfflineCheck] 房主恢复在线`)
+          hostParticipant.is_online = true
+          hostParticipant.is_ready = true
+          hostParticipant.offline_since = undefined
+          hostParticipant.exit_countdown = undefined
+          offlineStartTimeMap.delete(creatorId)
+          hostConfirmedOffline = false
+        }
       }
     }
   }
@@ -1927,17 +2004,23 @@ export const useChallengeStore = defineStore('challenge', () => {
     roundEnded.value = false // 重置轮次结束标志
     gameStatus.value = 'playing'
 
-    // 广播当前单词
-    broadcast({
+    // 广播当前单词（多次发送确保送达，减少延迟）
+    const wordMessage: ChallengeMessage = {
       type: 'word',
       data: {
         word: currentGameWord.word,
         round: currentRound.value,
-        time_limit: currentChallenge.value.time_limit
+        time_limit: currentChallenge.value.time_limit,
+        round_start_time: roundStartTime.value  // 传递开始时间，让选手同步倒计时
       },
       sender_id: authStore.user!.id,
       timestamp: Date.now()
-    })
+    }
+    
+    // 立即发送，然后快速重发两次确保送达
+    broadcast(wordMessage)
+    setTimeout(() => broadcast(wordMessage), 50)
+    setTimeout(() => broadcast(wordMessage), 100)
 
     // 启动倒计时
     startRoundTimer()
@@ -2061,15 +2144,23 @@ export const useChallengeStore = defineStore('challenge', () => {
           if (localParticipant) {
             // 如果是主机且心跳机制已确认该用户离线，不要从数据库覆盖在线状态
             // 这避免了心跳检测和数据库同步之间的状态冲突
+            const isGameInProgress = gameStatus.value === 'playing' || gameStatus.value === 'round_result'
+            
             if (isHost.value && heartbeatConfirmedOffline.has(p.user_id)) {
               // 只更新非在线状态相关的字段
               localParticipant.is_ready = p.is_ready
-              localParticipant.score = p.score
+              // 【重要】比赛进行中不从数据库更新分数
+              if (!isGameInProgress) {
+                localParticipant.score = p.score
+              }
               localParticipant.has_left = p.has_left
             } else {
               localParticipant.is_online = p.is_online
               localParticipant.is_ready = p.is_ready
-              localParticipant.score = p.score
+              // 【重要】比赛进行中不从数据库更新分数
+              if (!isGameInProgress) {
+                localParticipant.score = p.score
+              }
               localParticipant.has_left = p.has_left
             }
           }
@@ -2127,8 +2218,8 @@ export const useChallengeStore = defineStore('challenge', () => {
       score: p.score
     }))
 
-    // 广播轮次结束
-    broadcast({
+    // 广播轮次结束（多次发送确保送达，减少延迟）
+    const roundEndMessage: ChallengeMessage = {
       type: 'round_end',
       data: {
         winner_id: winnerId,
@@ -2138,7 +2229,12 @@ export const useChallengeStore = defineStore('challenge', () => {
       },
       sender_id: authStore.user!.id,
       timestamp: Date.now()
-    })
+    }
+    
+    // 立即发送，然后快速重发两次确保送达
+    broadcast(roundEndMessage)
+    setTimeout(() => broadcast(roundEndMessage), 50)
+    setTimeout(() => broadcast(roundEndMessage), 100)
 
     // 本地也处理
     handleRoundEndMessage({
@@ -2245,9 +2341,15 @@ export const useChallengeStore = defineStore('challenge', () => {
 
       roundResults.value.push(result)
 
+      // 计算有效参与者数量（在线且未退赛的）
+      const activeParticipants = currentChallenge.value.participants.filter(
+        p => p.is_online && !p.has_left
+      ).length
+
       if (result.is_correct) {
         endRound(authStore.user!.id)
-      } else if (roundResults.value.length >= currentChallenge.value.participants.length) {
+      } else if (roundResults.value.length >= activeParticipants) {
+        // 所有在线参与者都提交了（都是错的）- 立即结束本轮
         endRound(null)
       }
     } else {
@@ -2321,10 +2423,56 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     await wordsStore.init()
 
-    // 生成比赛单词
-    const words = wordsStore.getRandomWords(
+    // 获取出题模式
+    const wordMode = currentChallenge.value.word_mode || 'simulate'
+    
+    // 准备学习记录、比赛记录和挑战赛记录（用于 new 和 wrong 模式）
+    let learningRecords: { word: string; is_correct: boolean }[] = []
+    let competitionRecords: { incorrect_words: string[] }[] = []
+    let challengeRecordsData: { word: string; is_correct: boolean }[] = []
+    
+    if (wordMode === 'new' || wordMode === 'wrong') {
+      // 获取学习记录
+      const learningStore = useLearningStore()
+      learningRecords = learningStore.learningRecords.map(r => ({
+        word: r.word,
+        is_correct: r.is_correct
+      }))
+      
+      // 获取比赛记录
+      const competitionStore = useCompetitionStore()
+      competitionRecords = competitionStore.records.map(r => ({
+        incorrect_words: r.incorrect_words || []
+      }))
+      
+      // 获取挑战赛记录（从当前用户参与的历史挑战赛中提取）
+      const userId = authStore.user?.id
+      if (userId) {
+        // 从本地缓存的挑战赛中提取错误记录
+        challenges.value.forEach(c => {
+          if (c.status === 'finished' && c.game_words) {
+            c.game_words.forEach((gw: ChallengeWord) => {
+              const myResult = gw.results?.find(r => r.user_id === userId)
+              if (myResult) {
+                challengeRecordsData.push({
+                  word: gw.word.word,
+                  is_correct: myResult.is_correct
+                })
+              }
+            })
+          }
+        })
+      }
+    }
+
+    // 生成比赛单词（根据出题模式）
+    const words = wordsStore.getWordsForChallenge(
       currentChallenge.value.word_count,
-      currentChallenge.value.difficulty
+      currentChallenge.value.difficulty,
+      wordMode,
+      learningRecords,
+      competitionRecords,
+      challengeRecordsData
     )
 
     if (words.length === 0) {
