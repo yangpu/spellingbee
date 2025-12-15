@@ -435,9 +435,62 @@
           <t-icon :name="showRecords ? 'chevron-up' : 'chevron-down'" />
         </div>
         <div class="records-content" v-if="showRecords">
+          <!-- 筛选和搜索区域 -->
+          <div class="records-toolbar">
+            <!-- PC端分类统计筛选 -->
+            <div class="records-filter records-filter-pc">
+              <div class="filter-item" :class="{ active: recordsFilter === 'all' }" @click="setRecordsFilter('all')">
+                <span class="filter-label">全部</span>
+                <span class="filter-count">{{ recordsStats.all }}</span>
+              </div>
+              <div class="filter-item correct" :class="{ active: recordsFilter === 'correct' }" @click="setRecordsFilter('correct')">
+                <t-icon name="check-circle" />
+                <span class="filter-label">正确</span>
+                <span class="filter-count">{{ recordsStats.correct }}</span>
+              </div>
+              <div class="filter-item wrong" :class="{ active: recordsFilter === 'wrong' }" @click="setRecordsFilter('wrong')">
+                <t-icon name="close-circle" />
+                <span class="filter-label">错误</span>
+                <span class="filter-count">{{ recordsStats.wrong }}</span>
+              </div>
+              <div class="filter-item other" :class="{ active: recordsFilter === 'other' }" @click="setRecordsFilter('other')">
+                <t-icon name="help-circle" />
+                <span class="filter-label">其他</span>
+                <span class="filter-count">{{ recordsStats.other }}</span>
+              </div>
+            </div>
+            
+            <!-- 移动端下拉筛选 -->
+            <div class="records-filter-mobile">
+              <t-select
+                v-model="recordsFilter"
+                size="small"
+                @change="handleFilterChange"
+              >
+                <t-option value="all" :label="`全部 (${recordsStats.all})`" />
+                <t-option value="correct" :label="`正确 (${recordsStats.correct})`" />
+                <t-option value="wrong" :label="`错误 (${recordsStats.wrong})`" />
+                <t-option value="other" :label="`其他 (${recordsStats.other})`" />
+              </t-select>
+            </div>
+            
+            <!-- 搜索框 -->
+            <div class="records-search">
+              <t-input
+                v-model="recordsSearchKeyword"
+                placeholder="搜索单词..."
+                clearable
+                size="small"
+                @change="handleRecordsSearch"
+              >
+                <template #prefix-icon><t-icon name="search" /></template>
+              </t-input>
+            </div>
+          </div>
+          
           <div class="record-item" v-for="(gameWord, index) in paginatedGameWords" :key="gameWord.word.word + index">
             <div class="record-word-row">
-              <span class="round-num">{{ (recordsCurrentPage - 1) * recordsPageSize + index + 1 }}</span>
+              <span class="round-num">{{ gameWord.originalIndex }}</span>
               <span class="word-text">{{ gameWord.word.word }}</span>
               <span class="word-phonetic">{{ gameWord.word.pronunciation }}</span>
               <t-button variant="text" size="small" @click.stop="speakWord(gameWord.word.word)">
@@ -457,14 +510,16 @@
             </div>
           </div>
           <!-- 分页控制 -->
-          <div class="records-pagination" v-if="recordsTotalPages > 1">
-            <t-button variant="outline" size="small" :disabled="recordsCurrentPage <= 1" @click="recordsCurrentPage--">
-              <template #icon><t-icon name="chevron-left" /></template>
-            </t-button>
-            <span class="page-info">{{ recordsCurrentPage }} / {{ recordsTotalPages }}</span>
-            <t-button variant="outline" size="small" :disabled="recordsCurrentPage >= recordsTotalPages" @click="recordsCurrentPage++">
-              <template #icon><t-icon name="chevron-right" /></template>
-            </t-button>
+          <div class="records-pagination" v-if="filteredGameWords.length > 0">
+            <t-pagination
+              v-model:current="recordsCurrentPage"
+              v-model:page-size="recordsPageSize"
+              :total="filteredGameWords.length"
+              :page-size-options="recordsPageSizeOptions"
+              :show-jumper="true"
+              size="small"
+              @change="handleRecordsPageChange"
+            />
           </div>
         </div>
       </div>
@@ -507,18 +562,108 @@ const showHostOfflineDialog = ref(false) // 房主离线提示对话框
 const hostOfflineDialogDismissed = ref(false) // 用户是否已关闭过对话框
 
 // 比赛记录分页
-const recordsPageSize = 5 // 每页显示5条记录
+const recordsPageSize = ref(10) // 每页显示10条记录（默认）
 const recordsCurrentPage = ref(1)
+const recordsPageSizeOptions = [5, 10, 20, 50]
+const recordsFilter = ref('all') // 'all' | 'correct' | 'wrong' | 'other'
+const recordsSearchKeyword = ref('') // 搜索关键词
 
-const recordsTotalPages = computed(() => {
-  return Math.ceil(challengeStore.gameWords.length / recordsPageSize)
+// 比赛记录统计
+const recordsStats = computed(() => {
+  const userId = authStore.user?.id
+  let correct = 0
+  let wrong = 0
+  let other = 0
+  
+  challengeStore.gameWords.forEach(gw => {
+    // 查找当前用户的答题结果
+    const myResult = gw.results?.find(r => r.user_id === userId)
+    if (myResult) {
+      if (myResult.is_correct) {
+        correct++
+      } else {
+        wrong++
+      }
+    } else {
+      // 没有找到当前用户的答题结果（未参与或其他情况）
+      other++
+    }
+  })
+  
+  return {
+    all: challengeStore.gameWords.length,
+    correct,
+    wrong,
+    other
+  }
+})
+
+// 过滤后的比赛记录
+const filteredGameWords = computed(() => {
+  const userId = authStore.user?.id
+  let result = challengeStore.gameWords.map((gw, idx) => ({
+    ...gw,
+    originalIndex: idx + 1
+  }))
+  
+  // 先按分类过滤
+  if (recordsFilter.value === 'correct') {
+    result = result.filter(gw => {
+      const myResult = gw.results?.find(r => r.user_id === userId)
+      return myResult?.is_correct === true
+    })
+  } else if (recordsFilter.value === 'wrong') {
+    result = result.filter(gw => {
+      const myResult = gw.results?.find(r => r.user_id === userId)
+      return myResult && !myResult.is_correct
+    })
+  } else if (recordsFilter.value === 'other') {
+    result = result.filter(gw => {
+      const myResult = gw.results?.find(r => r.user_id === userId)
+      return !myResult // 没有当前用户的答题记录
+    })
+  }
+  
+  // 再按搜索关键词过滤
+  if (recordsSearchKeyword.value.trim()) {
+    const keyword = recordsSearchKeyword.value.trim().toLowerCase()
+    result = result.filter(gw => 
+      gw.word.word.toLowerCase().includes(keyword) ||
+      gw.word.definition_cn?.toLowerCase().includes(keyword) ||
+      gw.word.definition?.toLowerCase().includes(keyword)
+    )
+  }
+  
+  return result
 })
 
 const paginatedGameWords = computed(() => {
-  const start = (recordsCurrentPage.value - 1) * recordsPageSize
-  const end = start + recordsPageSize
-  return challengeStore.gameWords.slice(start, end)
+  const start = (recordsCurrentPage.value - 1) * recordsPageSize.value
+  const end = start + recordsPageSize.value
+  return filteredGameWords.value.slice(start, end)
 })
+
+// 设置记录过滤器
+function setRecordsFilter(filter) {
+  recordsFilter.value = filter
+  recordsCurrentPage.value = 1 // 切换过滤器时重置到第一页
+}
+
+// 处理筛选变化（移动端下拉）
+function handleFilterChange() {
+  recordsCurrentPage.value = 1
+}
+
+// 处理搜索
+function handleRecordsSearch() {
+  recordsCurrentPage.value = 1
+}
+
+// 处理分页变化
+function handleRecordsPageChange(pageInfo) {
+  recordsCurrentPage.value = pageInfo.current
+  recordsPageSize.value = pageInfo.pageSize
+}
 
 const challenge = computed(() => challengeStore.currentChallenge)
 
@@ -2103,21 +2248,110 @@ onUnmounted(() => {
         }
       }
 
+      .records-toolbar {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        align-items: center;
+        justify-content: space-between;
+
+        .records-filter-pc {
+          display: flex;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .records-filter-mobile {
+          display: none;
+          min-width: 130px;
+        }
+
+        .records-search {
+          width: 180px;
+          flex-shrink: 0;
+        }
+      }
+
+      .records-filter {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+
+        .filter-item {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.4rem 0.75rem;
+          background: var(--bg-card);
+          border-radius: 16px;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: 2px solid transparent;
+          font-size: 0.85rem;
+
+          &:hover {
+            background: var(--hover-bg);
+          }
+
+          &.active {
+            border-color: var(--honey-400);
+            background: var(--honey-50);
+          }
+
+          &.correct {
+            .t-icon {
+              color: var(--success);
+            }
+            &.active {
+              border-color: var(--success);
+              background: var(--success-light, #d1fae5);
+            }
+          }
+
+          &.wrong {
+            .t-icon {
+              color: var(--error);
+            }
+            &.active {
+              border-color: var(--error);
+              background: var(--error-light, #fee2e2);
+            }
+          }
+
+          &.other {
+            .t-icon {
+              color: var(--text-secondary);
+            }
+            &.active {
+              border-color: var(--charcoal-400);
+              background: var(--charcoal-100);
+            }
+          }
+
+          .filter-label {
+            color: var(--text-primary);
+          }
+
+          .filter-count {
+            font-weight: 600;
+            color: var(--honey-600);
+            background: var(--honey-100);
+            padding: 0.1rem 0.4rem;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            min-width: 1.5em;
+            text-align: center;
+          }
+        }
+      }
+
       .records-pagination {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 1rem;
-        padding-top: 0.5rem;
+        padding-top: 1rem;
         border-top: 1px solid var(--charcoal-100);
-        margin-top: 0.5rem;
-
-        .page-info {
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-          min-width: 60px;
-          text-align: center;
-        }
+        margin-top: 1rem;
       }
     }
   }
@@ -2238,6 +2472,34 @@ onUnmounted(() => {
 
     .room-info {
       grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .room-finished {
+    .records-card {
+      .records-content {
+        .records-toolbar {
+          .records-filter-mobile {
+            display: block;
+            flex: 1;
+          }
+          
+          .records-filter-pc {
+            display: none !important;
+          }
+          
+          .records-search {
+            width: 140px;
+          }
+        }
+      }
+
+      .records-pagination {
+        // 移动端隐藏跳转控件
+        :deep(.t-pagination__jump) {
+          display: none;
+        }
+      }
     }
   }
 }
