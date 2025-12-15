@@ -45,16 +45,23 @@
       <!-- Words List -->
       <div class="words-section">
         <h2>单词列表</h2>
-        <div class="words-table-container">
+        
+        <!-- 工具栏：过滤、搜索 -->
+        <WordListToolbar
+          v-model="wordsToolbar"
+          :filter-options="wordsFilterOptions"
+        />
+        
+        <div class="words-table-container" v-if="paginatedWordsList.length > 0">
           <t-table
-            :data="wordsList"
+            :data="paginatedWordsList"
             :columns="columns"
             row-key="index"
             hover
             stripe
           >
             <template #index="{ row }">
-              <span class="word-index">{{ row.index }}</span>
+              <span class="word-index">{{ row._displayIndex }}</span>
             </template>
             <template #status="{ row }">
               <div class="status-cell">
@@ -94,15 +101,42 @@
             </template>
           </t-table>
         </div>
+        
+        <!-- 空状态 -->
+        <div class="empty-filter-result" v-else>
+          <t-icon name="search" size="32px" />
+          <span>没有找到匹配的单词</span>
+        </div>
+        
+        <!-- 分页器 -->
+        <div class="list-pagination" v-if="filteredWordsList.length > wordsToolbar.pageSize">
+          <t-pagination
+            :current="wordsToolbar.page"
+            :page-size="wordsToolbar.pageSize"
+            :total="filteredWordsList.length"
+            :page-size-options="[10, 20, 50]"
+            :show-jumper="true"
+            size="small"
+            @change="handleWordsPageChange"
+          />
+        </div>
       </div>
 
       <!-- Error Words Review -->
       <div class="error-words-section" v-if="errorWords.length > 0">
-        <h2>错误单词复习</h2>
-        <div class="error-words-grid">
-          <div class="error-word-card" v-for="(item, idx) in errorWords" :key="idx">
+        <h2>错误单词复习 ({{ errorWords.length }} 词)</h2>
+        
+        <!-- 工具栏：搜索 -->
+        <WordListToolbar
+          v-model="errorWordsToolbar"
+          :filter-options="[]"
+          hide-filter
+        />
+        
+        <div class="error-words-grid" v-if="paginatedErrorWords.length > 0">
+          <div class="error-word-card" v-for="(item, idx) in paginatedErrorWords" :key="idx">
             <div class="error-word-header">
-              <span class="word-index-badge">#{{ item.index }}</span>
+              <span class="word-index-badge">#{{ item._displayIndex }}</span>
               <t-button size="small" variant="text" @click="speakWord(item.word)">
                 <template #icon><t-icon name="sound" /></template>
               </t-button>
@@ -119,6 +153,24 @@
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- 空状态 -->
+        <div class="empty-filter-result" v-else>
+          <t-icon name="search" size="32px" />
+          <span>没有找到匹配的单词</span>
+        </div>
+        
+        <!-- 分页器 -->
+        <div class="list-pagination" v-if="filteredErrorWords.length > errorWordsToolbar.pageSize">
+          <t-pagination
+            :current="errorWordsToolbar.page"
+            :page-size="errorWordsToolbar.pageSize"
+            :total="filteredErrorWords.length"
+            :page-size-options="[5, 10, 20]"
+            size="small"
+            @change="handleErrorWordsPageChange"
+          />
         </div>
       </div>
 
@@ -151,6 +203,7 @@ import { useRoute } from 'vue-router'
 import { useCompetitionStore } from '@/stores/competition'
 import { useWordsStore } from '@/stores/words'
 import { useSpeechStore } from '@/stores/speech'
+import WordListToolbar from '@/components/WordListToolbar.vue'
 
 const route = useRoute()
 const competitionStore = useCompetitionStore()
@@ -158,6 +211,22 @@ const wordsStore = useWordsStore()
 const speechStore = useSpeechStore()
 
 const record = ref(null)
+
+// 单词列表工具栏状态
+const wordsToolbar = ref({
+  filter: 'all',
+  keyword: '',
+  page: 1,
+  pageSize: 10
+})
+
+// 错误单词工具栏状态
+const errorWordsToolbar = ref({
+  filter: 'all',
+  keyword: '',
+  page: 1,
+  pageSize: 10
+})
 
 // Table columns
 const columns = [
@@ -244,10 +313,91 @@ const wordsList = computed(() => {
   return allWords
 })
 
+// 单词列表过滤选项
+const wordsFilterOptions = computed(() => {
+  const correctCount = wordsList.value.filter(w => w.isCorrect === true).length
+  const wrongCount = wordsList.value.filter(w => w.isCorrect === false).length
+  
+  return [
+    { value: 'all', label: '全部', count: wordsList.value.length },
+    { value: 'correct', label: '正确', icon: 'check-circle', type: 'correct', count: correctCount },
+    { value: 'wrong', label: '错误', icon: 'close-circle', type: 'wrong', count: wrongCount }
+  ]
+})
+
+// 过滤后的单词列表
+const filteredWordsList = computed(() => {
+  let words = [...wordsList.value]
+  const { filter, keyword } = wordsToolbar.value
+  
+  // 按类型过滤
+  if (filter === 'correct') {
+    words = words.filter(w => w.isCorrect === true)
+  } else if (filter === 'wrong') {
+    words = words.filter(w => w.isCorrect === false)
+  }
+  
+  // 按关键词搜索
+  if (keyword.trim()) {
+    const kw = keyword.trim().toLowerCase()
+    words = words.filter(w => 
+      w.word.toLowerCase().includes(kw) ||
+      w.definition_cn?.toLowerCase().includes(kw) ||
+      w.definition?.toLowerCase().includes(kw)
+    )
+  }
+  
+  return words.map((w, i) => ({ ...w, _displayIndex: i + 1 }))
+})
+
+// 分页后的单词列表
+const paginatedWordsList = computed(() => {
+  const { page, pageSize } = wordsToolbar.value
+  const start = (page - 1) * pageSize
+  return filteredWordsList.value.slice(start, start + pageSize)
+})
+
 // Error words for review
 const errorWords = computed(() => {
   return wordsList.value.filter(w => w.isCorrect === false)
 })
+
+// 过滤后的错误单词
+const filteredErrorWords = computed(() => {
+  let words = [...errorWords.value]
+  const { keyword } = errorWordsToolbar.value
+  
+  // 按关键词搜索
+  if (keyword.trim()) {
+    const kw = keyword.trim().toLowerCase()
+    words = words.filter(w => 
+      w.word.toLowerCase().includes(kw) ||
+      w.definition_cn?.toLowerCase().includes(kw) ||
+      w.definition?.toLowerCase().includes(kw)
+    )
+  }
+  
+  return words.map((w, i) => ({ ...w, _displayIndex: i + 1 }))
+})
+
+// 分页后的错误单词
+const paginatedErrorWords = computed(() => {
+  const { page, pageSize } = errorWordsToolbar.value
+  const start = (page - 1) * pageSize
+  return filteredErrorWords.value.slice(start, start + pageSize)
+})
+
+// 单词列表分页处理
+function handleWordsPageChange(pageInfo) {
+  wordsToolbar.value.page = pageInfo.current
+  wordsToolbar.value.pageSize = pageInfo.pageSize
+}
+
+// 错误单词分页处理
+function handleErrorWordsPageChange(pageInfo) {
+  errorWordsToolbar.value.page = pageInfo.current
+  errorWordsToolbar.value.pageSize = pageInfo.pageSize
+}
 
 function formatDate(dateStr) {
   const date = new Date(dateStr)
@@ -407,6 +557,27 @@ onMounted(async () => {
       border-radius: 16px;
       padding: 1rem;
       box-shadow: var(--shadow-sm);
+      margin-top: 1rem;
+    }
+    
+    .empty-filter-result {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 2rem;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      border-radius: 12px;
+      margin-top: 1rem;
+    }
+    
+    .list-pagination {
+      display: flex;
+      justify-content: center;
+      padding-top: 1rem;
+      margin-top: 1rem;
+      border-top: 1px solid var(--charcoal-100);
     }
   }
 
@@ -464,11 +635,32 @@ onMounted(async () => {
       font-size: 1.25rem;
       margin-bottom: 1rem;
     }
+    
+    .empty-filter-result {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 2rem;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      border-radius: 12px;
+      margin-top: 1rem;
+    }
+    
+    .list-pagination {
+      display: flex;
+      justify-content: center;
+      padding-top: 1rem;
+      margin-top: 1rem;
+      border-top: 1px solid var(--charcoal-100);
+    }
 
     .error-words-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 1rem;
+      margin-top: 1rem;
     }
 
     .error-word-card {

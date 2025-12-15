@@ -210,76 +210,63 @@
         <div class="record-header" @click="showLearningRecord = !showLearningRecord">
           <span class="record-title">
             <t-icon name="list" />
-            本轮学习记录
+            本轮学习记录 ({{ masteredWords.length + reviewWords.length }} 词)
           </span>
           <t-icon :name="showLearningRecord ? 'chevron-up' : 'chevron-down'" />
         </div>
         <div class="record-content" v-show="showLearningRecord">
-          <div class="record-section" v-if="masteredWords.length > 0">
-            <div class="section-title">
-              <t-icon name="check-circle" class="icon-success" />
-              已掌握 ({{ masteredWords.length }})
-            </div>
-            <div class="word-cards">
-              <div 
-                class="word-card-item mastered" 
-                v-for="(word, index) in masteredWords" 
-                :key="word.word"
-              >
-                <div class="card-header">
-                  <span class="card-index">{{ index + 1 }}</span>
-                  <span class="card-word">{{ word.word }}</span>
-                  <t-button variant="text" size="small" class="speak-btn" @click="speakWordItem(word)">
-                    <template #icon><t-icon name="sound" /></template>
-                  </t-button>
-                  <div class="card-difficulty" v-if="word.difficulty">
-                    <span v-for="n in word.difficulty" :key="n">⭐</span>
-                  </div>
+          <!-- 工具栏：过滤、搜索 -->
+          <WordListToolbar
+            v-model="learnRecordToolbar"
+            :filter-options="learnRecordFilterOptions"
+          />
+          
+          <!-- 单词列表 -->
+          <div class="word-cards" v-if="paginatedLearnRecords.length > 0">
+            <div 
+              class="word-card-item" 
+              :class="word._type"
+              v-for="word in paginatedLearnRecords" 
+              :key="word.word"
+            >
+              <div class="card-header">
+                <span class="card-index">{{ word._index }}</span>
+                <span class="card-word">{{ word.word }}</span>
+                <t-button variant="text" size="small" class="speak-btn" @click="speakWordItem(word)">
+                  <template #icon><t-icon name="sound" /></template>
+                </t-button>
+                <div class="card-difficulty" v-if="word.difficulty">
+                  <span v-for="n in word.difficulty" :key="n">⭐</span>
                 </div>
-                <div class="card-pronunciation" v-if="word.pronunciation">{{ word.pronunciation }}</div>
-                <div class="card-definitions">
-                  <div class="definition-cn" v-if="word.definition_cn">{{ word.definition_cn }}</div>
-                  <div class="definition-en" v-if="word.definition">{{ word.definition }}</div>
-                </div>
-                <div class="card-example" v-if="word.example_sentence">
-                  <t-icon name="chat" size="14px" />
-                  <span>{{ word.example_sentence }}</span>
-                </div>
+              </div>
+              <div class="card-pronunciation" v-if="word.pronunciation">{{ word.pronunciation }}</div>
+              <div class="card-definitions">
+                <div class="definition-cn" v-if="word.definition_cn">{{ word.definition_cn }}</div>
+                <div class="definition-en" v-if="word.definition">{{ word.definition }}</div>
+              </div>
+              <div class="card-example" v-if="word.example_sentence">
+                <t-icon name="chat" size="14px" />
+                <span>{{ word.example_sentence }}</span>
               </div>
             </div>
           </div>
-          <div class="record-section" v-if="reviewWords.length > 0">
-            <div class="section-title">
-              <t-icon name="refresh" class="icon-warning" />
-              待复习 ({{ reviewWords.length }})
-            </div>
-            <div class="word-cards">
-              <div 
-                class="word-card-item review" 
-                v-for="(word, index) in reviewWords" 
-                :key="word.word"
-              >
-                <div class="card-header">
-                  <span class="card-index">{{ index + 1 }}</span>
-                  <span class="card-word">{{ word.word }}</span>
-                  <t-button variant="text" size="small" class="speak-btn" @click="speakWordItem(word)">
-                    <template #icon><t-icon name="sound" /></template>
-                  </t-button>
-                  <div class="card-difficulty" v-if="word.difficulty">
-                    <span v-for="n in word.difficulty" :key="n">⭐</span>
-                  </div>
-                </div>
-                <div class="card-pronunciation" v-if="word.pronunciation">{{ word.pronunciation }}</div>
-                <div class="card-definitions">
-                  <div class="definition-cn" v-if="word.definition_cn">{{ word.definition_cn }}</div>
-                  <div class="definition-en" v-if="word.definition">{{ word.definition }}</div>
-                </div>
-                <div class="card-example" v-if="word.example_sentence">
-                  <t-icon name="chat" size="14px" />
-                  <span>{{ word.example_sentence }}</span>
-                </div>
-              </div>
-            </div>
+          
+          <!-- 空状态 -->
+          <div class="empty-filter-result" v-else>
+            <t-icon name="search" size="32px" />
+            <span>没有找到匹配的单词</span>
+          </div>
+          
+          <!-- 分页器 -->
+          <div class="list-pagination" v-if="filteredLearnRecords.length > learnRecordToolbar.pageSize">
+            <t-pagination
+              :current="learnRecordToolbar.page"
+              :page-size="learnRecordToolbar.pageSize"
+              :total="filteredLearnRecords.length"
+              :page-size-options="[5, 10, 20]"
+              size="small"
+              @change="handleLearnRecordPageChange"
+            />
           </div>
         </div>
       </div>
@@ -299,6 +286,7 @@ import { useSpeechStore } from '@/stores/speech'
 import { backgroundAudio } from '@/utils/backgroundAudio'
 import { checkSpeechPermission } from '@/utils/speechPermission'
 import SpeechSettings from '@/components/SpeechSettings.vue'
+import WordListToolbar from '@/components/WordListToolbar.vue'
 
 const wordsStore = useWordsStore()
 const learningStore = useLearningStore()
@@ -371,6 +359,64 @@ const currentIndex = ref(0)
 const masteredWords = ref([])
 const reviewWords = ref([])
 const showLearningRecord = ref(true) // 学习记录折叠状态，默认展开
+
+// 学习记录工具栏状态
+const learnRecordToolbar = ref({
+  filter: 'all',
+  keyword: '',
+  page: 1,
+  pageSize: 10
+})
+
+// 学习记录过滤选项
+const learnRecordFilterOptions = computed(() => [
+  { value: 'all', label: '全部', count: masteredWords.value.length + reviewWords.value.length },
+  { value: 'mastered', label: '已掌握', icon: 'check-circle', type: 'mastered', count: masteredWords.value.length },
+  { value: 'review', label: '待复习', icon: 'refresh', type: 'review', count: reviewWords.value.length }
+])
+
+// 合并并过滤学习记录
+const filteredLearnRecords = computed(() => {
+  // 合并已掌握和待复习的单词，添加类型标记
+  let allWords = [
+    ...masteredWords.value.map((w, i) => ({ ...w, _type: 'mastered', _originalIndex: i + 1 })),
+    ...reviewWords.value.map((w, i) => ({ ...w, _type: 'review', _originalIndex: masteredWords.value.length + i + 1 }))
+  ]
+  
+  // 按筛选条件过滤
+  const { filter, keyword } = learnRecordToolbar.value
+  if (filter === 'mastered') {
+    allWords = allWords.filter(w => w._type === 'mastered')
+  } else if (filter === 'review') {
+    allWords = allWords.filter(w => w._type === 'review')
+  }
+  
+  // 按关键词搜索
+  if (keyword.trim()) {
+    const kw = keyword.trim().toLowerCase()
+    allWords = allWords.filter(w => 
+      w.word.toLowerCase().includes(kw) ||
+      w.definition_cn?.toLowerCase().includes(kw) ||
+      w.definition?.toLowerCase().includes(kw)
+    )
+  }
+  
+  // 添加显示序号
+  return allWords.map((w, i) => ({ ...w, _index: i + 1 }))
+})
+
+// 分页后的学习记录
+const paginatedLearnRecords = computed(() => {
+  const { page, pageSize } = learnRecordToolbar.value
+  const start = (page - 1) * pageSize
+  return filteredLearnRecords.value.slice(start, start + pageSize)
+})
+
+// 学习记录分页处理
+function handleLearnRecordPageChange(pageInfo) {
+  learnRecordToolbar.value.page = pageInfo.current
+  learnRecordToolbar.value.pageSize = pageInfo.pageSize
+}
 
 // Auto learning state
 const isAutoLearning = ref(false)
@@ -1467,136 +1513,130 @@ onUnmounted(() => {
 
       .record-content {
         margin-top: 1rem;
-      }
-
-      .record-section {
-        margin-bottom: 1.5rem;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
-
-        .section-title {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.9rem;
-          font-weight: 500;
-          margin-bottom: 0.75rem;
-          color: var(--text-secondary);
-
-          .icon-success {
-            color: var(--success);
-          }
-
-          .icon-warning {
-            color: var(--warning);
-          }
-        }
-
-        .word-cards {
+        
+        .empty-filter-result {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
-        }
-
-        .word-card-item {
+          align-items: center;
+          gap: 0.5rem;
+          padding: 2rem;
+          color: var(--text-muted);
           background: var(--charcoal-50);
           border-radius: 12px;
-          padding: 1rem;
-          transition: all 0.2s;
+        }
+        
+        .list-pagination {
+          display: flex;
+          justify-content: center;
+          padding-top: 1rem;
+          margin-top: 1rem;
+          border-top: 1px solid var(--charcoal-100);
+        }
+      }
 
-          &:hover {
-            background: var(--charcoal-100);
-            box-shadow: var(--shadow-sm);
-          }
+      .word-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
 
-          &.mastered {
-            border-left: 4px solid var(--success);
-          }
+      .word-card-item {
+        background: var(--charcoal-50);
+        border-radius: 12px;
+        padding: 1rem;
+        transition: all 0.2s;
 
-          &.review {
-            border-left: 4px solid var(--warning);
-          }
+        &:hover {
+          background: var(--charcoal-100);
+          box-shadow: var(--shadow-sm);
+        }
 
-          .card-header {
+        &.mastered {
+          border-left: 4px solid var(--success);
+        }
+
+        &.review {
+          border-left: 4px solid var(--warning);
+        }
+
+        .card-header {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 0.5rem;
+
+          .card-index {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.5rem;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            background: var(--charcoal-200);
+            border-radius: 50%;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+          }
 
-            .card-index {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              width: 24px;
-              height: 24px;
-              background: var(--charcoal-200);
-              border-radius: 50%;
-              font-size: 0.8rem;
-              font-weight: 600;
-              color: var(--text-secondary);
-            }
+          .card-word {
+            font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--charcoal-900);
+          }
 
-            .card-word {
-              font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
-              font-size: 1.25rem;
-              font-weight: 700;
-              color: var(--charcoal-900);
-            }
+          .speak-btn {
+            opacity: 0.6;
+            transition: opacity 0.2s;
 
-            .speak-btn {
-              opacity: 0.6;
-              transition: opacity 0.2s;
-
-              &:hover {
-                opacity: 1;
-              }
-            }
-
-            .card-difficulty {
-              margin-left: auto;
-              font-size: 0.75rem;
+            &:hover {
+              opacity: 1;
             }
           }
 
-          .card-pronunciation {
-            font-size: 0.9rem;
-            color: var(--honey-600);
-            margin-bottom: 0.5rem;
-            padding-left: 2.5rem;
+          .card-difficulty {
+            margin-left: auto;
+            font-size: 0.75rem;
+          }
+        }
+
+        .card-pronunciation {
+          font-size: 0.9rem;
+          color: var(--honey-600);
+          margin-bottom: 0.5rem;
+          padding-left: 2.5rem;
+        }
+
+        .card-definitions {
+          padding-left: 2.5rem;
+          margin-bottom: 0.5rem;
+
+          .definition-cn {
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
           }
 
-          .card-definitions {
-            padding-left: 2.5rem;
-            margin-bottom: 0.5rem;
-
-            .definition-cn {
-              font-size: 0.95rem;
-              color: var(--text-primary);
-              margin-bottom: 0.25rem;
-            }
-
-            .definition-en {
-              font-size: 0.85rem;
-              color: var(--text-secondary);
-            }
-          }
-
-          .card-example {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.5rem;
-            padding-left: 2.5rem;
+          .definition-en {
             font-size: 0.85rem;
-            color: var(--charcoal-500);
-            font-style: italic;
-            line-height: 1.4;
+            color: var(--text-secondary);
+          }
+        }
 
-            .t-icon {
-              flex-shrink: 0;
-              margin-top: 2px;
-            }
+        .card-example {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          padding-left: 2.5rem;
+          font-size: 0.85rem;
+          color: var(--charcoal-500);
+          font-style: italic;
+          line-height: 1.4;
+
+          .t-icon {
+            flex-shrink: 0;
+            margin-top: 2px;
           }
         }
       }

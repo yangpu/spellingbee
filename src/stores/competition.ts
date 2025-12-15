@@ -271,10 +271,13 @@ export const useCompetitionStore = defineStore('competition', () => {
     // Save to Supabase if logged in
     if (authStore.user) {
       try {
-        await supabase.from('competition_records').insert({
+        const { error } = await supabase.from('competition_records').insert({
           ...record,
           user_id: authStore.user.id
         })
+        if (error) {
+          console.error('Supabase insert error:', error.message, error.details, error.hint)
+        }
       } catch (error) {
         console.error('Error saving record:', error)
       }

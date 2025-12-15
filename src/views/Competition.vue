@@ -361,14 +361,23 @@
           class="incorrect-words"
           v-if="competitionStore.incorrectWords.length > 0"
         >
-          <h3>需要复习的单词</h3>
-          <div class="word-list">
+          <h3>需要复习的单词 ({{ competitionStore.incorrectWords.length }} 词)</h3>
+          
+          <!-- 工具栏：过滤、搜索 -->
+          <WordListToolbar
+            v-model="incorrectWordsToolbar"
+            :filter-options="incorrectWordsFilterOptions"
+          />
+          
+          <div class="word-list" v-if="paginatedIncorrectWords.length > 0">
             <div
               class="word-item"
-              v-for="item in competitionStore.incorrectWords"
+              :class="item._type"
+              v-for="item in paginatedIncorrectWords"
               :key="item.id"
             >
               <div class="word-main">
+                <span class="word-index">{{ item._index }}</span>
                 <span class="correct-word">{{ item.word }}</span>
                 <t-button
                   variant="text"
@@ -394,6 +403,24 @@
                 {{ item.definition_cn }}
               </div>
             </div>
+          </div>
+          
+          <!-- 空状态 -->
+          <div class="empty-filter-result" v-else>
+            <t-icon name="search" size="32px" />
+            <span>没有找到匹配的单词</span>
+          </div>
+          
+          <!-- 分页器 -->
+          <div class="list-pagination" v-if="filteredIncorrectWords.length > incorrectWordsToolbar.pageSize">
+            <t-pagination
+              :current="incorrectWordsToolbar.page"
+              :page-size="incorrectWordsToolbar.pageSize"
+              :total="filteredIncorrectWords.length"
+              :page-size-options="[5, 10, 20]"
+              size="small"
+              @change="handleIncorrectWordsPageChange"
+            />
           </div>
         </div>
 
@@ -440,6 +467,7 @@ import { checkSpeechPermission } from '@/utils/speechPermission';
 import SpeechSettings from '@/components/SpeechSettings.vue';
 import AnnouncerSettings from '@/components/AnnouncerSettings.vue';
 import LetterInput from '@/components/LetterInput.vue';
+import WordListToolbar from '@/components/WordListToolbar.vue';
 
 const baseUrl = import.meta.env.BASE_URL;
 const wordsStore = useWordsStore();
@@ -456,6 +484,74 @@ const showAnnouncerSettings = ref(false);
 
 // 语音权限提示状态
 const showSpeechPermission = ref(false);
+
+// 错误单词工具栏状态
+const incorrectWordsToolbar = ref({
+  filter: 'all',
+  keyword: '',
+  page: 1,
+  pageSize: 10
+});
+
+// 错误单词过滤选项
+const incorrectWordsFilterOptions = computed(() => {
+  const words = competitionStore.incorrectWords;
+  const wrongCount = words.filter(w => w.userAnswer !== '[超时]' && w.userAnswer !== '[跳过]').length;
+  const timeoutCount = words.filter(w => w.userAnswer === '[超时]').length;
+  const skipCount = words.filter(w => w.userAnswer === '[跳过]').length;
+  
+  return [
+    { value: 'all', label: '全部', count: words.length },
+    { value: 'wrong', label: '答错', icon: 'close-circle', type: 'wrong', count: wrongCount },
+    { value: 'timeout', label: '超时', icon: 'time', type: 'timeout', count: timeoutCount },
+    { value: 'skip', label: '跳过', icon: 'minus-circle', type: 'other', count: skipCount }
+  ];
+});
+
+// 过滤后的错误单词
+const filteredIncorrectWords = computed(() => {
+  let words = competitionStore.incorrectWords.map((w, i) => ({
+    ...w,
+    _originalIndex: i + 1,
+    _type: w.userAnswer === '[超时]' ? 'timeout' : (w.userAnswer === '[跳过]' ? 'skip' : 'wrong')
+  }));
+  
+  const { filter, keyword } = incorrectWordsToolbar.value;
+  
+  // 按类型过滤
+  if (filter === 'wrong') {
+    words = words.filter(w => w._type === 'wrong');
+  } else if (filter === 'timeout') {
+    words = words.filter(w => w._type === 'timeout');
+  } else if (filter === 'skip') {
+    words = words.filter(w => w._type === 'skip');
+  }
+  
+  // 按关键词搜索
+  if (keyword.trim()) {
+    const kw = keyword.trim().toLowerCase();
+    words = words.filter(w => 
+      w.word.toLowerCase().includes(kw) ||
+      w.definition_cn?.toLowerCase().includes(kw) ||
+      w.definition?.toLowerCase().includes(kw)
+    );
+  }
+  
+  return words.map((w, i) => ({ ...w, _index: i + 1 }));
+});
+
+// 分页后的错误单词
+const paginatedIncorrectWords = computed(() => {
+  const { page, pageSize } = incorrectWordsToolbar.value;
+  const start = (page - 1) * pageSize;
+  return filteredIncorrectWords.value.slice(start, start + pageSize);
+});
+
+// 错误单词分页处理
+function handleIncorrectWordsPageChange(pageInfo) {
+  incorrectWordsToolbar.value.page = pageInfo.current;
+  incorrectWordsToolbar.value.pageSize = pageInfo.pageSize;
+}
 
 // 页面点击处理 - 任何点击都满足交互条件，获取语音权限
 function onPageClick() {
@@ -3050,23 +3146,66 @@ watch(
         margin-bottom: 1rem;
         color: var(--honey-700);
       }
+      
+      .empty-filter-result {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 2rem;
+        color: var(--text-muted);
+        background: var(--bg-card);
+        border-radius: 12px;
+        margin-top: 1rem;
+      }
+      
+      .list-pagination {
+        display: flex;
+        justify-content: center;
+        padding-top: 1rem;
+        margin-top: 1rem;
+        border-top: 1px solid var(--charcoal-100);
+      }
 
       .word-list {
         display: flex;
         flex-direction: column;
         gap: 1rem;
+        margin-top: 1rem;
 
         .word-item {
           padding: 1rem;
           background: white;
           border-radius: 8px;
           border-left: 3px solid var(--error);
+          
+          &.timeout {
+            border-left-color: var(--warning);
+          }
+          
+          &.skip {
+            border-left-color: var(--charcoal-400);
+          }
 
           .word-main {
             display: flex;
             align-items: center;
             gap: 0.5rem;
             margin-bottom: 0.25rem;
+            
+            .word-index {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 22px;
+              height: 22px;
+              background: var(--charcoal-200);
+              border-radius: 50%;
+              font-size: 0.75rem;
+              font-weight: 600;
+              color: var(--text-secondary);
+              flex-shrink: 0;
+            }
 
             .correct-word {
               font-weight: 700;
@@ -3079,6 +3218,7 @@ watch(
             font-size: 0.9rem;
             color: var(--text-secondary);
             margin-bottom: 0.25rem;
+            padding-left: 30px;
 
             .wrong {
               color: var(--error);
@@ -3094,12 +3234,14 @@ watch(
           .word-def {
             font-size: 0.85rem;
             color: var(--text-muted);
+            padding-left: 30px;
           }
 
           .word-def-cn {
             font-size: 0.85rem;
             color: var(--charcoal-600);
             margin-top: 0.25rem;
+            padding-left: 30px;
           }
         }
       }
