@@ -193,6 +193,8 @@ export interface ChallengeParticipant {
   peer_id?: string
   joined_at: string
   has_left?: boolean // 是否中途退出比赛
+  offline_since?: number // 离线开始时间戳（用于显示退赛倒计时）
+  exit_countdown?: number // 退赛倒计时剩余秒数（由房主广播，所有客户端同步显示）
 }
 
 // 网络连接类型
@@ -218,7 +220,7 @@ export interface ChallengeWordResult {
 }
 
 export interface ChallengeMessage {
-  type: 'join' | 'leave' | 'ready' | 'start' | 'word' | 'answer' | 'round_end' | 'game_end' | 'sync' | 'exit_game' | 'heartbeat'
+  type: 'join' | 'leave' | 'ready' | 'start' | 'word' | 'answer' | 'round_end' | 'game_end' | 'sync' | 'exit_game' | 'heartbeat' | 'status_broadcast' | 'player_offline' | 'player_online' | 'request_game_state' | 'game_state'
   data: unknown
   sender_id: string
   timestamp: number

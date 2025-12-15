@@ -93,9 +93,19 @@
                 <t-tag v-if="p.user_id === challenge?.creator_id" size="small" theme="warning">房主</t-tag>
               </div>
               <div class="participant-status">
-                <t-icon :name="isParticipantReady(p) ? 'check-circle' : 'time'"
-                  :class="{ ready: isParticipantReady(p) }" />
-                {{ isParticipantReady(p) ? '已准备' : '未准备' }}
+                <template v-if="!isParticipantOnline(p)">
+                  <t-icon name="wifi-off" class="offline" />
+                  <span class="offline-text">离线</span>
+                  <!-- 比赛中显示退赛倒计时 -->
+                  <span v-if="challengeStore.gameStatus === 'playing' && !p.has_left && (p.exit_countdown !== undefined || p.offline_since)" class="exit-countdown">
+                    ({{ getExitCountdown(p) }})
+                  </span>
+                </template>
+                <template v-else>
+                  <t-icon :name="isParticipantReady(p) ? 'check-circle' : 'time'"
+                    :class="{ ready: isParticipantReady(p) }" />
+                  {{ isParticipantReady(p) ? '已准备' : '未准备' }}
+                </template>
               </div>
             </div>
           </div>
@@ -175,13 +185,17 @@
       <!-- 参赛者得分 -->
       <div class="scoreboard">
         <div class="score-item" v-for="(p, index) in challengeStore.sortedParticipants" :key="p.user_id"
-          :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-leader': index === 0 }">
+          :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-leader': index === 0, 'is-offline': !isParticipantOnline(p) }">
           <div class="score-rank">{{ index + 1 }}</div>
           <div class="score-avatar">
             <t-avatar :image="p.avatar_url" size="small">{{ p.nickname?.charAt(0) }}</t-avatar>
             <div class="online-dot" :class="{ online: isParticipantOnline(p) }"></div>
           </div>
           <span class="score-name">{{ p.nickname }}</span>
+          <!-- 离线倒计时 -->
+          <span v-if="!isParticipantOnline(p) && !p.has_left && (p.exit_countdown !== undefined || p.offline_since)" class="exit-countdown-badge">
+            {{ getExitCountdown(p) }}
+          </span>
           <span class="score-value">{{ p.score }}</span>
         </div>
       </div>
@@ -525,6 +539,70 @@ function isParticipantReady(participant) {
   // 注意：房主的 is_ready 在进入房间时会自动设置为 true
   return participant.is_ready === true
 }
+
+// 用于强制更新倒计时显示的响应式变量
+const countdownTick = ref(0)
+let countdownTimer = null
+
+// 启动倒计时更新定时器
+function startCountdownTimer() {
+  if (countdownTimer) return
+  countdownTimer = setInterval(() => {
+    countdownTick.value++
+  }, 1000)
+}
+
+// 停止倒计时更新定时器
+function stopCountdownTimer() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
+}
+
+// 计算退赛倒计时显示文本
+function getExitCountdown(participant) {
+  // 触发响应式更新
+  void countdownTick.value
+  
+  // 优先使用房主广播的 exit_countdown（确保所有客户端同步）
+  if (participant.exit_countdown !== undefined && participant.exit_countdown !== null) {
+    if (participant.exit_countdown <= 0) {
+      return '即将退赛'
+    }
+    return `${participant.exit_countdown}秒后退赛`
+  }
+  
+  // 本地计算（房主自己不会收到广播，或者房主离线时其他客户端需要自己计算）
+  if (participant.offline_since) {
+    const now = Date.now()
+    const elapsed = now - participant.offline_since
+    const remaining = challengeStore.OFFLINE_PROTECTION_TIME - elapsed
+    
+    if (remaining <= 0) {
+      return '即将退赛'
+    }
+    
+    const seconds = Math.ceil(remaining / 1000)
+    return `${seconds}秒后退赛`
+  }
+  
+  return ''
+}
+
+// 监听游戏状态，在比赛中启动倒计时定时器
+watch(() => challengeStore.gameStatus, (status) => {
+  if (status === 'playing') {
+    startCountdownTimer()
+  } else {
+    stopCountdownTimer()
+  }
+}, { immediate: true })
+
+// 组件卸载时清理
+onUnmounted(() => {
+  stopCountdownTimer()
+})
 
 // 判断房主是否在线
 const isHostOnline = computed(() => {
@@ -1149,6 +1227,22 @@ onUnmounted(() => {
           .ready {
             color: var(--success);
           }
+          
+          .offline {
+            color: var(--error);
+          }
+          
+          .offline-text {
+            color: var(--error);
+          }
+          
+          .exit-countdown {
+            color: var(--warning);
+            font-weight: 500;
+            font-size: 0.8rem;
+            min-width: 6em;
+            display: inline-block;
+          }
         }
       }
 
@@ -1314,6 +1408,26 @@ onUnmounted(() => {
       .score-value {
         font-weight: 700;
         color: var(--honey-600);
+      }
+      
+      .exit-countdown-badge {
+        font-size: 0.7rem;
+        color: var(--warning);
+        background: rgba(var(--warning-rgb), 0.1);
+        padding: 0.1rem 0.4rem;
+        border-radius: 10px;
+        font-weight: 500;
+        min-width: 5.5em;
+        text-align: center;
+        white-space: nowrap;
+      }
+      
+      &.is-offline {
+        opacity: 0.7;
+        
+        .score-name {
+          color: var(--text-muted);
+        }
       }
     }
   }

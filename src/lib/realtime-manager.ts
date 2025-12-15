@@ -75,32 +75,42 @@ type ErrorCallback = (error: Error, channelName?: string) => void
 const CONFIG = {
   // 心跳间隔（毫秒）
   HEARTBEAT_INTERVAL: 15000,
-  // 页面隐藏后的重连阈值（毫秒）- 降低到 5 秒，更积极地重连
-  VISIBILITY_RECONNECT_THRESHOLD: 5000,
+  // 页面隐藏后的重连阈值（毫秒）- 降低到 3 秒，更积极地重连
+  VISIBILITY_RECONNECT_THRESHOLD: 3000,
   // 最大软重连次数
   MAX_SOFT_RECONNECT_ATTEMPTS: 2,
   // 最大硬重连次数 - 增加到 10 次，确保能恢复
   MAX_HARD_RECONNECT_ATTEMPTS: 10,
-  // 基础重连延迟（毫秒）- 降低到 200ms，更快开始重连
-  BASE_RECONNECT_DELAY: 200,
-  // 最大重连延迟（毫秒）- 降低到 5 秒，避免等待太久
-  MAX_RECONNECT_DELAY: 5000,
+  // 基础重连延迟（毫秒）- 降低到 100ms，更快开始重连
+  BASE_RECONNECT_DELAY: 100,
+  // 最大重连延迟（毫秒）- 降低到 3 秒，避免等待太久
+  MAX_RECONNECT_DELAY: 3000,
   // 默认 channel 超时（毫秒）
   DEFAULT_CHANNEL_TIMEOUT: 10000,
   // 连接稳定等待时间（毫秒）
-  CONNECTION_STABLE_DELAY: 100,
+  CONNECTION_STABLE_DELAY: 50,
   // 清理等待时间（毫秒）
-  CLEANUP_DELAY: 50,
-  // 网络恢复后立即重连延迟（毫秒）
-  NETWORK_RECOVERY_DELAY: 50,
+  CLEANUP_DELAY: 30,
+  // 网络恢复后立即重连延迟（毫秒）- 几乎立即
+  NETWORK_RECOVERY_DELAY: 10,
   // 等待重连完成的最大时间（毫秒）
   WAIT_FOR_RECONNECT_TIMEOUT: 10000,
   // 网络状态检测间隔（毫秒）
-  NETWORK_CHECK_INTERVAL: 100,
-  // 健康检查间隔（毫秒）- 每 10 秒检查一次连接状态
-  HEALTH_CHECK_INTERVAL: 10000,
+  NETWORK_CHECK_INTERVAL: 50,
+  // 健康检查间隔（毫秒）- 每 5 秒检查一次连接状态
+  HEALTH_CHECK_INTERVAL: 5000,
   // 重连锁定超时（毫秒）- 防止 isReconnecting 卡住
-  RECONNECT_LOCK_TIMEOUT: 30000,
+  RECONNECT_LOCK_TIMEOUT: 15000,
+  // WebSocket 断开等待时间（毫秒）
+  WS_DISCONNECT_DELAY: 200,
+  // WebSocket 连接等待时间（毫秒）- 初始等待
+  WS_CONNECT_DELAY: 300,
+  // WebSocket 连接最大等待时间（毫秒）
+  WS_CONNECT_MAX_WAIT: 5000,
+  // WebSocket 连接检查间隔（毫秒）
+  WS_CONNECT_CHECK_INTERVAL: 100,
+  // Channel 订阅间隔（毫秒）- 避免并发订阅冲突
+  CHANNEL_SUBSCRIBE_DELAY: 50,
 } as const
 
 // ==================== RealtimeManager 类 ====================
@@ -952,7 +962,7 @@ class RealtimeManager {
       }
       
       // 等待 WebSocket 完全断开
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise(resolve => setTimeout(resolve, CONFIG.WS_DISCONNECT_DELAY))
       
       // 6. 重连 Realtime
       try {
@@ -965,16 +975,35 @@ class RealtimeManager {
         // 忽略错误
       }
       
-      // 等待 WebSocket 连接建立
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // 等待 WebSocket 连接建立（带超时检测）
+      const wsConnected = await this.waitForWebSocketConnection()
+      if (!wsConnected) {
+        this.warn('WebSocket connection timeout, will retry')
+        this.isReconnecting = false
+        this.reconnectLockTime = 0
+        this.scheduleHardReconnect()
+        return
+      }
       
       // 7. 重新订阅所有 channel（标记为非重连状态以避免死锁）
       this.isReconnecting = false
       this.reconnectLockTime = 0
       
-      for (const config of channelsToResubscribe) {
+      // 串行订阅 channel，避免并发冲突
+      // 按优先级排序：challenge channel 优先
+      const sortedChannels = channelsToResubscribe.sort((a, b) => {
+        const aIsChallengeRoom = a.name.startsWith('challenge:')
+        const bIsChallengeRoom = b.name.startsWith('challenge:')
+        if (aIsChallengeRoom && !bIsChallengeRoom) return -1
+        if (!aIsChallengeRoom && bIsChallengeRoom) return 1
+        return 0
+      })
+      
+      for (const config of sortedChannels) {
         try {
           await this.subscribe(config)
+          // 短暂延迟，避免并发订阅冲突
+          await new Promise(resolve => setTimeout(resolve, CONFIG.CHANNEL_SUBSCRIBE_DELAY))
         } catch (e) {
           this.warn(`Failed to resubscribe channel ${config.name}:`, e)
         }
@@ -1028,6 +1057,49 @@ class RealtimeManager {
         }
       }
     }, delay)
+  }
+  
+  /**
+   * 等待 WebSocket 连接建立
+   * 返回 true 表示连接成功，false 表示超时
+   */
+  private async waitForWebSocketConnection(): Promise<boolean> {
+    const startTime = Date.now()
+    
+    // 先等待初始延迟
+    await new Promise(resolve => setTimeout(resolve, CONFIG.WS_CONNECT_DELAY))
+    
+    // 检查 WebSocket 状态
+    while (Date.now() - startTime < CONFIG.WS_CONNECT_MAX_WAIT) {
+      try {
+        // @ts-ignore - 访问内部 WebSocket 状态
+        const ws = supabase.realtime?.conn
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          this.log('WebSocket connected')
+          return true
+        }
+        
+        // 如果 WebSocket 不存在或正在连接中，继续等待
+        // @ts-ignore
+        const isConnecting = supabase.realtime?.isConnected?.() === false
+        if (!isConnecting && ws?.readyState === WebSocket.CLOSED) {
+          // WebSocket 已关闭，尝试重新连接
+          try {
+            // @ts-ignore
+            supabase.realtime?.connect()
+          } catch (e) {
+            // 忽略
+          }
+        }
+      } catch (e) {
+        // 忽略访问错误
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, CONFIG.WS_CONNECT_CHECK_INTERVAL))
+    }
+    
+    this.warn('WebSocket connection wait timeout')
+    return false
   }
   
   /**
