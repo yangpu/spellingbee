@@ -1152,22 +1152,32 @@ async function fetchFromUnsplashWithWord(word) {
 }
 
 // 从 Picsum 获取图片（备用服务1）
+// Picsum 会重定向到固定的图片 URL，需要获取重定向后的 URL
 async function fetchFromPicsum() {
   // Picsum 提供随机图片，添加时间戳避免缓存
-  const imageUrl = `https://picsum.photos/800/400?random=${Date.now()}`
-
-  // 预加载图片（2秒超时）
-  await preloadImage(imageUrl, 2000)
-  return imageUrl
+  const randomUrl = `https://picsum.photos/800/400?random=${Date.now()}`
+  
+  // 使用 fetch 获取重定向后的实际图片 URL
+  const response = await fetch(randomUrl, { method: 'HEAD' })
+  const finalUrl = response.url
+  
+  // 预加载图片确保可用
+  await preloadImage(finalUrl, 2000)
+  return finalUrl
 }
 
 // 从 LoremFlickr 获取图片（使用单词作为主题）
+// LoremFlickr 也会重定向，需要获取最终 URL
 async function fetchFromLoremFlickrWithWord(word) {
-  const imageUrl = `https://loremflickr.com/800/400/${encodeURIComponent(word)}?random=${Date.now()}`
-
-  // 预加载图片（2秒超时）
-  await preloadImage(imageUrl, 2000)
-  return imageUrl
+  const randomUrl = `https://loremflickr.com/800/400/${encodeURIComponent(word)}?random=${Date.now()}`
+  
+  // 使用 fetch 获取重定向后的实际图片 URL
+  const response = await fetch(randomUrl, { method: 'HEAD' })
+  const finalUrl = response.url
+  
+  // 预加载图片确保可用
+  await preloadImage(finalUrl, 2000)
+  return finalUrl
 }
 
 // 预加载图片（不再修改 loadingRandomCover 状态）
