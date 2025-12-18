@@ -320,8 +320,8 @@ export class BrowserTTSProvider implements TTSProvider {
         if (resolved) return
         resolved = true
         cleanup()
-        // 忽略取消错误
-        if (e.error === 'canceled' || e.error === 'interrupted') {
+        // 忽略取消、中断和权限错误（静默完成）
+        if (e.error === 'canceled' || e.error === 'interrupted' || e.error === 'not-allowed') {
           resolve()
         } else {
           reject(new Error(`Speech synthesis error: ${e.error}`))

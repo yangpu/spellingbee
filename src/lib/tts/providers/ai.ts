@@ -14,80 +14,96 @@ import type {
   AIProviderInfo
 } from '../types'
 import { ttsCache } from '../cache'
+import { supabase } from '@/lib/supabase'
 
-// AI 语音供应商配置
+// 从环境变量获取默认 API Keys
+const DEFAULT_AI_API_KEYS = {
+  openai: import.meta.env.VITE_TTS_OPENAI_API_KEY || '',
+  openaiBaseUrl: import.meta.env.VITE_TTS_OPENAI_BASE_URL || '',
+  elevenlabs: import.meta.env.VITE_TTS_ELEVENLABS_API_KEY || '',
+  minimax: import.meta.env.VITE_TTS_MINIMAX_API_KEY || '',
+  doubao: import.meta.env.VITE_TTS_DOUBAO_API_KEY || '',
+}
+
+// AI 语音供应商配置（目前只保留豆包 TTS，其他供应商暂时屏蔽）
 export const AI_PROVIDERS: AIProviderInfo[] = [
-  {
-    id: 'minimax',
-    name: 'MiniMax',
-    description: 'MiniMax 语音合成，中文效果优秀，新用户有免费额度',
-    website: 'https://api.minimax.chat',
-    requiresApiKey: true,
-    free: false,
-    supportedLanguages: ['en', 'zh'],
-    models: ['speech-01'],
-    voices: [
-      { id: 'male-qn-qingse', name: '青涩青年音色', language: 'zh', gender: 'male', provider: 'ai', providerName: 'MiniMax' },
-      { id: 'female-shaonv', name: '少女音色', language: 'zh', gender: 'female', provider: 'ai', providerName: 'MiniMax' },
-      { id: 'female-yujie', name: '御姐音色', language: 'zh', gender: 'female', provider: 'ai', providerName: 'MiniMax' },
-      { id: 'male-qn-jingying', name: '精英青年音色', language: 'zh', gender: 'male', provider: 'ai', providerName: 'MiniMax' },
-      { id: 'presenter_male', name: '男性主持人', language: 'zh', gender: 'male', provider: 'ai', providerName: 'MiniMax' },
-      { id: 'presenter_female', name: '女性主持人', language: 'zh', gender: 'female', provider: 'ai', providerName: 'MiniMax' },
-      { id: 'male-qn-qingse-en', name: 'English Male', language: 'en', gender: 'male', provider: 'ai', providerName: 'MiniMax' },
-      { id: 'female-shaonv-en', name: 'English Female', language: 'en', gender: 'female', provider: 'ai', providerName: 'MiniMax' },
-    ]
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI TTS',
-    description: 'OpenAI 语音合成，自然流畅',
-    website: 'https://platform.openai.com/docs/guides/text-to-speech',
-    requiresApiKey: true,
-    free: false,
-    supportedLanguages: ['en', 'zh'],
-    models: ['tts-1', 'tts-1-hd'],
-    voices: [
-      { id: 'alloy', name: 'Alloy (中性)', language: 'en', gender: 'neutral', provider: 'ai', providerName: 'OpenAI' },
-      { id: 'echo', name: 'Echo (男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'OpenAI' },
-      { id: 'fable', name: 'Fable (男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'OpenAI' },
-      { id: 'onyx', name: 'Onyx (男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'OpenAI' },
-      { id: 'nova', name: 'Nova (女声)', language: 'en', gender: 'female', provider: 'ai', providerName: 'OpenAI' },
-      { id: 'shimmer', name: 'Shimmer (女声)', language: 'en', gender: 'female', provider: 'ai', providerName: 'OpenAI' },
-    ]
-  },
-  {
-    id: 'elevenlabs',
-    name: 'ElevenLabs',
-    description: '最先进的 AI 语音合成，支持声音克隆',
-    website: 'https://elevenlabs.io',
-    requiresApiKey: true,
-    free: false,
-    supportedLanguages: ['en', 'zh'],
-    models: ['eleven_multilingual_v2', 'eleven_turbo_v2'],
-    voices: [
-      { id: 'rachel', name: 'Rachel (美式女声)', language: 'en', gender: 'female', provider: 'ai', providerName: 'ElevenLabs' },
-      { id: 'adam', name: 'Adam (美式男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'ElevenLabs' },
-      { id: 'antoni', name: 'Antoni (英式男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'ElevenLabs' },
-      { id: 'bella', name: 'Bella (美式女声)', language: 'en', gender: 'female', provider: 'ai', providerName: 'ElevenLabs' },
-    ]
-  },
   {
     id: 'doubao',
     name: '豆包 TTS',
-    description: '字节跳动豆包语音合成',
+    description: '字节跳动豆包语音合成，通过 Supabase Edge Function 调用',
     website: 'https://www.volcengine.com/product/tts',
     requiresApiKey: true,
     free: false,
     supportedLanguages: ['en', 'zh'],
     models: ['tts-1'],
     voices: [
-      { id: 'zh_female_shuangkuaisisi_moon_bigtts', name: '爽快思思', language: 'zh', gender: 'female', provider: 'ai', providerName: '豆包' },
-      { id: 'zh_male_wennuanahu_moon_bigtts', name: '温暖阿虎', language: 'zh', gender: 'male', provider: 'ai', providerName: '豆包' },
-      { id: 'zh_female_tianmeixiaoyuan_moon_bigtts', name: '甜美小源', language: 'zh', gender: 'female', provider: 'ai', providerName: '豆包' },
-      { id: 'en_female_amanda', name: 'Amanda', language: 'en', gender: 'female', provider: 'ai', providerName: '豆包' },
-      { id: 'en_male_ryan', name: 'Ryan', language: 'en', gender: 'male', provider: 'ai', providerName: '豆包' },
+      { id: 'BV700_streaming', name: '灿灿 (女声)', language: 'zh', gender: 'female', provider: 'ai', providerName: '豆包' },
+      { id: 'BV701_streaming', name: '擎苍 (男声)', language: 'zh', gender: 'male', provider: 'ai', providerName: '豆包' },
+      { id: 'BV001_streaming', name: '通用女声', language: 'zh', gender: 'female', provider: 'ai', providerName: '豆包' },
+      { id: 'BV002_streaming', name: '通用男声', language: 'zh', gender: 'male', provider: 'ai', providerName: '豆包' },
+      { id: 'BV405_streaming', name: '甜美小源 (女声)', language: 'zh', gender: 'female', provider: 'ai', providerName: '豆包' },
+      { id: 'BV007_streaming', name: '亲切女声', language: 'zh', gender: 'female', provider: 'ai', providerName: '豆包' },
+      { id: 'BV503_streaming', name: 'Ariana (美式女声)', language: 'en', gender: 'female', provider: 'ai', providerName: '豆包' },
+      { id: 'BV504_streaming', name: 'Jackson (美式男声)', language: 'en', gender: 'male', provider: 'ai', providerName: '豆包' },
+      { id: 'BV027_streaming', name: 'Amelia (美式女声)', language: 'en', gender: 'female', provider: 'ai', providerName: '豆包' },
+      { id: 'BV040_streaming', name: 'Anna (英式女声)', language: 'en', gender: 'female', provider: 'ai', providerName: '豆包' },
     ]
-  }
+  },
+  // 以下供应商暂时屏蔽，后续有需求再启用
+  // {
+  //   id: 'minimax',
+  //   name: 'MiniMax',
+  //   description: 'MiniMax 语音合成，中文效果优秀，新用户有免费额度',
+  //   website: 'https://api.minimax.chat',
+  //   requiresApiKey: true,
+  //   free: false,
+  //   supportedLanguages: ['en', 'zh'],
+  //   models: ['speech-01'],
+  //   voices: [
+  //     { id: 'male-qn-qingse', name: '青涩青年音色', language: 'zh', gender: 'male', provider: 'ai', providerName: 'MiniMax' },
+  //     { id: 'female-shaonv', name: '少女音色', language: 'zh', gender: 'female', provider: 'ai', providerName: 'MiniMax' },
+  //     { id: 'female-yujie', name: '御姐音色', language: 'zh', gender: 'female', provider: 'ai', providerName: 'MiniMax' },
+  //     { id: 'male-qn-jingying', name: '精英青年音色', language: 'zh', gender: 'male', provider: 'ai', providerName: 'MiniMax' },
+  //     { id: 'presenter_male', name: '男性主持人', language: 'zh', gender: 'male', provider: 'ai', providerName: 'MiniMax' },
+  //     { id: 'presenter_female', name: '女性主持人', language: 'zh', gender: 'female', provider: 'ai', providerName: 'MiniMax' },
+  //     { id: 'male-qn-qingse-en', name: 'English Male', language: 'en', gender: 'male', provider: 'ai', providerName: 'MiniMax' },
+  //     { id: 'female-shaonv-en', name: 'English Female', language: 'en', gender: 'female', provider: 'ai', providerName: 'MiniMax' },
+  //   ]
+  // },
+  // {
+  //   id: 'openai',
+  //   name: 'OpenAI TTS',
+  //   description: 'OpenAI 语音合成，自然流畅',
+  //   website: 'https://platform.openai.com/docs/guides/text-to-speech',
+  //   requiresApiKey: true,
+  //   free: false,
+  //   supportedLanguages: ['en', 'zh'],
+  //   models: ['tts-1', 'tts-1-hd'],
+  //   voices: [
+  //     { id: 'alloy', name: 'Alloy (中性)', language: 'en', gender: 'neutral', provider: 'ai', providerName: 'OpenAI' },
+  //     { id: 'echo', name: 'Echo (男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'OpenAI' },
+  //     { id: 'fable', name: 'Fable (男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'OpenAI' },
+  //     { id: 'onyx', name: 'Onyx (男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'OpenAI' },
+  //     { id: 'nova', name: 'Nova (女声)', language: 'en', gender: 'female', provider: 'ai', providerName: 'OpenAI' },
+  //     { id: 'shimmer', name: 'Shimmer (女声)', language: 'en', gender: 'female', provider: 'ai', providerName: 'OpenAI' },
+  //   ]
+  // },
+  // {
+  //   id: 'elevenlabs',
+  //   name: 'ElevenLabs',
+  //   description: '最先进的 AI 语音合成，支持声音克隆',
+  //   website: 'https://elevenlabs.io',
+  //   requiresApiKey: true,
+  //   free: false,
+  //   supportedLanguages: ['en', 'zh'],
+  //   models: ['eleven_multilingual_v2', 'eleven_turbo_v2'],
+  //   voices: [
+  //     { id: 'rachel', name: 'Rachel (美式女声)', language: 'en', gender: 'female', provider: 'ai', providerName: 'ElevenLabs' },
+  //     { id: 'adam', name: 'Adam (美式男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'ElevenLabs' },
+  //     { id: 'antoni', name: 'Antoni (英式男声)', language: 'en', gender: 'male', provider: 'ai', providerName: 'ElevenLabs' },
+  //     { id: 'bella', name: 'Bella (美式女声)', language: 'en', gender: 'female', provider: 'ai', providerName: 'ElevenLabs' },
+  //   ]
+  // },
 ]
 
 export class AITTSProvider implements TTSProvider {
@@ -105,17 +121,17 @@ export class AITTSProvider implements TTSProvider {
   constructor() {
     this.config = {
       en: {
-        provider: 'openai',
-        voiceId: 'alloy',
+        provider: 'doubao',
+        voiceId: 'BV503_streaming',
         model: 'tts-1',
         rate: 1.0,
         pitch: 1.0,
         volume: 1.0
       },
       zh: {
-        provider: 'minimax',
-        voiceId: 'female-shaonv',
-        model: 'speech-01',
+        provider: 'doubao',
+        voiceId: 'BV700_streaming',
+        model: 'tts-1',
         rate: 1.0,
         pitch: 1.0,
         volume: 1.0
@@ -172,31 +188,33 @@ export class AITTSProvider implements TTSProvider {
 
   /**
    * 合成语音
+   * 缓存策略：本地 IndexedDB 缓存
+   * AI 语音直接调用各供应商 API
    */
   async synthesize(request: TTSRequest): Promise<TTSResponse> {
     const config = this.config[request.language === 'en' ? 'en' : 'zh']
 
-    // 先检查缓存
-    const cached = await ttsCache.get(
+    // 检查本地 IndexedDB 缓存
+    const localCached = await ttsCache.get(
       request.text,
       request.language,
       'ai',
       config.voiceId
     )
 
-    if (cached) {
+    if (localCached) {
       return {
-        audioData: cached.audioData,
-        mimeType: cached.mimeType,
-        duration: cached.duration,
+        audioData: localCached.audioData,
+        mimeType: localCached.mimeType,
+        duration: localCached.duration,
         cached: true
       }
     }
 
-    // 调用对应供应商的 API
+    // 调用 AI TTS API 生成
     const response = await this.callProviderAPI(request, config)
 
-    // 缓存结果
+    // 保存到本地 IndexedDB 缓存
     if (response.audioData) {
       await ttsCache.set({
         text: request.text,
@@ -240,11 +258,13 @@ export class AITTSProvider implements TTSProvider {
     request: TTSRequest,
     config: AITTSConfig
   ): Promise<TTSResponse> {
-    if (!config.apiKey) {
-      throw new Error('OpenAI TTS requires API key')
+    // 优先使用用户配置的 API Key，否则使用默认配置
+    const apiKey = config.apiKey || DEFAULT_AI_API_KEYS.openai
+    if (!apiKey) {
+      throw new Error('OpenAI TTS 需要配置 API Key')
     }
 
-    const baseUrl = config.baseUrl || 'https://api.openai.com/v1'
+    const baseUrl = config.baseUrl || DEFAULT_AI_API_KEYS.openaiBaseUrl || 'https://api.openai.com/v1'
     const endpoint = `${baseUrl}/audio/speech`
 
     const body = {
@@ -257,7 +277,7 @@ export class AITTSProvider implements TTSProvider {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
@@ -284,8 +304,10 @@ export class AITTSProvider implements TTSProvider {
     request: TTSRequest,
     config: AITTSConfig
   ): Promise<TTSResponse> {
-    if (!config.apiKey) {
-      throw new Error('ElevenLabs TTS requires API key')
+    // 优先使用用户配置的 API Key，否则使用默认配置
+    const apiKey = config.apiKey || DEFAULT_AI_API_KEYS.elevenlabs
+    if (!apiKey) {
+      throw new Error('ElevenLabs TTS 需要配置 API Key')
     }
 
     const endpoint = `https://api.elevenlabs.io/v1/text-to-speech/${config.voiceId}`
@@ -304,7 +326,7 @@ export class AITTSProvider implements TTSProvider {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'xi-api-key': config.apiKey,
+        'xi-api-key': apiKey,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
@@ -331,8 +353,10 @@ export class AITTSProvider implements TTSProvider {
     request: TTSRequest,
     config: AITTSConfig
   ): Promise<TTSResponse> {
-    if (!config.apiKey) {
-      throw new Error('MiniMax TTS requires API key')
+    // 优先使用用户配置的 API Key，否则使用默认配置
+    const apiKey = config.apiKey || DEFAULT_AI_API_KEYS.minimax
+    if (!apiKey) {
+      throw new Error('MiniMax TTS 需要配置 API Key')
     }
 
     // MiniMax 需要 group_id，这里假设从 baseUrl 获取
@@ -352,7 +376,7 @@ export class AITTSProvider implements TTSProvider {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${config.apiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
@@ -374,17 +398,94 @@ export class AITTSProvider implements TTSProvider {
 
   /**
    * 豆包 TTS API
+   * 通过 Supabase Edge Function 调用火山引擎语音合成
+   * API Key 格式: AppId:Token 或 AppId:Token:Cluster
    */
   private async callDoubaoAPI(
     request: TTSRequest,
     config: AITTSConfig
   ): Promise<TTSResponse> {
-    if (!config.apiKey) {
-      throw new Error('豆包 TTS requires API key')
+    // 优先使用用户配置的 API Key，否则使用默认配置
+    const apiKey = config.apiKey || DEFAULT_AI_API_KEYS.doubao
+    if (!apiKey) {
+      throw new Error('豆包 TTS 需要配置 API 密钥，请在设置中配置')
     }
 
-    // 火山引擎 TTS API
-    throw new Error('豆包 TTS 需要配置 API 密钥，请在设置中配置')
+    // API Key 格式: AppId:Token 或 AppId:Token:Cluster
+    const parts = apiKey.split(':')
+    if (parts.length < 2) {
+      throw new Error('豆包 API 密钥格式错误，请使用格式: AppId:Token 或 AppId:Token:Cluster')
+    }
+    
+    const [appId, token, cluster] = parts
+
+    // 将语速从 0.5-2.0 映射到火山引擎的 0.2-3.0
+    const rate = Math.max(0.2, Math.min(3.0, config.rate))
+    
+    // 将音量从 0-1 映射到火山引擎的 0.1-3.0
+    const volume = Math.max(0.1, Math.min(3.0, config.volume * 3))
+
+    // 调用 Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('doubao-tts', {
+      body: {
+        text: request.text,
+        language: request.language,
+        voiceId: config.voiceId,
+        rate,
+        volume,
+        appId,
+        token,
+        cluster: cluster || undefined
+      }
+    })
+
+    if (error) {
+      // 尝试从 response 获取更详细的错误信息
+      let errorDetail = ''
+      if (error.context) {
+        try {
+          const errorBody = await error.context.text?.()
+          if (errorBody) {
+            const parsed = JSON.parse(errorBody)
+            errorDetail = parsed.error || parsed.message || errorBody
+          }
+        } catch {
+          // 忽略解析错误
+        }
+      }
+      const errorMessage = errorDetail || error.message || '未知错误'
+      throw new Error(`豆包 TTS 请求失败: ${errorMessage}`)
+    }
+
+    // 检查是否返回了 JSON 错误响应
+    if (data && typeof data === 'object' && !ArrayBuffer.isView(data) && !(data instanceof Blob) && !(data instanceof ArrayBuffer)) {
+      if ('error' in data) {
+        const details = data.message ? `: ${data.message}` : ''
+        throw new Error(`${data.error}${details}`)
+      }
+      throw new Error(`豆包 TTS 返回了意外的数据格式: ${JSON.stringify(data)}`)
+    }
+
+    // Edge Function 返回的是 ArrayBuffer
+    if (data instanceof ArrayBuffer) {
+      return {
+        audioData: data,
+        mimeType: 'audio/mpeg',
+        cached: false
+      }
+    }
+
+    // 如果返回的是 Blob
+    if (data instanceof Blob) {
+      const audioData = await data.arrayBuffer()
+      return {
+        audioData,
+        mimeType: data.type || 'audio/mpeg',
+        cached: false
+      }
+    }
+
+    throw new Error(`豆包 TTS 返回数据格式错误，类型: ${typeof data}`)
   }
 
   /**
@@ -409,6 +510,11 @@ export class AITTSProvider implements TTSProvider {
     if (!this.audioContext) {
       this.audioContext = new AudioContext()
     }
+    
+    // 确保 AudioContext 处于运行状态（某些浏览器需要用户交互后才能播放）
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume()
+    }
 
     const audioBuffer = await this.audioContext.decodeAudioData(audioData.slice(0))
     const source = this.audioContext.createBufferSource()
@@ -423,7 +529,19 @@ export class AITTSProvider implements TTSProvider {
     this.currentSource = source
 
     return new Promise((resolve) => {
+      // 超时保护
+      const timeoutId = setTimeout(() => {
+        try {
+          source.stop()
+        } catch {
+          // 忽略
+        }
+        this.currentSource = null
+        resolve()
+      }, 10000)  // 10秒超时
+      
       source.onended = () => {
+        clearTimeout(timeoutId)
         this.currentSource = null
         resolve()
       }

@@ -261,25 +261,25 @@ export const useSpeechStore = defineStore('speech', () => {
   }
   
   // 设置激活的语音源
-  function setActiveProvider(provider: TTSProviderType): void {
+  function setActiveProvider(provider: TTSProviderType, autoSave = true): void {
     settings.value.activeProvider = provider
     ttsManager.setActiveProvider(provider)
-    saveSettings()
+    if (autoSave) saveSettings()
   }
   
   // 设置语言的语音源
-  function setLanguageProvider(language: TTSLanguage, provider: TTSProviderType): void {
+  function setLanguageProvider(language: TTSLanguage, provider: TTSProviderType, autoSave = true): void {
     if (language === 'en') {
       settings.value.english.provider = provider
     } else {
       settings.value.chinese.provider = provider
     }
     ttsManager.setLanguageProvider(language, provider)
-    saveSettings()
+    if (autoSave) saveSettings()
   }
   
   // 更新浏览器语音设置（兼容旧接口）
-  function updateEnglishSettings(newSettings: Partial<BrowserTTSConfig & { voice?: string | null }>): void {
+  function updateEnglishSettings(newSettings: Partial<BrowserTTSConfig & { voice?: string | null }>, autoSave = true): void {
     // 兼容旧的 voice 字段
     if (newSettings.voice !== undefined) {
       newSettings.voiceName = newSettings.voice
@@ -287,53 +287,53 @@ export const useSpeechStore = defineStore('speech', () => {
     }
     Object.assign(settings.value.english.browser, newSettings)
     ttsManager.updateBrowserConfig('en', settings.value.english.browser)
-    saveSettings()
+    if (autoSave) saveSettings()
   }
   
-  function updateChineseSettings(newSettings: Partial<BrowserTTSConfig & { voice?: string | null }>): void {
+  function updateChineseSettings(newSettings: Partial<BrowserTTSConfig & { voice?: string | null }>, autoSave = true): void {
     if (newSettings.voice !== undefined) {
       newSettings.voiceName = newSettings.voice
       delete newSettings.voice
     }
     Object.assign(settings.value.chinese.browser, newSettings)
     ttsManager.updateBrowserConfig('zh', settings.value.chinese.browser)
-    saveSettings()
+    if (autoSave) saveSettings()
   }
   
   // 更新字母拼读设置
-  function updateSpellingSettings(newSettings: Partial<{ rate: number; pitch: number; interval: number }>): void {
+  function updateSpellingSettings(newSettings: Partial<{ rate: number; pitch: number; interval: number }>, autoSave = true): void {
     Object.assign(settings.value.spelling, newSettings)
     ttsManager.updateSpellingConfig(newSettings)
-    saveSettings()
+    if (autoSave) saveSettings()
   }
   
   // 更新在线语音设置
-  function updateOnlineSettings(language: TTSLanguage, config: Partial<OnlineTTSConfig>): void {
+  function updateOnlineSettings(language: TTSLanguage, config: Partial<OnlineTTSConfig>, autoSave = true): void {
     if (language === 'en') {
       Object.assign(settings.value.english.online, config)
     } else {
       Object.assign(settings.value.chinese.online, config)
     }
     ttsManager.updateOnlineConfig(language, config)
-    saveSettings()
+    if (autoSave) saveSettings()
   }
   
   // 更新 AI 语音设置
-  function updateAISettings(language: TTSLanguage, config: Partial<AITTSConfig>): void {
+  function updateAISettings(language: TTSLanguage, config: Partial<AITTSConfig>, autoSave = true): void {
     if (language === 'en') {
       Object.assign(settings.value.english.ai, config)
     } else {
       Object.assign(settings.value.chinese.ai, config)
     }
     ttsManager.updateAIConfig(language, config)
-    saveSettings()
+    if (autoSave) saveSettings()
   }
   
   // 重置为默认设置
   function resetToDefaults(): void {
     ttsManager.resetToDefaults()
     settings.value = ttsManager.getSettings()
-    saveSettings()
+    // 重置后不自动保存，等用户点击保存按钮
   }
   
   // 朗读英文

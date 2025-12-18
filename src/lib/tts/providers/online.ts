@@ -10,65 +10,25 @@ import type {
   TTSVoice, 
   TTSLanguage,
   OnlineTTSConfig,
-  OnlineTTSProvider as OnlineProviderType,
   OnlineProviderInfo
 } from '../types'
 import { ttsCache } from '../cache'
+import { supabase } from '@/lib/supabase'
 
-// 在线语音供应商配置
+// 从环境变量获取默认 API Keys
+const DEFAULT_API_KEYS = {
+  tencent: import.meta.env.VITE_TTS_TENCENT_API_KEY || '',
+  azure: import.meta.env.VITE_TTS_AZURE_API_KEY || '',
+  azureRegion: import.meta.env.VITE_TTS_AZURE_REGION || 'eastasia',
+  google: import.meta.env.VITE_TTS_GOOGLE_API_KEY || '',
+}
+
+// 在线语音供应商配置（目前只保留腾讯云，其他供应商暂时屏蔽）
 export const ONLINE_PROVIDERS: OnlineProviderInfo[] = [
-  {
-    id: 'youdao',
-    name: '有道翻译',
-    description: '有道翻译语音朗读，免费使用，适合英语学习',
-    website: 'https://fanyi.youdao.com',
-    requiresApiKey: false,
-    free: true,
-    supportedLanguages: ['en', 'zh'],
-    voices: [
-      { id: 'en-US-1', name: '美式英语', language: 'en', gender: 'female', provider: 'online', providerName: '有道翻译' },
-      { id: 'en-GB-1', name: '英式英语', language: 'en', gender: 'female', provider: 'online', providerName: '有道翻译' },
-      { id: 'zh-CN-1', name: '中文普通话', language: 'zh', gender: 'female', provider: 'online', providerName: '有道翻译' },
-    ]
-  },
-  {
-    id: 'azure',
-    name: 'Microsoft Azure',
-    description: '微软 Azure 认知服务语音合成，音质优秀',
-    website: 'https://azure.microsoft.com/services/cognitive-services/text-to-speech/',
-    requiresApiKey: true,
-    free: false,
-    supportedLanguages: ['en', 'zh'],
-    voices: [
-      { id: 'en-US-JennyNeural', name: 'Jenny (美式女声)', language: 'en', gender: 'female', provider: 'online', providerName: 'Azure' },
-      { id: 'en-US-GuyNeural', name: 'Guy (美式男声)', language: 'en', gender: 'male', provider: 'online', providerName: 'Azure' },
-      { id: 'en-GB-SoniaNeural', name: 'Sonia (英式女声)', language: 'en', gender: 'female', provider: 'online', providerName: 'Azure' },
-      { id: 'en-GB-RyanNeural', name: 'Ryan (英式男声)', language: 'en', gender: 'male', provider: 'online', providerName: 'Azure' },
-      { id: 'zh-CN-XiaoxiaoNeural', name: '晓晓 (女声)', language: 'zh', gender: 'female', provider: 'online', providerName: 'Azure' },
-      { id: 'zh-CN-YunxiNeural', name: '云希 (男声)', language: 'zh', gender: 'male', provider: 'online', providerName: 'Azure' },
-      { id: 'zh-CN-XiaoyiNeural', name: '晓伊 (女声)', language: 'zh', gender: 'female', provider: 'online', providerName: 'Azure' },
-    ]
-  },
-  {
-    id: 'google',
-    name: 'Google Cloud',
-    description: 'Google Cloud Text-to-Speech，支持多种语言',
-    website: 'https://cloud.google.com/text-to-speech',
-    requiresApiKey: true,
-    free: false,
-    supportedLanguages: ['en', 'zh'],
-    voices: [
-      { id: 'en-US-Neural2-F', name: 'Neural2-F (美式女声)', language: 'en', gender: 'female', provider: 'online', providerName: 'Google' },
-      { id: 'en-US-Neural2-D', name: 'Neural2-D (美式男声)', language: 'en', gender: 'male', provider: 'online', providerName: 'Google' },
-      { id: 'en-GB-Neural2-A', name: 'Neural2-A (英式女声)', language: 'en', gender: 'female', provider: 'online', providerName: 'Google' },
-      { id: 'cmn-CN-Wavenet-A', name: 'Wavenet-A (女声)', language: 'zh', gender: 'female', provider: 'online', providerName: 'Google' },
-      { id: 'cmn-CN-Wavenet-B', name: 'Wavenet-B (男声)', language: 'zh', gender: 'male', provider: 'online', providerName: 'Google' },
-    ]
-  },
   {
     id: 'tencent',
     name: '腾讯云',
-    description: '腾讯云语音合成（需后端代理，浏览器端暂不支持）',
+    description: '腾讯云语音合成，通过 Supabase Edge Function 调用，音质优秀',
     website: 'https://cloud.tencent.com/product/tts',
     requiresApiKey: true,
     free: false,
@@ -82,22 +42,71 @@ export const ONLINE_PROVIDERS: OnlineProviderInfo[] = [
       { id: '101051', name: 'WeRose (女声)', language: 'en', gender: 'female', provider: 'online', providerName: '腾讯云' },
     ]
   },
-  {
-    id: 'aliyun',
-    name: '阿里云',
-    description: '阿里云智能语音服务（需后端代理，浏览器端暂不支持）',
-    website: 'https://ai.aliyun.com/nls/tts',
-    requiresApiKey: true,
-    free: false,
-    supportedLanguages: ['en', 'zh'],
-    voices: [
-      { id: 'xiaoyun', name: '小云 (标准女声)', language: 'zh', gender: 'female', provider: 'online', providerName: '阿里云' },
-      { id: 'xiaogang', name: '小刚 (标准男声)', language: 'zh', gender: 'male', provider: 'online', providerName: '阿里云' },
-      { id: 'ruoxi', name: '若兮 (温柔女声)', language: 'zh', gender: 'female', provider: 'online', providerName: '阿里云' },
-      { id: 'harry', name: 'Harry (英式男声)', language: 'en', gender: 'male', provider: 'online', providerName: '阿里云' },
-      { id: 'abby', name: 'Abby (美式女声)', language: 'en', gender: 'female', provider: 'online', providerName: '阿里云' },
-    ]
-  }
+  // 以下供应商暂时屏蔽，后续有需求再启用
+  // {
+  //   id: 'youdao',
+  //   name: '有道翻译',
+  //   description: '有道翻译语音朗读，免费使用，适合英语学习',
+  //   website: 'https://fanyi.youdao.com',
+  //   requiresApiKey: false,
+  //   free: true,
+  //   supportedLanguages: ['en', 'zh'],
+  //   voices: [
+  //     { id: 'en-US-1', name: '美式英语', language: 'en', gender: 'female', provider: 'online', providerName: '有道翻译' },
+  //     { id: 'en-GB-1', name: '英式英语', language: 'en', gender: 'female', provider: 'online', providerName: '有道翻译' },
+  //     { id: 'zh-CN-1', name: '中文普通话', language: 'zh', gender: 'female', provider: 'online', providerName: '有道翻译' },
+  //   ]
+  // },
+  // {
+  //   id: 'azure',
+  //   name: 'Microsoft Azure',
+  //   description: '微软 Azure 认知服务语音合成，音质优秀',
+  //   website: 'https://azure.microsoft.com/services/cognitive-services/text-to-speech/',
+  //   requiresApiKey: true,
+  //   free: false,
+  //   supportedLanguages: ['en', 'zh'],
+  //   voices: [
+  //     { id: 'en-US-JennyNeural', name: 'Jenny (美式女声)', language: 'en', gender: 'female', provider: 'online', providerName: 'Azure' },
+  //     { id: 'en-US-GuyNeural', name: 'Guy (美式男声)', language: 'en', gender: 'male', provider: 'online', providerName: 'Azure' },
+  //     { id: 'en-GB-SoniaNeural', name: 'Sonia (英式女声)', language: 'en', gender: 'female', provider: 'online', providerName: 'Azure' },
+  //     { id: 'en-GB-RyanNeural', name: 'Ryan (英式男声)', language: 'en', gender: 'male', provider: 'online', providerName: 'Azure' },
+  //     { id: 'zh-CN-XiaoxiaoNeural', name: '晓晓 (女声)', language: 'zh', gender: 'female', provider: 'online', providerName: 'Azure' },
+  //     { id: 'zh-CN-YunxiNeural', name: '云希 (男声)', language: 'zh', gender: 'male', provider: 'online', providerName: 'Azure' },
+  //     { id: 'zh-CN-XiaoyiNeural', name: '晓伊 (女声)', language: 'zh', gender: 'female', provider: 'online', providerName: 'Azure' },
+  //   ]
+  // },
+  // {
+  //   id: 'google',
+  //   name: 'Google Cloud',
+  //   description: 'Google Cloud Text-to-Speech，支持多种语言',
+  //   website: 'https://cloud.google.com/text-to-speech',
+  //   requiresApiKey: true,
+  //   free: false,
+  //   supportedLanguages: ['en', 'zh'],
+  //   voices: [
+  //     { id: 'en-US-Neural2-F', name: 'Neural2-F (美式女声)', language: 'en', gender: 'female', provider: 'online', providerName: 'Google' },
+  //     { id: 'en-US-Neural2-D', name: 'Neural2-D (美式男声)', language: 'en', gender: 'male', provider: 'online', providerName: 'Google' },
+  //     { id: 'en-GB-Neural2-A', name: 'Neural2-A (英式女声)', language: 'en', gender: 'female', provider: 'online', providerName: 'Google' },
+  //     { id: 'cmn-CN-Wavenet-A', name: 'Wavenet-A (女声)', language: 'zh', gender: 'female', provider: 'online', providerName: 'Google' },
+  //     { id: 'cmn-CN-Wavenet-B', name: 'Wavenet-B (男声)', language: 'zh', gender: 'male', provider: 'online', providerName: 'Google' },
+  //   ]
+  // },
+  // {
+  //   id: 'aliyun',
+  //   name: '阿里云',
+  //   description: '阿里云智能语音服务（需后端代理，浏览器端暂不支持）',
+  //   website: 'https://ai.aliyun.com/nls/tts',
+  //   requiresApiKey: true,
+  //   free: false,
+  //   supportedLanguages: ['en', 'zh'],
+  //   voices: [
+  //     { id: 'xiaoyun', name: '小云 (标准女声)', language: 'zh', gender: 'female', provider: 'online', providerName: '阿里云' },
+  //     { id: 'xiaogang', name: '小刚 (标准男声)', language: 'zh', gender: 'male', provider: 'online', providerName: '阿里云' },
+  //     { id: 'ruoxi', name: '若兮 (温柔女声)', language: 'zh', gender: 'female', provider: 'online', providerName: '阿里云' },
+  //     { id: 'harry', name: 'Harry (英式男声)', language: 'en', gender: 'male', provider: 'online', providerName: '阿里云' },
+  //     { id: 'abby', name: 'Abby (美式女声)', language: 'en', gender: 'female', provider: 'online', providerName: '阿里云' },
+  //   ]
+  // }
 ]
 
 export class OnlineTTSProvider implements TTSProvider {
@@ -116,15 +125,15 @@ export class OnlineTTSProvider implements TTSProvider {
   constructor() {
     this.config = {
       en: {
-        provider: 'azure',
-        voiceId: 'en-US-JennyNeural',
+        provider: 'tencent',
+        voiceId: '101051',
         rate: 1.0,
         pitch: 1.0,
         volume: 1.0
       },
       zh: {
-        provider: 'azure',
-        voiceId: 'zh-CN-XiaoxiaoNeural',
+        provider: 'tencent',
+        voiceId: '101001',
         rate: 1.0,
         pitch: 1.0,
         volume: 1.0
@@ -182,31 +191,34 @@ export class OnlineTTSProvider implements TTSProvider {
 
   /**
    * 合成语音
+   * 缓存策略：
+   * 1. 本地 IndexedDB 缓存（最快）
+   * 2. 调用 Edge Function（内部处理 Storage 缓存 + API 调用）
    */
   async synthesize(request: TTSRequest): Promise<TTSResponse> {
     const config = this.config[request.language === 'en' ? 'en' : 'zh']
 
-    // 先检查缓存
-    const cached = await ttsCache.get(
+    // 检查本地 IndexedDB 缓存
+    const localCached = await ttsCache.get(
       request.text,
       request.language,
       'online',
       config.voiceId
     )
 
-    if (cached) {
+    if (localCached) {
       return {
-        audioData: cached.audioData,
-        mimeType: cached.mimeType,
-        duration: cached.duration,
+        audioData: localCached.audioData,
+        mimeType: localCached.mimeType,
+        duration: localCached.duration,
         cached: true
       }
     }
 
-    // 调用对应供应商的 API
+    // 调用 Edge Function（内部处理 Storage 缓存）
     const response = await this.callProviderAPI(request, config)
 
-    // 缓存结果
+    // 保存到本地 IndexedDB 缓存
     if (response.audioData) {
       await ttsCache.set({
         text: request.text,
@@ -252,11 +264,15 @@ export class OnlineTTSProvider implements TTSProvider {
     request: TTSRequest,
     config: OnlineTTSConfig
   ): Promise<TTSResponse> {
-    if (!config.apiKey || !config.region) {
-      throw new Error('Azure TTS requires API key and region')
+    // 优先使用用户配置的 API Key，否则使用默认配置
+    const apiKey = config.apiKey || DEFAULT_API_KEYS.azure
+    const region = config.region || DEFAULT_API_KEYS.azureRegion
+    
+    if (!apiKey || !region) {
+      throw new Error('Azure TTS 需要配置 API Key 和区域')
     }
 
-    const endpoint = `https://${config.region}.tts.speech.microsoft.com/cognitiveservices/v1`
+    const endpoint = `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`
     
     // SSML 格式
     const ssml = `
@@ -272,7 +288,7 @@ export class OnlineTTSProvider implements TTSProvider {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        'Ocp-Apim-Subscription-Key': config.apiKey,
+        'Ocp-Apim-Subscription-Key': apiKey,
         'Content-Type': 'application/ssml+xml',
         'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3'
       },
@@ -299,11 +315,13 @@ export class OnlineTTSProvider implements TTSProvider {
     request: TTSRequest,
     config: OnlineTTSConfig
   ): Promise<TTSResponse> {
-    if (!config.apiKey) {
-      throw new Error('Google TTS requires API key')
+    // 优先使用用户配置的 API Key，否则使用默认配置
+    const apiKey = config.apiKey || DEFAULT_API_KEYS.google
+    if (!apiKey) {
+      throw new Error('Google TTS 需要配置 API Key')
     }
 
-    const endpoint = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${config.apiKey}`
+    const endpoint = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`
 
     const body = {
       input: { text: request.text },
@@ -340,29 +358,116 @@ export class OnlineTTSProvider implements TTSProvider {
 
   /**
    * 腾讯云 TTS API
-   * 使用腾讯云语音合成 WebAPI
-   * API Key 格式: SecretId:SecretKey
+   * 通过 Supabase Edge Function 调用腾讯云语音合成
+   * API Key 格式: AppId:SecretId:SecretKey
    */
   private async callTencentAPI(
     request: TTSRequest,
     config: OnlineTTSConfig
   ): Promise<TTSResponse> {
-    if (!config.apiKey) {
+    // 优先使用用户配置的 API Key，否则使用默认配置
+    const apiKey = config.apiKey || DEFAULT_API_KEYS.tencent
+    if (!apiKey) {
       throw new Error('腾讯云 TTS 需要配置 API 密钥，请在设置中配置')
     }
 
-    // API Key 格式: SecretId:SecretKey
-    const [secretId, secretKey] = config.apiKey.split(':')
-    if (!secretId || !secretKey) {
-      throw new Error('腾讯云 API 密钥格式错误，请使用格式: SecretId:SecretKey')
+    // API Key 格式: AppId:SecretId:SecretKey
+    const parts = apiKey.split(':')
+    if (parts.length !== 3) {
+      throw new Error('腾讯云 API 密钥格式错误，请使用格式: AppId:SecretId:SecretKey')
+    }
+    
+    const [appIdStr, secretId, secretKey] = parts
+    const appId = parseInt(appIdStr, 10)
+    if (isNaN(appId)) {
+      throw new Error('腾讯云 AppId 必须是数字')
     }
 
-    // 腾讯云 TTS 需要复杂的签名机制
-    // 这里使用简化的方式：通过代理服务或直接调用
-    // 由于浏览器端无法安全地进行签名，建议使用后端代理
+    // 将语速从 0.5-2.0 映射到腾讯云的 -2 到 6
+    // 1.0 对应 0，0.5 对应 -2，2.0 对应 6
+    const rate = Math.round((config.rate - 1) * 4)
     
-    // 临时方案：提示用户腾讯云暂时只支持后端调用
-    throw new Error('腾讯云 TTS 需要后端代理支持，浏览器端暂不可用。建议使用有道翻译（免费）或其他已支持的供应商。')
+    // 将音量从 0-1 映射到腾讯云的 0-10
+    const volume = Math.round(config.volume * 10)
+
+    const requestBody = {
+      text: request.text,
+      language: request.language,
+      voiceId: config.voiceId,
+      rate,
+      volume,
+      secretId,
+      secretKey,
+      appId
+    }
+
+    // 调用 Supabase Edge Function
+    const { data, error } = await supabase.functions.invoke('tencent-tts', {
+      body: requestBody
+    })
+
+    if (error) {
+      // 尝试从 response 获取更详细的错误信息
+      let errorDetail = ''
+      if (error.context) {
+        try {
+          const errorBody = await error.context.text?.()
+          if (errorBody) {
+            const parsed = JSON.parse(errorBody)
+            errorDetail = parsed.error || parsed.message || errorBody
+          }
+        } catch {
+          // 忽略解析错误
+        }
+      }
+      const errorMessage = errorDetail || error.message || '未知错误'
+      throw new Error(`腾讯云 TTS 请求失败: ${errorMessage}`)
+    }
+
+    // 检查是否返回了 JSON 错误响应
+    if (data && typeof data === 'object' && !ArrayBuffer.isView(data) && !(data instanceof Blob) && !(data instanceof ArrayBuffer)) {
+      if ('error' in data) {
+        const details = data.details ? JSON.stringify(data.details) : ''
+        throw new Error(`${data.error}${details ? ': ' + details : ''}`)
+      }
+      // 如果是其他 JSON 对象，可能是错误
+      throw new Error(`腾讯云 TTS 返回了意外的数据格式: ${JSON.stringify(data)}`)
+    }
+
+    // Edge Function 返回的是 ArrayBuffer
+    if (data instanceof ArrayBuffer) {
+      return {
+        audioData: data,
+        mimeType: 'audio/mpeg',
+        cached: false
+      }
+    }
+
+    // 如果返回的是 Blob（Supabase functions-js 对 application/octet-stream 返回 Blob）
+    if (data instanceof Blob) {
+      const audioData = await data.arrayBuffer()
+      return {
+        audioData,
+        mimeType: data.type || 'audio/mpeg',
+        cached: false
+      }
+    }
+
+    // 如果是字符串，可能是 text 响应（错误情况）
+    if (typeof data === 'string') {
+      // 尝试解析为 JSON
+      try {
+        const parsed = JSON.parse(data)
+        if (parsed.error) {
+          throw new Error(parsed.error)
+        }
+      } catch {
+        // 不是 JSON，直接报错
+      }
+      throw new Error(`腾讯云 TTS 返回了文本而非音频数据: ${data.substring(0, 100)}`)
+    }
+
+    throw new Error(`腾讯云 TTS 返回数据格式错误，类型: ${typeof data}`)
   }
 
   /**
@@ -370,7 +475,7 @@ export class OnlineTTSProvider implements TTSProvider {
    * 阿里云需要 Token 认证，浏览器端暂不支持
    */
   private async callAliyunAPI(
-    request: TTSRequest,
+    _request: TTSRequest,
     config: OnlineTTSConfig
   ): Promise<TTSResponse> {
     if (!config.apiKey) {
@@ -441,17 +546,27 @@ export class OnlineTTSProvider implements TTSProvider {
       audio.volume = config.volume
       this.currentAudio = audio
       
+      // 超时保护
+      const timeoutId = setTimeout(() => {
+        this.currentAudio = null
+        audio.pause()
+        resolve()  // 超时后静默完成
+      }, 10000)  // 10秒超时
+      
       audio.onended = () => {
+        clearTimeout(timeoutId)
         this.currentAudio = null
         resolve()
       }
       
       audio.onerror = () => {
+        clearTimeout(timeoutId)
         this.currentAudio = null
         reject(new Error('有道语音播放失败，请检查网络连接'))
       }
       
       audio.play().catch((e) => {
+        clearTimeout(timeoutId)
         this.currentAudio = null
         reject(new Error(`有道语音播放失败: ${e.message}`))
       })
@@ -467,6 +582,11 @@ export class OnlineTTSProvider implements TTSProvider {
     if (!this.audioContext) {
       this.audioContext = new AudioContext()
     }
+    
+    // 确保 AudioContext 处于运行状态（某些浏览器需要用户交互后才能播放）
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume()
+    }
 
     const audioBuffer = await this.audioContext.decodeAudioData(audioData.slice(0))
     const source = this.audioContext.createBufferSource()
@@ -481,7 +601,19 @@ export class OnlineTTSProvider implements TTSProvider {
     this.currentSource = source
 
     return new Promise((resolve) => {
+      // 超时保护
+      const timeoutId = setTimeout(() => {
+        try {
+          source.stop()
+        } catch {
+          // 忽略
+        }
+        this.currentSource = null
+        resolve()
+      }, 10000)  // 10秒超时
+      
       source.onended = () => {
+        clearTimeout(timeoutId)
         this.currentSource = null
         resolve()
       }

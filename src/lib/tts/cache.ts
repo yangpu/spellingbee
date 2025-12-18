@@ -147,15 +147,20 @@ class TTSCacheDB {
         const existing = getRequest.result as TTSCacheEntry | undefined
         
         const now = Date.now()
-        const newEntry: TTSCacheEntry = {
+        // 构建新条目，如果是新记录则不设置 id，让 IndexedDB 自动生成
+        const newEntry: Partial<TTSCacheEntry> = {
           ...entry,
-          id: existing?.id,
           createdAt: existing?.createdAt || now,
           lastUsedAt: now,
           useCount: (existing?.useCount || 0) + 1
         }
+        
+        // 只有更新现有记录时才设置 id
+        if (existing?.id !== undefined) {
+          newEntry.id = existing.id
+        }
 
-        const putRequest = store.put(newEntry)
+        const putRequest = store.put(newEntry as TTSCacheEntry)
 
         putRequest.onsuccess = () => resolve()
         putRequest.onerror = () => {

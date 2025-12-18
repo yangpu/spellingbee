@@ -19,6 +19,9 @@ import { getDefaultTTSSettings } from './types'
 import { ttsCache } from './cache'
 import { browserTTS, onlineTTS, aiTTS } from './providers'
 
+// 默认超时时间（毫秒）
+const DEFAULT_SPEAK_TIMEOUT = 10000  // 10秒
+
 // 检测平台
 function detectPlatform(): { os: string; browser: string } {
   const ua = navigator.userAgent
@@ -191,7 +194,22 @@ class TTSManager {
   }
 
   /**
-   * 朗读文本
+   * 带超时的 Promise 包装
+   */
+  private withTimeout<T>(promise: Promise<T>, timeoutMs: number = DEFAULT_SPEAK_TIMEOUT): Promise<T | void> {
+    return Promise.race([
+      promise,
+      new Promise<void>((resolve) => {
+        setTimeout(() => {
+          // 超时后静默完成，不报错
+          resolve()
+        }, timeoutMs)
+      })
+    ])
+  }
+
+  /**
+   * 朗读文本（带超时保护）
    */
   async speak(text: string, language: TTSLanguage, options?: Partial<TTSVoiceConfig>): Promise<void> {
     const provider = language === 'en' 
@@ -204,16 +222,26 @@ class TTSManager {
       config: options
     }
 
-    switch (provider) {
-      case 'browser':
-        await browserTTS.speak(request)
-        break
-      case 'online':
-        await onlineTTS.speak(request)
-        break
-      case 'ai':
-        await aiTTS.speak(request)
-        break
+    try {
+      let speakPromise: Promise<void>
+      switch (provider) {
+        case 'browser':
+          speakPromise = browserTTS.speak(request)
+          break
+        case 'online':
+          speakPromise = onlineTTS.speak(request)
+          break
+        case 'ai':
+          speakPromise = aiTTS.speak(request)
+          break
+        default:
+          return
+      }
+      
+      // 使用超时包装，防止语音播放永久阻塞
+      await this.withTimeout(speakPromise)
+    } catch {
+      // 语音播放失败时静默处理，不阻塞流程
     }
   }
 
@@ -292,7 +320,7 @@ class TTSManager {
   }
 
   /**
-   * 试听英文语音
+   * 试听英文语音（带超时保护）
    */
   async previewEnglish(provider?: TTSProviderType): Promise<void> {
     const testText = 'Hello, this is a test of the English voice.'
@@ -300,21 +328,29 @@ class TTSManager {
 
     const request: TTSRequest = { text: testText, language: 'en' }
 
-    switch (targetProvider) {
-      case 'browser':
-        await browserTTS.speak(request)
-        break
-      case 'online':
-        await onlineTTS.speak(request)
-        break
-      case 'ai':
-        await aiTTS.speak(request)
-        break
+    try {
+      let speakPromise: Promise<void>
+      switch (targetProvider) {
+        case 'browser':
+          speakPromise = browserTTS.speak(request)
+          break
+        case 'online':
+          speakPromise = onlineTTS.speak(request)
+          break
+        case 'ai':
+          speakPromise = aiTTS.speak(request)
+          break
+        default:
+          return
+      }
+      await this.withTimeout(speakPromise)
+    } catch {
+      // 试听失败时静默处理
     }
   }
 
   /**
-   * 试听中文语音
+   * 试听中文语音（带超时保护）
    */
   async previewChinese(provider?: TTSProviderType): Promise<void> {
     const testText = '你好，这是中文语音测试。'
@@ -322,16 +358,24 @@ class TTSManager {
 
     const request: TTSRequest = { text: testText, language: 'zh' }
 
-    switch (targetProvider) {
-      case 'browser':
-        await browserTTS.speak(request)
-        break
-      case 'online':
-        await onlineTTS.speak(request)
-        break
-      case 'ai':
-        await aiTTS.speak(request)
-        break
+    try {
+      let speakPromise: Promise<void>
+      switch (targetProvider) {
+        case 'browser':
+          speakPromise = browserTTS.speak(request)
+          break
+        case 'online':
+          speakPromise = onlineTTS.speak(request)
+          break
+        case 'ai':
+          speakPromise = aiTTS.speak(request)
+          break
+        default:
+          return
+      }
+      await this.withTimeout(speakPromise)
+    } catch {
+      // 试听失败时静默处理
     }
   }
 

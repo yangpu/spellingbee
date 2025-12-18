@@ -1,5 +1,5 @@
 <template>
-  <div class="learn-page" @click="onPageClick">
+  <div class="learn-page">
     <div class="page-header" v-if="!isLearning">
       <h1>单词学习</h1>
       <p>通过卡片学习单词，掌握拼写、发音和释义</p>
@@ -32,7 +32,7 @@
           </t-button>
         </div>
       </div>
-      
+
       <div class="setting-item">
         <label>学习数量</label>
         <t-input-number v-model="settings.count" :min="5" :max="50" :step="5" />
@@ -78,14 +78,13 @@
 
       <!-- Auto Learn Toggle -->
       <div class="auto-learn-bar">
-        <t-button 
-          :theme="isAutoLearning ? 'danger' : 'default'" 
-          variant="outline"
-          @click="toggleAutoLearn"
-        >
+        <t-button :theme="isAutoLearning ? 'danger' : 'default'" variant="outline" @click="toggleAutoLearn">
           <template #icon><t-icon :name="isAutoLearning ? 'pause' : 'play-circle'" /></template>
           {{ isAutoLearning ? '停止自动学习' : '自动学习' }}
         </t-button>
+        <t-checkbox v-model="settings.spellLetters" @change="saveSettings" v-if="isAutoLearning">
+          朗读字母
+        </t-checkbox>
         <span v-if="isAutoLearning" class="auto-status">自动学习中...</span>
       </div>
 
@@ -96,12 +95,8 @@
           <div class="card-front">
             <div class="card-content">
               <div class="word-display" @click="speakWord">
-                <span 
-                  v-for="(char, i) in currentWord.word.split('')" 
-                  :key="i"
-                  class="word-char"
-                  :class="{ 'char-highlighted': i < highlightedLetterIndex }"
-                >{{ char }}</span>
+                <span v-for="(char, i) in currentWord.word.split('')" :key="i" class="word-char"
+                  :class="{ 'char-highlighted': i < highlightedLetterIndex }">{{ char }}</span>
                 <t-button variant="text" size="small" class="speak-btn">
                   <template #icon><t-icon name="sound" size="24px" /></template>
                 </t-button>
@@ -110,7 +105,7 @@
               <p class="hint-text">点击卡片查看释义，或按空格键翻转</p>
             </div>
           </div>
-          
+
           <!-- Back - Full info -->
           <div class="card-back">
             <div class="card-content">
@@ -130,7 +125,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Click overlay -->
         <div class="card-click-area" @click="flipCard"></div>
       </div>
@@ -157,11 +152,7 @@
 
       <!-- 退出学习按钮 -->
       <div class="exit-learning-section">
-        <t-button
-          variant="text"
-          theme="danger"
-          @click="exitLearning"
-        >
+        <t-button variant="text" theme="danger" @click="exitLearning">
           <template #icon><t-icon name="logout" /></template>
           退出学习
         </t-button>
@@ -216,19 +207,11 @@
         </div>
         <div class="record-content" v-show="showLearningRecord">
           <!-- 工具栏：过滤、搜索 -->
-          <WordListToolbar
-            v-model="learnRecordToolbar"
-            :filter-options="learnRecordFilterOptions"
-          />
-          
+          <WordListToolbar v-model="learnRecordToolbar" :filter-options="learnRecordFilterOptions" />
+
           <!-- 单词列表 -->
           <div class="word-cards" v-if="paginatedLearnRecords.length > 0">
-            <div 
-              class="word-card-item" 
-              :class="word._type"
-              v-for="word in paginatedLearnRecords" 
-              :key="word.word"
-            >
+            <div class="word-card-item" :class="word._type" v-for="word in paginatedLearnRecords" :key="word.word">
               <div class="card-header">
                 <span class="card-index">{{ word._index }}</span>
                 <span class="card-word">{{ word.word }}</span>
@@ -250,23 +233,18 @@
               </div>
             </div>
           </div>
-          
+
           <!-- 空状态 -->
           <div class="empty-filter-result" v-else>
             <t-icon name="search" size="32px" />
             <span>没有找到匹配的单词</span>
           </div>
-          
+
           <!-- 分页器 -->
           <div class="list-pagination" v-if="filteredLearnRecords.length > learnRecordToolbar.pageSize">
-            <t-pagination
-              :current="learnRecordToolbar.page"
-              :page-size="learnRecordToolbar.pageSize"
-              :total="filteredLearnRecords.length"
-              :page-size-options="[5, 10, 20]"
-              size="small"
-              @change="handleLearnRecordPageChange"
-            />
+            <t-pagination :current="learnRecordToolbar.page" :page-size="learnRecordToolbar.pageSize"
+              :total="filteredLearnRecords.length" :page-size-options="[5, 10, 20]" size="small"
+              @change="handleLearnRecordPageChange" />
           </div>
         </div>
       </div>
@@ -284,7 +262,6 @@ import { useWordsStore } from '@/stores/words'
 import { useLearningStore } from '@/stores/learning'
 import { useSpeechStore } from '@/stores/speech'
 import { backgroundAudio } from '@/utils/backgroundAudio'
-import { checkSpeechPermission } from '@/utils/speechPermission'
 import SpeechSettings from '@/components/SpeechSettings.vue'
 import WordListToolbar from '@/components/WordListToolbar.vue'
 
@@ -295,29 +272,13 @@ const speechStore = useSpeechStore()
 // 语音配置弹窗
 const showSpeechSettings = ref(false)
 
-// 语音权限提示状态
-const showSpeechPermission = ref(false)
-
-// 页面点击处理 - 任何点击都满足交互条件，获取语音权限
-function onPageClick() {
-  if (showSpeechPermission.value) {
-    // 尝试播放静音语音以获取权限
-    const utterance = new SpeechSynthesisUtterance('')
-    utterance.volume = 0
-    speechSynthesis.speak(utterance)
-    
-    showSpeechPermission.value = false
-    MessagePlugin.closeAll()
-    MessagePlugin.success('语音播放已启用')
-  }
-}
-
 // Settings
 const settings = reactive({
   count: 10,
   difficulty: null,
   mode: 'natural', // natural, sequential, reverse, random, review
-  autoLearn: false // 自动学习模式
+  autoLearn: false, // 自动学习模式
+  spellLetters: true // 自动学习时逐个朗读字母
 })
 
 // 设置存储键
@@ -343,7 +304,8 @@ function saveSettings() {
       count: settings.count,
       difficulty: settings.difficulty,
       mode: settings.mode,
-      autoLearn: settings.autoLearn
+      autoLearn: settings.autoLearn,
+      spellLetters: settings.spellLetters
     }))
   } catch (e) {
     console.error('Error saving learn settings:', e)
@@ -382,7 +344,7 @@ const filteredLearnRecords = computed(() => {
     ...masteredWords.value.map((w, i) => ({ ...w, _type: 'mastered', _originalIndex: i + 1 })),
     ...reviewWords.value.map((w, i) => ({ ...w, _type: 'review', _originalIndex: masteredWords.value.length + i + 1 }))
   ]
-  
+
   // 按筛选条件过滤
   const { filter, keyword } = learnRecordToolbar.value
   if (filter === 'mastered') {
@@ -390,17 +352,17 @@ const filteredLearnRecords = computed(() => {
   } else if (filter === 'review') {
     allWords = allWords.filter(w => w._type === 'review')
   }
-  
+
   // 按关键词搜索
   if (keyword.trim()) {
     const kw = keyword.trim().toLowerCase()
-    allWords = allWords.filter(w => 
+    allWords = allWords.filter(w =>
       w.word.toLowerCase().includes(kw) ||
       w.definition_cn?.toLowerCase().includes(kw) ||
       w.definition?.toLowerCase().includes(kw)
     )
   }
-  
+
   // 添加显示序号
   return allWords.map((w, i) => ({ ...w, _index: i + 1 }))
 })
@@ -455,9 +417,9 @@ const learningModeHint = computed(() => {
 function startLearning() {
   // 保存设置
   saveSettings()
-  
+
   let words = []
-  
+
   // 根据学习模式获取单词
   switch (settings.mode) {
     case 'natural':
@@ -481,9 +443,9 @@ function startLearning() {
     default:
       words = wordsStore.getRandomWords(settings.count, settings.difficulty)
   }
-  
+
   if (words.length === 0) return
-  
+
   learnWords.value = words
   currentIndex.value = 0
   masteredWords.value = []
@@ -493,10 +455,10 @@ function startLearning() {
   isFlipped.value = false
   highlightedLetterIndex.value = 0
   flipCount.value = 0 // Reset flip count
-  
+
   // 保存学习会话
   saveCurrentSession()
-  
+
   // 根据设置决定是否开启自动学习
   setTimeout(() => {
     if (settings.autoLearn) {
@@ -510,18 +472,18 @@ function startLearning() {
 // 自然模式：按最佳记忆曲线
 function getWordsNaturalMode(count, difficulty) {
   let filtered = [...wordsStore.words]
-  
+
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
   }
-  
+
   if (filtered.length === 0) return []
-  
+
   // 优先选择：1. 需要复习的单词 2. 未学过的单词 3. 已掌握但需巩固的单词
   const needReview = []
   const notLearned = []
   const mastered = []
-  
+
   filtered.forEach(word => {
     const progress = learningStore.getWordProgress(word.word)
     if (!progress) {
@@ -532,110 +494,110 @@ function getWordsNaturalMode(count, difficulty) {
       mastered.push(word)
     }
   })
-  
+
   // 按优先级组合
   const result = []
-  
+
   // 先添加需要复习的
   const shuffledReview = shuffleArray([...needReview])
   result.push(...shuffledReview.slice(0, Math.ceil(count * 0.4)))
-  
+
   // 再添加未学过的
   const shuffledNew = shuffleArray([...notLearned])
   result.push(...shuffledNew.slice(0, Math.ceil(count * 0.4)))
-  
+
   // 最后补充已掌握的
   if (result.length < count) {
     const shuffledMastered = shuffleArray([...mastered])
     result.push(...shuffledMastered.slice(0, count - result.length))
   }
-  
+
   return result.slice(0, count)
 }
 
 // 顺序模式
 function getWordsSequentialMode(count, difficulty) {
   let filtered = [...wordsStore.words]
-  
+
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
   }
-  
+
   if (filtered.length === 0) return []
-  
+
   // 获取上次位置
   const storageKey = `spellingbee_learn_sequential_pos_${difficulty || 'all'}`
   let startPos = parseInt(localStorage.getItem(storageKey) || '0', 10)
-  
+
   if (startPos >= filtered.length) {
     startPos = 0
   }
-  
+
   const result = []
   for (let i = 0; i < count && i < filtered.length; i++) {
     const idx = (startPos + i) % filtered.length
     result.push(filtered[idx])
   }
-  
+
   // 保存下次位置
   const nextPos = (startPos + count) % filtered.length
   localStorage.setItem(storageKey, nextPos.toString())
-  
+
   return result
 }
 
 // 倒序模式
 function getWordsReverseMode(count, difficulty) {
   let filtered = [...wordsStore.words].reverse()
-  
+
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
   }
-  
+
   if (filtered.length === 0) return []
-  
+
   // 获取上次位置
   const storageKey = `spellingbee_learn_reverse_pos_${difficulty || 'all'}`
   let startPos = parseInt(localStorage.getItem(storageKey) || '0', 10)
-  
+
   if (startPos >= filtered.length) {
     startPos = 0
   }
-  
+
   const result = []
   for (let i = 0; i < count && i < filtered.length; i++) {
     const idx = (startPos + i) % filtered.length
     result.push(filtered[idx])
   }
-  
+
   // 保存下次位置
   const nextPos = (startPos + count) % filtered.length
   localStorage.setItem(storageKey, nextPos.toString())
-  
+
   return result
 }
 
 // 新题模式：只选择从未学习过的单词
 function getWordsNewMode(count, difficulty) {
   let filtered = [...wordsStore.words]
-  
+
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
   }
-  
+
   if (filtered.length === 0) return []
-  
+
   // 筛选出没有学习记录的单词
   const notLearned = filtered.filter(word => {
     const progress = learningStore.getWordProgress(word.word)
     return !progress // 没有学习记录
   })
-  
+
   if (notLearned.length === 0) {
     MessagePlugin.warning('没有新单词了，所有单词都已学习过')
     return []
   }
-  
+
   // 随机打乱并返回指定数量
   const shuffled = shuffleArray([...notLearned])
   return shuffled.slice(0, count)
@@ -644,17 +606,17 @@ function getWordsNewMode(count, difficulty) {
 // 备考模式：重点复习容易出错的单词
 function getWordsReviewMode(count, difficulty) {
   let filtered = [...wordsStore.words]
-  
+
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
   }
-  
+
   if (filtered.length === 0) return []
-  
+
   // 获取比赛中出错的单词
   const competitionStore = useCompetitionStore()
   const errorWords = new Map() // word -> error count
-  
+
   competitionStore.records.forEach(record => {
     if (record.incorrect_words) {
       record.incorrect_words.forEach(word => {
@@ -663,26 +625,26 @@ function getWordsReviewMode(count, difficulty) {
       })
     }
   })
-  
+
   // 按错误次数排序
   const sortedWords = filtered.sort((a, b) => {
     const aErrors = errorWords.get(a.word.toLowerCase()) || 0
     const bErrors = errorWords.get(b.word.toLowerCase()) || 0
     return bErrors - aErrors // 错误多的排前面
   })
-  
+
   // 优先选择出错过的单词
   const result = []
   const errorWordsList = sortedWords.filter(w => errorWords.has(w.word.toLowerCase()))
   const otherWords = sortedWords.filter(w => !errorWords.has(w.word.toLowerCase()))
-  
+
   result.push(...errorWordsList.slice(0, Math.ceil(count * 0.7)))
-  
+
   if (result.length < count) {
     const shuffledOther = shuffleArray([...otherWords])
     result.push(...shuffledOther.slice(0, count - result.length))
   }
-  
+
   return result.slice(0, count)
 }
 
@@ -690,7 +652,7 @@ function getWordsReviewMode(count, difficulty) {
 function shuffleArray(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
   }
   return arr
 }
@@ -708,22 +670,8 @@ function saveCurrentSession() {
   })
 }
 
-// 恢复学习 - 检查语音权限，但不等待用户点击
-async function resumeLearning() {
-  const hasPermission = await checkSpeechPermission()
-  if (!hasPermission) {
-    // 显示 TDesign Message 提示，不阻塞流程
-    showSpeechPermission.value = true
-    MessagePlugin.warning({
-      content: '点击页面任意位置启用语音播放',
-      duration: 0, // 不自动关闭
-      closeBtn: true,
-      onClose: () => {
-        showSpeechPermission.value = false
-      }
-    })
-  }
-  // 无论是否有权限，都直接恢复学习
+// 恢复学习 - 直接恢复，不检查语音权限
+function resumeLearning() {
   doResumeLearning()
 }
 
@@ -735,7 +683,7 @@ function doResumeLearning() {
     learningStore.clearSession()
     return
   }
-  
+
   learnWords.value = session.learnWords
   currentIndex.value = session.currentIndex
   masteredWords.value = session.masteredWords || []
@@ -745,7 +693,7 @@ function doResumeLearning() {
   isLearning.value = true
   isCompleted.value = false
   highlightedLetterIndex.value = 0
-  
+
   // 根据设置决定是否开启自动学习
   setTimeout(() => {
     if (settings.autoLearn) {
@@ -789,7 +737,7 @@ function speakWordItem(word) {
 // 朗读中文释义
 function speakChineseDefinition() {
   if (!currentWord.value) return
-  
+
   if (currentWord.value.definition_cn) {
     speechStore.speakChinese(currentWord.value.definition_cn)
   } else {
@@ -801,7 +749,7 @@ function speakChineseDefinition() {
 // 朗读英文释义
 function speakEnglishDefinition() {
   if (!currentWord.value) return
-  
+
   if (currentWord.value.definition) {
     speechStore.speakEnglish(currentWord.value.definition, { rate: 0.85 })
   }
@@ -809,7 +757,7 @@ function speakEnglishDefinition() {
 
 function speakDefinitionForWord(word) {
   if (!word) return
-  
+
   // Speak Chinese definition if available, otherwise English
   if (word.definition_cn) {
     speechStore.speakChinese(word.definition_cn)
@@ -823,31 +771,31 @@ function speakLetters(word, onComplete) {
     if (onComplete) onComplete()
     return
   }
-  
+
   const letters = word.split('')
   let index = 0
   highlightedLetterIndex.value = 0
-  
+
   // 获取字母拼读间隔配置
   const spellingInterval = speechStore.getSpellingInterval()
-  
+
   function speakNextLetter() {
     if (!isAutoLearning.value) return
-    
+
     if (index >= letters.length) {
       if (onComplete) onComplete()
       return
     }
-    
+
     // 先高亮当前字母
     highlightedLetterIndex.value = index + 1
-    
+
     // 延迟一小段时间后再朗读，让用户看到高亮
     autoLearnTimer.value = setTimeout(() => {
       if (!isAutoLearning.value) return
-      
+
       const letter = letters[index]
-      
+
       // 使用 speechStore 朗读字母
       speechStore.speakLetter(letter).then(() => {
         if (!isAutoLearning.value) return
@@ -861,7 +809,7 @@ function speakLetters(word, onComplete) {
       })
     }, 80)
   }
-  
+
   speakNextLetter()
 }
 
@@ -894,10 +842,10 @@ function nextWord() {
     isFlipped.value = false
     highlightedLetterIndex.value = 0
     flipCount.value = 0 // Reset flip count for new word
-    
+
     // 保存会话
     saveCurrentSession()
-    
+
     // 使用 nextTick 确保 currentWord 已更新
     if (wasAutoLearning) {
       // 自动学习模式：延迟启动下一轮循环
@@ -929,7 +877,7 @@ function continueLearning() {
   isFlipped.value = false
   highlightedLetterIndex.value = 0
   flipCount.value = 0 // Reset flip count
-  
+
   setTimeout(() => speakWord(), 300)
 }
 
@@ -967,7 +915,7 @@ function toggleAutoLearn() {
 
 function startAutoLearn() {
   isAutoLearning.value = true
-  
+
   // 启动后台播放服务（移动端）
   if (backgroundAudio.constructor.isMobile()) {
     backgroundAudio.init().then(() => {
@@ -988,7 +936,7 @@ function startAutoLearn() {
       }
     })
   }
-  
+
   startAutoLearnCycle()
 }
 
@@ -999,23 +947,23 @@ function stopAutoLearn() {
     autoLearnTimer.value = null
   }
   speechSynthesis.cancel()
-  
+
   // 停止后台播放服务
   backgroundAudio.stop()
 }
 
 function startAutoLearnCycle() {
   if (!isAutoLearning.value || !currentWord.value) return
-  
+
   // 清除之前的定时器
   if (autoLearnTimer.value) {
     clearTimeout(autoLearnTimer.value)
     autoLearnTimer.value = null
   }
-  
+
   // 保存当前单词引用，防止异步过程中单词变化
   const wordToLearn = currentWord.value
-  
+
   // 更新媒体会话信息（用于后台播放显示）
   if (backgroundAudio.isActive) {
     backgroundAudio.updateMediaSession(wordToLearn.word, {
@@ -1023,71 +971,66 @@ function startAutoLearnCycle() {
       total: learnWords.value.length
     })
   }
-  
+
   // Step 1: Speak the word
   speechSynthesis.cancel()
-  
+
+  // 拼读完成后的回调（翻转卡片、朗读释义、下一个单词）
+  const afterSpelling = () => {
+    if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+
+    // Step 3: Flip card
+    autoLearnTimer.value = setTimeout(() => {
+      if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+      isFlipped.value = true
+
+      // Step 3.5: Speak definition after flip
+      autoLearnTimer.value = setTimeout(() => {
+        if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+        speakDefinitionForWord(wordToLearn)
+      }, 300)
+
+      // Step 4: Wait and move to next word
+      autoLearnTimer.value = setTimeout(() => {
+        if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
+        masteredWords.value.push(wordToLearn)
+        nextWord()
+      }, 3000)
+    }, 400)
+  }
+
   // 等待 cancel 生效
   autoLearnTimer.value = setTimeout(() => {
     if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-    
+
     // 使用 speechStore 朗读单词
     speechStore.speakWord(wordToLearn.word).then(() => {
       if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-      
-      // Step 2: Spell out letters with highlighting
+
+      // Step 2: 根据设置决定是否拼读字母
       autoLearnTimer.value = setTimeout(() => {
         if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-        
-        speakLetters(wordToLearn.word, () => {
-          if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-          
-          // Step 3: Flip card
-          autoLearnTimer.value = setTimeout(() => {
-            if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-            isFlipped.value = true
-            
-            // Step 3.5: Speak definition after flip
-            autoLearnTimer.value = setTimeout(() => {
-              if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-              speakDefinitionForWord(wordToLearn)
-            }, 300)
-            
-            // Step 4: Wait and move to next word
-            autoLearnTimer.value = setTimeout(() => {
-              if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-              masteredWords.value.push(wordToLearn)
-              nextWord()
-            }, 3000)
-          }, 400)
-        })
+
+        if (settings.spellLetters) {
+          // 逐个拼读字母
+          speakLetters(wordToLearn.word, afterSpelling)
+        } else {
+          // 跳过拼读，直接进入下一步
+          afterSpelling()
+        }
       }, 400)
     }).catch(() => {
       // 语音出错时，跳过朗读直接进入拼读
       if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-      
+
       autoLearnTimer.value = setTimeout(() => {
         if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-        
-        speakLetters(wordToLearn.word, () => {
-          if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-          
-          autoLearnTimer.value = setTimeout(() => {
-            if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-            isFlipped.value = true
-            
-            autoLearnTimer.value = setTimeout(() => {
-              if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-              speakDefinitionForWord(wordToLearn)
-            }, 300)
-            
-            autoLearnTimer.value = setTimeout(() => {
-              if (!isAutoLearning.value || currentWord.value !== wordToLearn) return
-              masteredWords.value.push(wordToLearn)
-              nextWord()
-            }, 3000)
-          }, 400)
-        })
+
+        if (settings.spellLetters) {
+          speakLetters(wordToLearn.word, afterSpelling)
+        } else {
+          afterSpelling()
+        }
       }, 400)
     })
   }, 100)
@@ -1096,7 +1039,7 @@ function startAutoLearnCycle() {
 // Keyboard shortcuts
 function handleKeydown(e) {
   if (!isLearning.value) return
-  
+
   switch (e.code) {
     case 'Space':
       e.preventDefault()
@@ -1127,7 +1070,7 @@ onMounted(async () => {
   speechStore.init() // 初始化语音配置
   loadSettings() // 加载保存的设置
   window.addEventListener('keydown', handleKeydown)
-  
+
   // 自动恢复未完成的学习（会检测语音权限）
   if (learningStore.hasUnfinishedSession) {
     resumeLearning()
@@ -1334,7 +1277,7 @@ onUnmounted(() => {
 
       .word-char {
         transition: color 0.3s ease;
-        
+
         &.char-highlighted {
           color: var(--success);
         }
@@ -1467,8 +1410,13 @@ onUnmounted(() => {
           font-weight: 700;
           font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
 
-          &.text-success { color: var(--success); }
-          &.text-warning { color: var(--warning); }
+          &.text-success {
+            color: var(--success);
+          }
+
+          &.text-warning {
+            color: var(--warning);
+          }
         }
 
         .label {
@@ -1513,7 +1461,7 @@ onUnmounted(() => {
 
       .record-content {
         margin-top: 1rem;
-        
+
         .empty-filter-result {
           display: flex;
           flex-direction: column;
@@ -1524,7 +1472,7 @@ onUnmounted(() => {
           background: var(--charcoal-50);
           border-radius: 12px;
         }
-        
+
         .list-pagination {
           display: flex;
           justify-content: center;
@@ -1645,8 +1593,15 @@ onUnmounted(() => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1716,6 +1671,7 @@ onUnmounted(() => {
     }
 
     .word-card {
+
       .card-front,
       .card-back {
         background: var(--bg-card);

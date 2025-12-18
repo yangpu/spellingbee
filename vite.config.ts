@@ -141,6 +141,21 @@ export default defineConfig({
               }
             }
           },
+          // TTS 语音缓存 - Supabase Storage 中的音频文件（CacheFirst，长期缓存）
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/tts-cache\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'tts-audio-cache',
+              expiration: {
+                maxEntries: 1000,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           // Supabase API 缓存 - 其他 REST API（profiles 等）
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,

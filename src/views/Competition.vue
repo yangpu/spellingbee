@@ -1,5 +1,5 @@
 <template>
-  <div class="competition-page" @click="onPageClick">
+  <div class="competition-page">
     <!-- Page Header - 比赛进行中时隐藏 -->
     <div class="page-header" v-if="!competitionStore.isActive">
       <h1>Spelling Bee 比赛</h1>
@@ -463,7 +463,6 @@ import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
 import { useAnnouncerStore } from '@/stores/announcer';
-import { checkSpeechPermission } from '@/utils/speechPermission';
 import SpeechSettings from '@/components/SpeechSettings.vue';
 import AnnouncerSettings from '@/components/AnnouncerSettings.vue';
 import LetterInput from '@/components/LetterInput.vue';
@@ -481,9 +480,6 @@ const showSpeechSettings = ref(false);
 
 // 播音员配置弹窗
 const showAnnouncerSettings = ref(false);
-
-// 语音权限提示状态
-const showSpeechPermission = ref(false);
 
 // 错误单词工具栏状态
 const incorrectWordsToolbar = ref({
@@ -553,19 +549,7 @@ function handleIncorrectWordsPageChange(pageInfo) {
   incorrectWordsToolbar.value.pageSize = pageInfo.pageSize;
 }
 
-// 页面点击处理 - 任何点击都满足交互条件，获取语音权限
-function onPageClick() {
-  if (showSpeechPermission.value) {
-    // 尝试播放静音语音以获取权限
-    const utterance = new SpeechSynthesisUtterance('');
-    utterance.volume = 0;
-    speechSynthesis.speak(utterance);
-    
-    showSpeechPermission.value = false;
-    MessagePlugin.closeAll();
-    MessagePlugin.success('语音播放已启用');
-  }
-}
+
 
 // Settings
 const settings = reactive({
@@ -729,22 +713,8 @@ function handleLetterChange(answer) {
   currentLetters.value = answer;
 }
 
-// 恢复未完成的比赛 - 检查语音权限，但不等待用户点击
-async function resumeCompetition() {
-  const hasPermission = await checkSpeechPermission();
-  if (!hasPermission) {
-    // 显示 TDesign Message 提示，不阻塞流程
-    showSpeechPermission.value = true;
-    MessagePlugin.warning({
-      content: '点击页面任意位置启用语音播放',
-      duration: 0, // 不自动关闭
-      closeBtn: true,
-      onClose: () => {
-        showSpeechPermission.value = false;
-      }
-    });
-  }
-  // 无论是否有权限，都直接恢复比赛
+// 恢复未完成的比赛 - 直接恢复，不检查语音权限
+function resumeCompetition() {
   doResumeCompetition();
 }
 

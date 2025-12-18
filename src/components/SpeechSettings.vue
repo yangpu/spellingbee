@@ -231,14 +231,10 @@
               <t-input
                 v-model="onlineEnglishConfig.apiKey"
                 type="password"
-                placeholder="输入 API Key"
+                :placeholder="getOnlineApiKeyPlaceholder"
                 clearable
               />
-            </div>
-            
-            <div class="config-item" v-if="onlineProvider === 'azure'">
-              <label>区域 (Region)</label>
-              <t-input v-model="onlineEnglishConfig.region" placeholder="例如: eastus" />
+              <span class="config-hint">{{ getOnlineApiKeyHint }}</span>
             </div>
           </div>
           
@@ -346,26 +342,10 @@
               <t-input
                 v-model="aiEnglishConfig.apiKey"
                 type="password"
-                placeholder="输入 API Key"
+                :placeholder="getAIApiKeyPlaceholder"
                 clearable
               />
-            </div>
-            
-            <div class="config-item" v-if="aiProvider === 'openai'">
-              <label>API Base URL (可选)</label>
-              <t-input v-model="aiEnglishConfig.baseUrl" placeholder="默认: https://api.openai.com/v1" />
-            </div>
-            
-            <div class="config-item">
-              <label>模型</label>
-              <t-select v-model="aiEnglishConfig.model" placeholder="选择模型">
-                <t-option
-                  v-for="model in selectedAIProvider.models"
-                  :key="model"
-                  :value="model"
-                  :label="model"
-                />
-              </t-select>
+              <span class="config-hint">{{ getAIApiKeyHint }}</span>
             </div>
           </div>
           
@@ -526,38 +506,38 @@ const spellingConfig = reactive({
 })
 
 // 在线语音配置
-const onlineProvider = ref<OnlineTTSProvider>('youdao')
+const onlineProvider = ref<OnlineTTSProvider>('tencent')
 const onlineEnglishConfig = reactive<OnlineTTSConfig>({
-  provider: 'youdao',
-  voiceId: 'en-US-1',
+  provider: 'tencent',
+  voiceId: '101051',
   rate: 1.0,
   pitch: 1.0,
   volume: 1.0
 })
 
 const onlineChineseConfig = reactive<OnlineTTSConfig>({
-  provider: 'youdao',
-  voiceId: 'zh-CN-1',
+  provider: 'tencent',
+  voiceId: '101001',
   rate: 1.0,
   pitch: 1.0,
   volume: 1.0
 })
 
 // AI 语音配置
-const aiProvider = ref<AITTSProvider>('minimax')
+const aiProvider = ref<AITTSProvider>('doubao')
 const aiEnglishConfig = reactive<AITTSConfig>({
-  provider: 'minimax',
-  voiceId: 'male-qn-qingse',
-  model: 'speech-01',
+  provider: 'doubao',
+  voiceId: 'BV503_streaming',
+  model: 'tts-1',
   rate: 1.0,
   pitch: 1.0,
   volume: 1.0
 })
 
 const aiChineseConfig = reactive<AITTSConfig>({
-  provider: 'minimax',
-  voiceId: 'female-shaonv',
-  model: 'speech-01',
+  provider: 'doubao',
+  voiceId: 'BV700_streaming',
+  model: 'tts-1',
   rate: 1.0,
   pitch: 1.0,
   volume: 1.0
@@ -620,6 +600,27 @@ const hasAIApiKey = computed(() => {
   const provider = selectedAIProvider.value
   if (provider?.free) return true
   return !!aiEnglishConfig.apiKey
+})
+
+// API Key 格式提示
+const getOnlineApiKeyPlaceholder = computed(() => {
+  // 目前只有腾讯云
+  return '格式: AppId:SecretId:SecretKey'
+})
+
+const getOnlineApiKeyHint = computed(() => {
+  // 目前只有腾讯云
+  return '留空则使用默认配置。格式示例: 1234567890:AKIDxxxxx:xxxSecretKeyxxx'
+})
+
+const getAIApiKeyPlaceholder = computed(() => {
+  // 目前只有豆包
+  return '格式: AppId:Token 或 AppId:Token:Cluster'
+})
+
+const getAIApiKeyHint = computed(() => {
+  // 目前只有豆包
+  return '从火山引擎控制台获取 AppId 和 Token'
 })
 
 // 平台标签
@@ -763,8 +764,9 @@ async function previewSpelling() {
 async function previewOnlineEnglish() {
   isPreviewing.value = true
   try {
-    speechStore.updateOnlineSettings('en', onlineEnglishConfig)
-    speechStore.setLanguageProvider('en', 'online')
+    // 临时更新配置（不保存到云端）
+    speechStore.updateOnlineSettings('en', onlineEnglishConfig, false)
+    speechStore.setLanguageProvider('en', 'online', false)
     await speechStore.speakEnglish('Hello, this is a test of the online English voice.')
   } catch (e: any) {
     MessagePlugin.error(e.message || '试听失败')
@@ -776,8 +778,9 @@ async function previewOnlineEnglish() {
 async function previewOnlineChinese() {
   isPreviewing.value = true
   try {
-    speechStore.updateOnlineSettings('zh', onlineChineseConfig)
-    speechStore.setLanguageProvider('zh', 'online')
+    // 临时更新配置（不保存到云端）
+    speechStore.updateOnlineSettings('zh', onlineChineseConfig, false)
+    speechStore.setLanguageProvider('zh', 'online', false)
     await speechStore.speakChinese('你好，这是在线中文语音测试。')
   } catch (e: any) {
     MessagePlugin.error(e.message || '试听失败')
@@ -789,8 +792,9 @@ async function previewOnlineChinese() {
 async function previewAIEnglish() {
   isPreviewing.value = true
   try {
-    speechStore.updateAISettings('en', aiEnglishConfig)
-    speechStore.setLanguageProvider('en', 'ai')
+    // 临时更新配置（不保存到云端）
+    speechStore.updateAISettings('en', aiEnglishConfig, false)
+    speechStore.setLanguageProvider('en', 'ai', false)
     await speechStore.speakEnglish('Hello, this is a test of the AI English voice.')
   } catch (e: any) {
     MessagePlugin.error(e.message || '试听失败')
@@ -802,8 +806,9 @@ async function previewAIEnglish() {
 async function previewAIChinese() {
   isPreviewing.value = true
   try {
-    speechStore.updateAISettings('zh', aiChineseConfig)
-    speechStore.setLanguageProvider('zh', 'ai')
+    // 临时更新配置（不保存到云端）
+    speechStore.updateAISettings('zh', aiChineseConfig, false)
+    speechStore.setLanguageProvider('zh', 'ai', false)
     await speechStore.speakChinese('你好，这是AI中文语音测试。')
   } catch (e: any) {
     MessagePlugin.error(e.message || '试听失败')
@@ -823,38 +828,39 @@ function resetToDefaults() {
 async function handleSave() {
   isSaving.value = true
   try {
-    // 更新所有配置
-    speechStore.setActiveProvider(currentProvider.value)
+    // 更新所有配置（不自动保存，最后统一保存一次）
+    speechStore.setActiveProvider(currentProvider.value, false)
     
     // 浏览器配置
-    speechStore.updateEnglishSettings(browserEnglishConfig)
-    speechStore.updateChineseSettings(browserChineseConfig)
-    speechStore.updateSpellingSettings(spellingConfig)
+    speechStore.updateEnglishSettings(browserEnglishConfig, false)
+    speechStore.updateChineseSettings(browserChineseConfig, false)
+    speechStore.updateSpellingSettings(spellingConfig, false)
     
     // 在线配置
     onlineEnglishConfig.provider = onlineProvider.value
     onlineChineseConfig.provider = onlineProvider.value
-    speechStore.updateOnlineSettings('en', onlineEnglishConfig)
-    speechStore.updateOnlineSettings('zh', onlineChineseConfig)
+    speechStore.updateOnlineSettings('en', onlineEnglishConfig, false)
+    speechStore.updateOnlineSettings('zh', onlineChineseConfig, false)
     
     // AI 配置
     aiEnglishConfig.provider = aiProvider.value
     aiChineseConfig.provider = aiProvider.value
-    speechStore.updateAISettings('en', aiEnglishConfig)
-    speechStore.updateAISettings('zh', aiChineseConfig)
+    speechStore.updateAISettings('en', aiEnglishConfig, false)
+    speechStore.updateAISettings('zh', aiChineseConfig, false)
     
     // 设置语言对应的语音源
     if (currentProvider.value === 'browser') {
-      speechStore.setLanguageProvider('en', 'browser')
-      speechStore.setLanguageProvider('zh', 'browser')
+      speechStore.setLanguageProvider('en', 'browser', false)
+      speechStore.setLanguageProvider('zh', 'browser', false)
     } else if (currentProvider.value === 'online') {
-      speechStore.setLanguageProvider('en', 'online')
-      speechStore.setLanguageProvider('zh', 'online')
+      speechStore.setLanguageProvider('en', 'online', false)
+      speechStore.setLanguageProvider('zh', 'online', false)
     } else if (currentProvider.value === 'ai') {
-      speechStore.setLanguageProvider('en', 'ai')
-      speechStore.setLanguageProvider('zh', 'ai')
+      speechStore.setLanguageProvider('en', 'ai', false)
+      speechStore.setLanguageProvider('zh', 'ai', false)
     }
     
+    // 统一保存一次
     await speechStore.saveSettings()
     MessagePlugin.success('语音设置已保存')
     emit('saved')
@@ -897,6 +903,14 @@ watch(onlineProvider, (newProvider) => {
   }
 })
 
+// 同步在线语音的 API Key 和 Region（中英文共享同一配置）
+watch(() => onlineEnglishConfig.apiKey, (newKey) => {
+  onlineChineseConfig.apiKey = newKey
+})
+watch(() => onlineEnglishConfig.region, (newRegion) => {
+  onlineChineseConfig.region = newRegion
+})
+
 // 监听 AI 供应商变化
 watch(aiProvider, (newProvider) => {
   aiEnglishConfig.provider = newProvider
@@ -912,6 +926,14 @@ watch(aiProvider, (newProvider) => {
       aiChineseConfig.model = provider.models[0]
     }
   }
+})
+
+// 同步 AI 语音的 API Key 和 baseUrl（中英文共享同一配置）
+watch(() => aiEnglishConfig.apiKey, (newKey) => {
+  aiChineseConfig.apiKey = newKey
+})
+watch(() => aiEnglishConfig.baseUrl, (newUrl) => {
+  aiChineseConfig.baseUrl = newUrl
 })
 
 onMounted(async () => {
