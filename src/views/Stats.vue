@@ -24,31 +24,22 @@
           </div>
           <div class="level-progress">
             <div class="progress-text">
-              <span v-if="pointsToNextLevel > 0">距离 <strong>{{ nextLevel.name }}</strong> 还差 <strong>{{ pointsToNextLevel }}</strong> 积分</span>
+              <span v-if="pointsToNextLevel > 0">距离 <strong>{{ nextLevel.name }}</strong> 还差 <strong>{{
+                pointsToNextLevel }}</strong> 积分</span>
               <span v-else class="max-level">🎉 已达最高等级！</span>
             </div>
-            <t-progress 
-              :percentage="levelProgress" 
-              :color="currentLevel.color"
-              :track-color="'var(--charcoal-100)'"
-            />
+            <t-progress :percentage="levelProgress" :color="currentLevel.color" :track-color="'var(--charcoal-100)'" />
           </div>
         </div>
       </div>
-      
+
       <!-- 等级徽章展示栏 -->
       <div class="levels-showcase">
-        <div 
-          v-for="(level, index) in levels" 
-          :key="level.name"
-          class="level-item"
-          :class="{
-            'unlocked': totalPoints >= level.minPoints,
-            'current': currentLevel.name === level.name,
-            'locked': totalPoints < level.minPoints
-          }"
-          @click="showLevelDetail(level, index)"
-        >
+        <div v-for="(level, index) in levels" :key="level.name" class="level-item" :class="{
+          'unlocked': totalPoints >= level.minPoints,
+          'current': currentLevel.name === level.name,
+          'locked': totalPoints < level.minPoints
+        }" @click="showLevelDetail(level, index)">
           <div class="level-item-badge" :class="level.class">
             <span class="item-icon">{{ level.icon }}</span>
           </div>
@@ -56,18 +47,13 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 等级详情弹窗 -->
-    <t-dialog
-      v-model:visible="levelDialogVisible"
-      :header="false"
-      :footer="false"
-      width="360px"
-      placement="center"
-      :close-on-overlay-click="true"
-    >
+    <t-dialog v-model:visible="levelDialogVisible" :header="false" :footer="false" width="360px" placement="center"
+      :close-on-overlay-click="true">
       <div class="level-detail-dialog" v-if="selectedLevel">
-        <div class="dialog-badge-showcase" :class="[selectedLevel.class, { unlocked: totalPoints >= selectedLevel.minPoints }]">
+        <div class="dialog-badge-showcase"
+          :class="[selectedLevel.class, { unlocked: totalPoints >= selectedLevel.minPoints }]">
           <div class="dialog-badge-glow"></div>
           <div class="dialog-badge-icon">{{ selectedLevel.icon }}</div>
         </div>
@@ -157,7 +143,8 @@
     </div>
 
     <!-- Challenge Stats -->
-    <div class="challenge-section" v-if="authStore.user && (challengeStats.totalGames > 0 || challengeRecords.length > 0)">
+    <div class="challenge-section"
+      v-if="authStore.user && (challengeStats.totalGames > 0 || challengeRecords.length > 0)">
       <h2>挑战赛统计</h2>
       <div class="stats-grid">
         <div class="stat-card">
@@ -206,11 +193,13 @@
           </div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon" :class="{ success: challengeStats.netPoints >= 0, error: challengeStats.netPoints < 0 }">
+          <div class="stat-icon"
+            :class="{ success: challengeStats.netPoints >= 0, error: challengeStats.netPoints < 0 }">
             <t-icon name="swap" size="32px" />
           </div>
           <div class="stat-info">
-            <span class="stat-value" :class="{ earned: challengeStats.netPoints >= 0, spent: challengeStats.netPoints < 0 }">
+            <span class="stat-value"
+              :class="{ earned: challengeStats.netPoints >= 0, spent: challengeStats.netPoints < 0 }">
               {{ challengeStats.netPoints >= 0 ? '+' : '' }}{{ challengeStats.netPoints }}
             </span>
             <span class="stat-label">净收益</span>
@@ -225,25 +214,26 @@
         <h2>挑战记录</h2>
       </div>
       <div class="challenge-records-grid">
-        <div 
-          class="challenge-record-card" 
-          v-for="challenge in challengeRecords.slice(0, 10)" 
-          :key="challenge.id"
-          :class="{ 'is-winner': challenge.winner_id === authStore.user?.id }"
-          @click="viewChallengeDetail(challenge)"
-        >
+        <div class="challenge-record-card" v-for="challenge in challengeRecords.slice(0, 10)" :key="challenge.id"
+          :class="{ 'is-winner': challenge.winner_id === authStore.user?.id }" @click="viewChallengeDetail(challenge)">
           <div class="challenge-record-header">
             <div class="challenge-result-badge" :class="challenge.winner_id === authStore.user?.id ? 'win' : 'lose'">
               <span class="result-icon">{{ challenge.winner_id === authStore.user?.id ? '🏆' : '💔' }}</span>
               <span class="result-text">{{ challenge.winner_id === authStore.user?.id ? '胜利' : '失败' }}</span>
             </div>
-            <div class="challenge-points" :class="{ earned: challenge.winner_id === authStore.user?.id, spent: challenge.winner_id !== authStore.user?.id }">
-              <span v-if="challenge.winner_id === authStore.user?.id">+{{ challenge.prize_pool || challenge.entry_fee * (challenge.participants?.length || 2) }}</span>
+            <div class="challenge-points"
+              :class="{ earned: challenge.winner_id === authStore.user?.id, spent: challenge.winner_id !== authStore.user?.id }">
+              <span v-if="challenge.winner_id === authStore.user?.id">+{{ challenge.prize_pool || challenge.entry_fee *
+                (challenge.participants?.length || 2) }}</span>
               <span v-else>-{{ challenge.entry_fee }}</span>
             </div>
           </div>
           <div class="challenge-record-body">
             <h4 class="challenge-record-name">{{ challenge.name }}</h4>
+            <div class="challenge-record-dictionary" v-if="challenge.dictionary_name">
+              <t-icon name="book" size="14px" />
+              <span>{{ challenge.dictionary_name }}</span>
+            </div>
             <div class="challenge-record-meta">
               <span class="meta-tag">
                 <t-icon name="user" size="14px" />
@@ -356,6 +346,10 @@
               </div>
             </div>
             <div class="record-details">
+              <div class="detail-item" v-if="record.dictionary_name">
+                <t-icon name="book" />
+                <span>{{ record.dictionary_name }}</span>
+              </div>
               <div class="detail-item">
                 <t-icon name="check-circle" class="text-success" />
                 <span>{{ record.correct_words }}/{{ record.total_words }} 正确</span>
@@ -398,7 +392,7 @@
           <div class="achievement-name">学习起步</div>
           <div class="achievement-desc">完成第一次学习</div>
         </div>
-        
+
         <!-- 勤奋成就 -->
         <div class="achievement" :class="{ unlocked: stats.totalGames >= 10 }">
           <div class="achievement-icon">🔥</div>
@@ -415,7 +409,7 @@
           <div class="achievement-name">百战老将</div>
           <div class="achievement-desc">完成100场比赛</div>
         </div>
-        
+
         <!-- 正确率成就 -->
         <div class="achievement" :class="{ unlocked: stats.bestAccuracy >= 80 }">
           <div class="achievement-icon">⭐</div>
@@ -432,7 +426,7 @@
           <div class="achievement-name">稳定发挥</div>
           <div class="achievement-desc">平均正确率达到70%</div>
         </div>
-        
+
         <!-- 高分成就 -->
         <div class="achievement" :class="{ unlocked: stats.bestScore >= 200 }">
           <div class="achievement-icon">💎</div>
@@ -449,7 +443,7 @@
           <div class="achievement-name">传奇选手</div>
           <div class="achievement-desc">单场得分超过1000</div>
         </div>
-        
+
         <!-- 词汇量成就 -->
         <div class="achievement" :class="{ unlocked: stats.totalCorrect >= 100 }">
           <div class="achievement-icon">📚</div>
@@ -466,7 +460,7 @@
           <div class="achievement-name">词汇专家</div>
           <div class="achievement-desc">累计正确拼写1000个单词</div>
         </div>
-        
+
         <!-- 学习成就 -->
         <div class="achievement" :class="{ unlocked: masteredCount >= 50 }">
           <div class="achievement-icon">✨</div>
@@ -483,7 +477,7 @@
           <div class="achievement-name">高级掌握</div>
           <div class="achievement-desc">掌握500个单词</div>
         </div>
-        
+
         <!-- 积分等级成就 -->
         <div class="achievement" :class="{ unlocked: totalPoints >= 1000 }">
           <div class="achievement-icon">🥉</div>
@@ -576,7 +570,7 @@ function getLevelDescription(index) {
 function getLevelUnlockDate(index) {
   const level = levels[index]
   if (totalPoints.value < level.minPoints) return null
-  
+
   // 从localStorage读取等级解锁记录
   const unlockRecords = JSON.parse(localStorage.getItem('spellingbee_level_unlocks') || '{}')
   return unlockRecords[level.name] || null
@@ -662,12 +656,12 @@ function formatDate(dateStr) {
   const date = new Date(dateStr)
   const now = new Date()
   const diff = now - date
-  
+
   if (diff < 60000) return '刚刚'
   if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
   if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
   if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`
-  
+
   return date.toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: 'short',
@@ -1029,13 +1023,22 @@ onMounted(() => {
 
       .challenge-record-body {
         .challenge-record-name {
-          margin: 0 0 0.5rem;
+          margin: 0 0 0.25rem;
           font-size: 1rem;
           font-weight: 600;
           color: var(--text-primary);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+
+        .challenge-record-dictionary {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          font-size: 0.75rem;
+          color: var(--honey-600);
+          margin-bottom: 0.5rem;
         }
 
         .challenge-record-meta {
@@ -1432,32 +1435,64 @@ onMounted(() => {
       }
 
       // 等级颜色
-      &.level-novice { color: #9CA3AF; }
-      &.level-apprentice { color: #84CC16; }
-      &.level-beginner { color: #22C55E; }
-      &.level-intermediate { color: #14B8A6; }
-      &.level-challenger { color: #3B82F6; }
-      &.level-elite { 
+      &.level-novice {
+        color: #9CA3AF;
+      }
+
+      &.level-apprentice {
+        color: #84CC16;
+      }
+
+      &.level-beginner {
+        color: #22C55E;
+      }
+
+      &.level-intermediate {
+        color: #14B8A6;
+      }
+
+      &.level-challenger {
+        color: #3B82F6;
+      }
+
+      &.level-elite {
         color: #8B5CF6;
-        .showcase-badge { box-shadow: 0 8px 24px rgba(139, 92, 246, 0.25); }
+
+        .showcase-badge {
+          box-shadow: 0 8px 24px rgba(139, 92, 246, 0.25);
+        }
       }
-      &.level-expert { 
+
+      &.level-expert {
         color: #EC4899;
-        .showcase-badge { box-shadow: 0 8px 24px rgba(236, 72, 153, 0.25); }
+
+        .showcase-badge {
+          box-shadow: 0 8px 24px rgba(236, 72, 153, 0.25);
+        }
       }
-      &.level-master { 
+
+      &.level-master {
         color: #F59E0B;
-        .showcase-badge { box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35); }
+
+        .showcase-badge {
+          box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+        }
       }
-      &.level-grandmaster { 
+
+      &.level-grandmaster {
         color: #EF4444;
-        .showcase-badge { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35); }
+
+        .showcase-badge {
+          box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35);
+        }
       }
-      &.level-legend { 
+
+      &.level-legend {
         color: #FFD700;
-        .showcase-badge { 
+
+        .showcase-badge {
           background: linear-gradient(135deg, #FFF9E6 0%, #FFE066 100%);
-          box-shadow: 0 8px 32px rgba(255, 215, 0, 0.5); 
+          box-shadow: 0 8px 32px rgba(255, 215, 0, 0.5);
 
           &::before {
             opacity: 0.5;
@@ -1549,7 +1584,7 @@ onMounted(() => {
         &.current {
           transform: scale(1.1);
           z-index: 10;
-          
+
           .level-item-badge {
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
             animation: badge-pulse 2s ease-in-out infinite;
@@ -1577,16 +1612,50 @@ onMounted(() => {
           }
 
           // 各等级边框颜色
-          &.level-novice { border-color: #9CA3AF; }
-          &.level-apprentice { border-color: #84CC16; }
-          &.level-beginner { border-color: #22C55E; }
-          &.level-intermediate { border-color: #14B8A6; }
-          &.level-challenger { border-color: #3B82F6; }
-          &.level-elite { border-color: #8B5CF6; background: linear-gradient(135deg, #fff 0%, #F3E8FF 100%); }
-          &.level-expert { border-color: #EC4899; background: linear-gradient(135deg, #fff 0%, #FCE7F3 100%); }
-          &.level-master { border-color: #F59E0B; background: linear-gradient(135deg, #fff 0%, #FEF3C7 100%); }
-          &.level-grandmaster { border-color: #EF4444; background: linear-gradient(135deg, #fff 0%, #FEE2E2 100%); }
-          &.level-legend { border-color: #FFD700; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); }
+          &.level-novice {
+            border-color: #9CA3AF;
+          }
+
+          &.level-apprentice {
+            border-color: #84CC16;
+          }
+
+          &.level-beginner {
+            border-color: #22C55E;
+          }
+
+          &.level-intermediate {
+            border-color: #14B8A6;
+          }
+
+          &.level-challenger {
+            border-color: #3B82F6;
+          }
+
+          &.level-elite {
+            border-color: #8B5CF6;
+            background: linear-gradient(135deg, #fff 0%, #F3E8FF 100%);
+          }
+
+          &.level-expert {
+            border-color: #EC4899;
+            background: linear-gradient(135deg, #fff 0%, #FCE7F3 100%);
+          }
+
+          &.level-master {
+            border-color: #F59E0B;
+            background: linear-gradient(135deg, #fff 0%, #FEF3C7 100%);
+          }
+
+          &.level-grandmaster {
+            border-color: #EF4444;
+            background: linear-gradient(135deg, #fff 0%, #FEE2E2 100%);
+          }
+
+          &.level-legend {
+            border-color: #FFD700;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+          }
         }
 
         .level-item-name {
@@ -1642,16 +1711,68 @@ onMounted(() => {
           animation: pulse-glow 3s ease-in-out infinite;
         }
 
-        &.level-novice { border-color: #9CA3AF; background: white; color: #9CA3AF; }
-        &.level-apprentice { border-color: #84CC16; background: white; color: #84CC16; }
-        &.level-beginner { border-color: #22C55E; background: white; color: #22C55E; }
-        &.level-intermediate { border-color: #14B8A6; background: white; color: #14B8A6; }
-        &.level-challenger { border-color: #3B82F6; background: white; color: #3B82F6; }
-        &.level-elite { border-color: #8B5CF6; background: linear-gradient(135deg, #fff 0%, #F3E8FF 100%); color: #8B5CF6; }
-        &.level-expert { border-color: #EC4899; background: linear-gradient(135deg, #fff 0%, #FCE7F3 100%); color: #EC4899; }
-        &.level-master { border-color: #F59E0B; background: linear-gradient(135deg, #fff 0%, #FEF3C7 100%); color: #F59E0B; box-shadow: 0 4px 30px rgba(245, 158, 11, 0.4); }
-        &.level-grandmaster { border-color: #EF4444; background: linear-gradient(135deg, #fff 0%, #FEE2E2 100%); color: #EF4444; box-shadow: 0 4px 30px rgba(239, 68, 68, 0.4); }
-        &.level-legend { border-color: #FFD700; background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #FFD700; box-shadow: 0 4px 30px rgba(255, 215, 0, 0.6); }
+        &.level-novice {
+          border-color: #9CA3AF;
+          background: white;
+          color: #9CA3AF;
+        }
+
+        &.level-apprentice {
+          border-color: #84CC16;
+          background: white;
+          color: #84CC16;
+        }
+
+        &.level-beginner {
+          border-color: #22C55E;
+          background: white;
+          color: #22C55E;
+        }
+
+        &.level-intermediate {
+          border-color: #14B8A6;
+          background: white;
+          color: #14B8A6;
+        }
+
+        &.level-challenger {
+          border-color: #3B82F6;
+          background: white;
+          color: #3B82F6;
+        }
+
+        &.level-elite {
+          border-color: #8B5CF6;
+          background: linear-gradient(135deg, #fff 0%, #F3E8FF 100%);
+          color: #8B5CF6;
+        }
+
+        &.level-expert {
+          border-color: #EC4899;
+          background: linear-gradient(135deg, #fff 0%, #FCE7F3 100%);
+          color: #EC4899;
+        }
+
+        &.level-master {
+          border-color: #F59E0B;
+          background: linear-gradient(135deg, #fff 0%, #FEF3C7 100%);
+          color: #F59E0B;
+          box-shadow: 0 4px 30px rgba(245, 158, 11, 0.4);
+        }
+
+        &.level-grandmaster {
+          border-color: #EF4444;
+          background: linear-gradient(135deg, #fff 0%, #FEE2E2 100%);
+          color: #EF4444;
+          box-shadow: 0 4px 30px rgba(239, 68, 68, 0.4);
+        }
+
+        &.level-legend {
+          border-color: #FFD700;
+          background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+          color: #FFD700;
+          box-shadow: 0 4px 30px rgba(255, 215, 0, 0.6);
+        }
       }
     }
 
@@ -1700,24 +1821,43 @@ onMounted(() => {
   }
 
   @keyframes ring-pulse {
-    0%, 100% { 
-      opacity: 0.3; 
-      transform: translate(-50%, -50%) scale(1); 
+
+    0%,
+    100% {
+      opacity: 0.3;
+      transform: translate(-50%, -50%) scale(1);
     }
-    50% { 
-      opacity: 0.5; 
-      transform: translate(-50%, -50%) scale(1.1); 
+
+    50% {
+      opacity: 0.5;
+      transform: translate(-50%, -50%) scale(1.1);
     }
   }
 
   @keyframes pulse-glow {
-    0%, 100% { opacity: 0.1; transform: scale(1); }
-    50% { opacity: 0.2; transform: scale(1.05); }
+
+    0%,
+    100% {
+      opacity: 0.1;
+      transform: scale(1);
+    }
+
+    50% {
+      opacity: 0.2;
+      transform: scale(1.05);
+    }
   }
 
   @keyframes badge-pulse {
-    0%, 100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
-    50% { box-shadow: 0 4px 24px rgba(255, 193, 7, 0.5); }
+
+    0%,
+    100% {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    50% {
+      box-shadow: 0 4px 24px rgba(255, 193, 7, 0.5);
+    }
   }
 }
 
@@ -1725,7 +1865,7 @@ onMounted(() => {
   .stats-page {
     .level-card {
       padding: 1rem;
-      
+
       .level-header {
         flex-direction: column;
         align-items: stretch;
@@ -1910,13 +2050,25 @@ onMounted(() => {
         }
 
         // 等级颜色保持不变，但徽章背景适配 dark
-        &.level-elite .showcase-badge { box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35); }
-        &.level-expert .showcase-badge { box-shadow: 0 8px 24px rgba(236, 72, 153, 0.35); }
-        &.level-master .showcase-badge { box-shadow: 0 8px 24px rgba(245, 158, 11, 0.45); }
-        &.level-grandmaster .showcase-badge { box-shadow: 0 8px 24px rgba(239, 68, 68, 0.45); }
-        &.level-legend .showcase-badge { 
+        &.level-elite .showcase-badge {
+          box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35);
+        }
+
+        &.level-expert .showcase-badge {
+          box-shadow: 0 8px 24px rgba(236, 72, 153, 0.35);
+        }
+
+        &.level-master .showcase-badge {
+          box-shadow: 0 8px 24px rgba(245, 158, 11, 0.45);
+        }
+
+        &.level-grandmaster .showcase-badge {
+          box-shadow: 0 8px 24px rgba(239, 68, 68, 0.45);
+        }
+
+        &.level-legend .showcase-badge {
           background: linear-gradient(135deg, #3d3a28 0%, #4d4528 100%);
-          box-shadow: 0 8px 32px rgba(255, 215, 0, 0.5); 
+          box-shadow: 0 8px 32px rgba(255, 215, 0, 0.5);
         }
       }
 
@@ -1974,11 +2126,25 @@ onMounted(() => {
 
           // 各等级边框颜色适配 dark mode
           .level-item-badge {
-            &.level-elite { background: linear-gradient(135deg, #2d2d32 0%, #3d2d52 100%); }
-            &.level-expert { background: linear-gradient(135deg, #2d2d32 0%, #3d2d3d 100%); }
-            &.level-master { background: linear-gradient(135deg, #2d2d32 0%, #3d3528 100%); }
-            &.level-grandmaster { background: linear-gradient(135deg, #2d2d32 0%, #3d2828 100%); }
-            &.level-legend { background: linear-gradient(135deg, #3d3a28 0%, #4d4528 100%); }
+            &.level-elite {
+              background: linear-gradient(135deg, #2d2d32 0%, #3d2d52 100%);
+            }
+
+            &.level-expert {
+              background: linear-gradient(135deg, #2d2d32 0%, #3d2d3d 100%);
+            }
+
+            &.level-master {
+              background: linear-gradient(135deg, #2d2d32 0%, #3d3528 100%);
+            }
+
+            &.level-grandmaster {
+              background: linear-gradient(135deg, #2d2d32 0%, #3d2828 100%);
+            }
+
+            &.level-legend {
+              background: linear-gradient(135deg, #3d3a28 0%, #4d4528 100%);
+            }
           }
         }
       }
@@ -2174,16 +2340,58 @@ onMounted(() => {
         border-color: #3a3a40;
 
         &.unlocked {
-          &.level-novice { border-color: #9CA3AF; background: var(--bg-card-solid); }
-          &.level-apprentice { border-color: #84CC16; background: var(--bg-card-solid); }
-          &.level-beginner { border-color: #22C55E; background: var(--bg-card-solid); }
-          &.level-intermediate { border-color: #14B8A6; background: var(--bg-card-solid); }
-          &.level-challenger { border-color: #3B82F6; background: var(--bg-card-solid); }
-          &.level-elite { border-color: #8B5CF6; background: linear-gradient(135deg, #2d2d32 0%, #3d2d52 100%); }
-          &.level-expert { border-color: #EC4899; background: linear-gradient(135deg, #2d2d32 0%, #3d2d3d 100%); }
-          &.level-master { border-color: #F59E0B; background: linear-gradient(135deg, #2d2d32 0%, #3d3528 100%); box-shadow: 0 4px 30px rgba(245, 158, 11, 0.4); }
-          &.level-grandmaster { border-color: #EF4444; background: linear-gradient(135deg, #2d2d32 0%, #3d2828 100%); box-shadow: 0 4px 30px rgba(239, 68, 68, 0.4); }
-          &.level-legend { border-color: #FFD700; background: linear-gradient(135deg, #3d3a28 0%, #4d4528 100%); box-shadow: 0 4px 30px rgba(255, 215, 0, 0.6); }
+          &.level-novice {
+            border-color: #9CA3AF;
+            background: var(--bg-card-solid);
+          }
+
+          &.level-apprentice {
+            border-color: #84CC16;
+            background: var(--bg-card-solid);
+          }
+
+          &.level-beginner {
+            border-color: #22C55E;
+            background: var(--bg-card-solid);
+          }
+
+          &.level-intermediate {
+            border-color: #14B8A6;
+            background: var(--bg-card-solid);
+          }
+
+          &.level-challenger {
+            border-color: #3B82F6;
+            background: var(--bg-card-solid);
+          }
+
+          &.level-elite {
+            border-color: #8B5CF6;
+            background: linear-gradient(135deg, #2d2d32 0%, #3d2d52 100%);
+          }
+
+          &.level-expert {
+            border-color: #EC4899;
+            background: linear-gradient(135deg, #2d2d32 0%, #3d2d3d 100%);
+          }
+
+          &.level-master {
+            border-color: #F59E0B;
+            background: linear-gradient(135deg, #2d2d32 0%, #3d3528 100%);
+            box-shadow: 0 4px 30px rgba(245, 158, 11, 0.4);
+          }
+
+          &.level-grandmaster {
+            border-color: #EF4444;
+            background: linear-gradient(135deg, #2d2d32 0%, #3d2828 100%);
+            box-shadow: 0 4px 30px rgba(239, 68, 68, 0.4);
+          }
+
+          &.level-legend {
+            border-color: #FFD700;
+            background: linear-gradient(135deg, #3d3a28 0%, #4d4528 100%);
+            box-shadow: 0 4px 30px rgba(255, 215, 0, 0.6);
+          }
         }
       }
 
@@ -2212,4 +2420,3 @@ onMounted(() => {
   }
 }
 </style>
-

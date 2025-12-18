@@ -9,7 +9,56 @@ export interface Word {
   example_sentence?: string
   difficulty: number
   category?: string
+  sort_order?: number  // 排序顺序
   created_at?: string
+  dictionary_id?: string  // 所属词典ID
+}
+
+// Dictionary types - 词典
+export interface Dictionary {
+  id: string
+  name: string
+  description?: string
+  author?: string
+  cover_image?: string
+  level: DictionaryLevel
+  type: DictionaryType
+  word_count: number
+  is_public: boolean
+  creator_id?: string
+  created_at: string
+  updated_at: string
+}
+
+export type DictionaryLevel = 'primary' | 'junior' | 'senior' | 'cet4' | 'cet6' | 'toefl' | 'ielts' | 'gre' | 'custom'
+export type DictionaryType = 'vocabulary' | 'exam' | 'topic' | 'custom'
+
+// 词典等级标签映射
+export const DictionaryLevelLabels: Record<DictionaryLevel, string> = {
+  'primary': '小学',
+  'junior': '初中',
+  'senior': '高中',
+  'cet4': '大学四级',
+  'cet6': '大学六级',
+  'toefl': '托福',
+  'ielts': '雅思',
+  'gre': 'GRE',
+  'custom': '自定义'
+}
+
+// 词典类型标签映射
+export const DictionaryTypeLabels: Record<DictionaryType, string> = {
+  'vocabulary': '词汇表',
+  'exam': '考试词库',
+  'topic': '主题词库',
+  'custom': '自定义'
+}
+
+// 用户词典选择记录
+export interface UserDictionarySelection {
+  user_id: string
+  dictionary_id: string
+  selected_at: string
 }
 
 // User types
@@ -45,6 +94,8 @@ export interface CompetitionRecord {
   duration: number
   created_at: string
   user_id?: string
+  dictionary_id?: string  // 使用的词典ID
+  dictionary_name?: string  // 词典名称（冗余存储，便于显示）
 }
 
 export interface IncorrectWord extends Word {
@@ -69,6 +120,7 @@ export interface LearningRecord {
   study_mode: string
   created_at: string
   user_id?: string
+  dictionary_id?: string  // 使用的词典ID
 }
 
 export interface LearningSession {
@@ -76,6 +128,13 @@ export interface LearningSession {
   currentIndex: number
   savedAt: number
   autoLearn?: boolean
+  masteredWords?: Word[]
+  reviewWords?: Word[]
+  isFlipped?: boolean
+  flipCount?: number
+  isAutoLearning?: boolean
+  dictionaryId?: string  // 学习时使用的词典ID
+  dictionaryName?: string  // 词典名称
 }
 
 // Competition session
@@ -91,6 +150,8 @@ export interface CompetitionSession {
   streak: number
   savedAt: number
   userInput?: string  // 当前单词用户已输入的字母
+  dictionaryId?: string  // 比赛时使用的词典ID
+  dictionaryName?: string  // 词典名称
 }
 
 // Speech types (Legacy - 保持向后兼容)
@@ -172,6 +233,8 @@ export interface Challenge {
   show_english?: boolean // 显示英文释义，默认 true
   assisted_input?: boolean // 辅助输入模式，默认 true
   network_mode?: NetworkConnectionType // 网络连接模式
+  dictionary_id?: string  // 使用的词典ID
+  dictionary_name?: string  // 词典名称
   status: 'waiting' | 'ready' | 'in_progress' | 'finished' | 'cancelled'
   participants: ChallengeParticipant[]
   winner_id?: string

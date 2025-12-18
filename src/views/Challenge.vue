@@ -115,6 +115,11 @@
           </div>
           <div class="card-content">
             <h3 class="card-title">{{ challenge.name }}</h3>
+            <!-- 词典名称 -->
+            <div class="card-dictionary" v-if="challenge.dictionary_name">
+              <t-icon name="books" size="14px" />
+              <span>{{ challenge.dictionary_name }}</span>
+            </div>
             <div class="card-meta">
               <div class="meta-item">
                 <t-icon name="star" />
@@ -210,6 +215,13 @@
 
     <!-- 创建挑战赛对话框 -->
     <t-dialog v-model:visible="showCreateDialog" header="创建挑战赛" :footer="false" width="500px">
+      <!-- 当前词典提示 -->
+      <div class="current-dictionary" v-if="currentDictionaryInfo" @click="goToDictionary">
+        <t-icon name="book" />
+        <span>{{ currentDictionaryInfo.name }}</span>
+        <t-icon name="chevron-right" size="14px" />
+      </div>
+      
       <!-- 快速创建按钮 -->
       <div class="quick-create-section">
         <div class="quick-create-buttons">
@@ -362,6 +374,7 @@ import { SearchIcon } from 'tdesign-icons-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useChallengeStore } from '@/stores/challenge'
 import { useWordsStore } from '@/stores/words'
+import { useDictionaryStore } from '@/stores/dictionary'
 import { supabase } from '@/lib/supabase'
 import ChallengeRoom from '@/components/ChallengeRoom.vue'
 
@@ -371,6 +384,21 @@ const router = useRouter()
 const authStore = useAuthStore()
 const challengeStore = useChallengeStore()
 const wordsStore = useWordsStore()
+const dictionaryStore = useDictionaryStore()
+
+// 当前词典信息（直接从 dictionaryStore 获取，确保响应式）
+// 注意：使用 computed 直接访问 store 属性，Vue 会自动追踪依赖
+const currentDictionaryInfo = computed(() => {
+  // 显式依赖 dictionaryVersion 确保词典切换时重新计算
+  void dictionaryStore.dictionaryVersion
+  if (dictionaryStore.currentDictionary) {
+    return {
+      id: dictionaryStore.currentDictionary.id,
+      name: dictionaryStore.currentDictionary.name
+    }
+  }
+  return null
+})
 
 const showCreateDialog = ref(false)
 const creating = ref(false)
@@ -380,6 +408,14 @@ const connectingId = ref(null) // 正在连接的挑战赛ID
 const coverFiles = ref([])
 const uploadingCover = ref(false)
 const uploadRef = ref(null) // 上传组件引用
+
+// 跳转到词典详情页
+function goToDictionary() {
+  const dictId = currentDictionaryInfo.value?.id
+  if (dictId) {
+    router.push(`/dictionaries/${dictId}`)
+  }
+}
 
 // 保存的随机单词，用于定制挑战赛名称和快捷按钮
 const savedRandomWord = ref('')
@@ -1953,7 +1989,24 @@ watch(() => route.params.id, async (newId, oldId) => {
       font-weight: 600;
     }
 
-
+    .card-dictionary {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      color: var(--honey-600);
+      margin-bottom: 0.5rem;
+      
+      .t-icon {
+        flex-shrink: 0;
+      }
+      
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
 
     .card-meta {
       display: flex;
@@ -2135,6 +2188,27 @@ watch(() => route.params.id, async (newId, oldId) => {
 .hint-options {
   display: flex;
   gap: 1.5rem;
+}
+
+// 当前词典样式
+.current-dictionary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--honey-50);
+  border: 1px solid var(--honey-200);
+  border-radius: 8px;
+  color: var(--honey-700);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--honey-100);
+    border-color: var(--honey-300);
+  }
 }
 
 // 快速创建区域样式

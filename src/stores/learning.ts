@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
+import { useWordsStore } from './words'
 import type { Word, WordProgress, LearningRecord, LearningSession } from '@/types'
 
 const SESSION_KEY = 'spellingbee_learning_session'
@@ -42,6 +43,18 @@ export const useLearningStore = defineStore('learning', () => {
       _hasUnfinishedSession.value = true
     } catch (e) {
       _hasUnfinishedSession.value = false
+    }
+  }
+
+  // 获取保存的会话词典ID
+  function getSessionDictionaryId(): string | null {
+    try {
+      const saved = localStorage.getItem(SESSION_KEY)
+      if (!saved) return null
+      const session = JSON.parse(saved) as LearningSession
+      return session.dictionaryId || null
+    } catch (e) {
+      return null
     }
   }
 
@@ -417,6 +430,7 @@ export const useLearningStore = defineStore('learning', () => {
     clearAllData,
     saveSession,
     restoreSession,
-    clearSession
+    clearSession,
+    getSessionDictionaryId
   }
 })

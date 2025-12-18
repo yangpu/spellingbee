@@ -10,6 +10,12 @@
       <div class="header-center">
         <h1>学习管理</h1>
         <p>查看词库学习进度和统计数据</p>
+        <!-- 当前词典信息 -->
+        <div class="current-dictionary" v-if="currentDictionaryInfo" @click="goToDictionary">
+          <t-icon name="book" />
+          <span>{{ currentDictionaryInfo.name }}</span>
+          <t-icon name="chevron-right" size="14px" />
+        </div>
       </div>
       <div class="header-right"></div>
     </div>
@@ -30,7 +36,7 @@
           <t-icon name="check-circle" />
         </div>
         <div class="stat-content">
-          <span class="stat-value text-success">{{ learningStore.masteredWords.length }}</span>
+          <span class="stat-value text-success">{{ currentMasteredCount }}</span>
           <span class="stat-label">已掌握</span>
         </div>
       </div>
@@ -39,7 +45,7 @@
           <t-icon name="time" />
         </div>
         <div class="stat-content">
-          <span class="stat-value text-warning">{{ learningStore.learningWords.length }}</span>
+          <span class="stat-value text-warning">{{ currentLearningCount }}</span>
           <span class="stat-label">学习中</span>
         </div>
       </div>
@@ -66,30 +72,15 @@
     <!-- Toolbar -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <t-input
-          v-model="searchQuery"
-          placeholder="搜索单词..."
-          clearable
-          class="search-input"
-        >
+        <t-input v-model="searchQuery" placeholder="搜索单词..." clearable class="search-input">
           <template #prefix-icon><t-icon name="search" /></template>
         </t-input>
-        <t-select
-          v-model="filterStatus"
-          placeholder="学习状态"
-          clearable
-          class="filter-select"
-        >
+        <t-select v-model="filterStatus" placeholder="学习状态" clearable class="filter-select">
           <t-option value="mastered" label="已掌握" />
           <t-option value="learning" label="学习中" />
           <t-option value="not_started" label="未学习" />
         </t-select>
-        <t-select
-          v-model="filterDifficulty"
-          placeholder="难度筛选"
-          clearable
-          class="filter-select"
-        >
+        <t-select v-model="filterDifficulty" placeholder="难度筛选" clearable class="filter-select">
           <t-option :value="1" label="⭐ 简单" />
           <t-option :value="2" label="⭐⭐ 较易" />
           <t-option :value="3" label="⭐⭐⭐ 中等" />
@@ -111,25 +102,14 @@
 
     <!-- Words Table -->
     <div class="table-container">
-      <t-table
-        :data="filteredWords"
-        :columns="columns"
-        :pagination="pagination"
-        row-key="id"
-        hover
-        stripe
-        @page-change="handlePageChange"
-      >
+      <t-table :data="filteredWords" :columns="columns" :pagination="pagination" row-key="id" hover stripe
+        @page-change="handlePageChange">
         <template #index="{ row }">
           <span class="word-index">{{ row.vocabIndex }}</span>
         </template>
         <template #status="{ row }">
           <div class="status-cell">
-            <t-icon 
-              :name="getStatusIcon(row.word).icon" 
-              :class="getStatusIcon(row.word).class"
-              size="18px"
-            />
+            <t-icon :name="getStatusIcon(row.word).icon" :class="getStatusIcon(row.word).class" size="18px" />
           </div>
         </template>
         <template #word="{ row }">
@@ -173,7 +153,7 @@
       <t-icon name="folder-open" size="64px" />
       <h3>词库为空</h3>
       <p>请先添加一些单词到词库</p>
-      <t-button theme="primary" @click="$router.push('/words')">
+      <t-button theme="primary" @click="$router.push('/dictionaries')">
         前往词库
       </t-button>
     </div>
@@ -182,16 +162,43 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useWordsStore } from '@/stores/words'
+import { useDictionaryStore } from '@/stores/dictionary'
 import { useLearningStore } from '@/stores/learning'
 import { useCompetitionStore } from '@/stores/competition'
 import { useSpeechStore } from '@/stores/speech'
 
+const router = useRouter()
+
 const wordsStore = useWordsStore()
+const dictionaryStore = useDictionaryStore()
 const learningStore = useLearningStore()
 const competitionStore = useCompetitionStore()
 const speechStore = useSpeechStore()
+
+// 当前词典信息（直接从 dictionaryStore 获取，确保响应式）
+// 注意：使用 computed 直接访问 store 属性，Vue 会自动追踪依赖
+const currentDictionaryInfo = computed(() => {
+  // 显式依赖 dictionaryVersion 确保词典切换时重新计算
+  void dictionaryStore.dictionaryVersion
+  if (dictionaryStore.currentDictionary) {
+    return {
+      id: dictionaryStore.currentDictionary.id,
+      name: dictionaryStore.currentDictionary.name
+    }
+  }
+  return null
+})
+
+// 跳转到词典详情页
+function goToDictionary() {
+  const dictId = currentDictionaryInfo.value?.id
+  if (dictId) {
+    router.push(`/dictionaries/${dictId}`)
+  }
+}
 
 // Filter state
 const searchQuery = ref('')
@@ -220,9 +227,28 @@ const columns = [
   { colKey: 'competitionWrong', title: '比赛错误', width: 100 }
 ]
 
+// 当前词典的单词列表
+const currentWords = computed(() => wordsStore.activeWords)
+
+// 当前词典中已掌握的单词数量
+const currentMasteredCount = computed(() => {
+  return currentWords.value.filter(w => {
+    const progress = learningStore.getWordProgress(w.word.toLowerCase())
+    return progress && progress.mastery_level >= 2
+  }).length
+})
+
+// 当前词典中学习中的单词数量
+const currentLearningCount = computed(() => {
+  return currentWords.value.filter(w => {
+    const progress = learningStore.getWordProgress(w.word.toLowerCase())
+    return progress && progress.mastery_level < 2
+  }).length
+})
+
 // 未学习单词数量
 const notStartedCount = computed(() => {
-  return wordsStore.words.filter(w => !learningStore.getWordProgress(w.word.toLowerCase())).length
+  return currentWords.value.filter(w => !learningStore.getWordProgress(w.word.toLowerCase())).length
 })
 
 // 设置筛选
@@ -234,13 +260,13 @@ function setFilter(status) {
 // Progress percentage
 const progressPercentage = computed(() => {
   if (wordsStore.wordCount === 0) return 0
-  return Math.round((learningStore.masteredWords.length / wordsStore.wordCount) * 100)
+  return Math.round((currentMasteredCount.value / wordsStore.wordCount) * 100)
 })
 
 // Get word learning stats
 function getWordStats(word) {
   const lowerWord = word.toLowerCase()
-  
+
   let learnMastered = 0
   let learnReview = 0
   learningStore.learningRecords.forEach(record => {
@@ -252,10 +278,10 @@ function getWordStats(word) {
       }
     }
   })
-  
+
   let competitionCorrect = 0
   let competitionWrong = 0
-  
+
   learningStore.learningRecords.forEach(record => {
     if (record.word.toLowerCase() === lowerWord && record.study_mode === 'competition') {
       if (record.is_correct) {
@@ -265,7 +291,7 @@ function getWordStats(word) {
       }
     }
   })
-  
+
   if (competitionCorrect === 0 && competitionWrong === 0) {
     competitionStore.records.forEach(record => {
       const incorrectWords = (record.incorrect_words || []).map(w => w.toLowerCase())
@@ -274,7 +300,7 @@ function getWordStats(word) {
       }
     })
   }
-  
+
   return {
     learnMastered,
     learnReview,
@@ -288,7 +314,7 @@ function getStatusIcon(word) {
   const lowerWord = word.toLowerCase()
   const progress = learningStore.getWordProgress(lowerWord)
   const stats = getWordStats(word)
-  
+
   // 检查比赛状态
   if (stats.competitionWrong > 0 && stats.competitionCorrect === 0) {
     return { icon: 'close-circle-filled', class: 'status-competition-wrong' }
@@ -299,7 +325,7 @@ function getStatusIcon(word) {
   if (stats.competitionCorrect > 0 && stats.competitionWrong > 0) {
     return { icon: 'error-circle-filled', class: 'status-competition-mixed' }
   }
-  
+
   // 检查学习状态
   if (!progress) {
     return { icon: 'browse', class: 'status-not-started' }
@@ -321,7 +347,7 @@ function getStatusLabel(word) {
   const lowerWord = word.toLowerCase()
   const progress = learningStore.getWordProgress(lowerWord)
   const stats = getWordStats(word)
-  
+
   if (stats.competitionWrong > 0 && stats.competitionCorrect === 0) {
     return '比赛错误'
   }
@@ -347,11 +373,11 @@ function speakWord(word) {
 
 // Filtered words - 按词库顺序显示
 const filteredWords = computed(() => {
-  let result = [...wordsStore.words]
-  
+  let result = [...currentWords.value]
+
   // 添加索引
   result = result.map((w, idx) => ({ ...w, vocabIndex: idx + 1 }))
-  
+
   // Search filter
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
@@ -361,7 +387,7 @@ const filteredWords = computed(() => {
       w.definition.toLowerCase().includes(q)
     )
   }
-  
+
   // Status filter
   if (filterStatus.value) {
     result = result.filter(w => {
@@ -378,16 +404,16 @@ const filteredWords = computed(() => {
       }
     })
   }
-  
+
   // Difficulty filter
   if (filterDifficulty.value) {
     result = result.filter(w => w.difficulty === filterDifficulty.value)
   }
-  
+
   // 不排序，保持词库原始顺序
-  
+
   pagination.total = result.length
-  
+
   // Paginate
   const start = (pagination.current - 1) * pagination.pageSize
   const end = start + pagination.pageSize
@@ -402,7 +428,7 @@ function handlePageChange(pageInfo) {
 
 // Export data
 function exportData() {
-  const data = wordsStore.words.map(w => {
+  const data = currentWords.value.map(w => {
     const stats = getWordStats(w.word)
     return {
       单词: w.word,
@@ -417,12 +443,12 @@ function exportData() {
       状态: getStatusLabel(w.word)
     }
   })
-  
+
   const csv = [
     Object.keys(data[0]).join(','),
     ...data.map(row => Object.values(row).map(v => `"${v || ''}"`).join(','))
   ].join('\n')
-  
+
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -430,7 +456,7 @@ function exportData() {
   a.download = `学习记录_${new Date().toISOString().split('T')[0]}.csv`
   a.click()
   URL.revokeObjectURL(url)
-  
+
   MessagePlugin.success('导出成功')
 }
 
@@ -473,13 +499,19 @@ onMounted(() => {
     justify-content: space-between;
     margin-bottom: 2rem;
 
-    .header-left, .header-right {
+    .header-left {
       flex: 0 0 150px;
+    }
+
+    .header-right {
+      flex: 0 0 150px;
+      min-width: 150px;
     }
 
     .header-center {
       text-align: center;
       flex: 1;
+      width: 100%;
 
       h1 {
         font-size: 2rem;
@@ -488,6 +520,26 @@ onMounted(() => {
 
       p {
         color: var(--text-secondary);
+      }
+
+      .current-dictionary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: var(--honey-50);
+        border: 1px solid var(--honey-200);
+        border-radius: 8px;
+        color: var(--honey-700);
+        font-size: 0.9rem;
+        margin-top: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          background: var(--honey-100);
+          border-color: var(--honey-300);
+        }
       }
     }
   }
@@ -498,27 +550,27 @@ onMounted(() => {
     gap: 1.5rem;
     margin-bottom: 2rem;
 
-      .stat-card {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.5rem;
-        background: var(--bg-card);
-        border-radius: 16px;
-        box-shadow: var(--shadow-sm);
-        transition: transform 0.2s, box-shadow 0.2s;
-        cursor: pointer;
-        border: 2px solid transparent;
+    .stat-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: var(--bg-card);
+      border-radius: 16px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
+      border: 2px solid transparent;
 
-        &:hover {
-          transform: translateY(-2px);
-          box-shadow: var(--shadow-md);
-        }
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+      }
 
-        &.active {
-          border-color: var(--honey-500);
-          background: var(--honey-50);
-        }
+      &.active {
+        border-color: var(--honey-500);
+        background: var(--honey-50);
+      }
 
       .stat-icon {
         width: 56px;
@@ -559,9 +611,17 @@ onMounted(() => {
           font-weight: 700;
           color: var(--charcoal-800);
 
-          &.text-success { color: var(--success); }
-          &.text-warning { color: var(--warning); }
-          &.text-info { color: var(--primary); }
+          &.text-success {
+            color: var(--success);
+          }
+
+          &.text-warning {
+            color: var(--warning);
+          }
+
+          &.text-info {
+            color: var(--primary);
+          }
         }
 
         .stat-label {
@@ -669,9 +729,20 @@ onMounted(() => {
     }
   }
 
-  .text-success { color: var(--success); font-weight: 600; }
-  .text-warning { color: var(--warning); font-weight: 600; }
-  .text-error { color: var(--error); font-weight: 600; }
+  .text-success {
+    color: var(--success);
+    font-weight: 600;
+  }
+
+  .text-warning {
+    color: var(--warning);
+    font-weight: 600;
+  }
+
+  .text-error {
+    color: var(--error);
+    font-weight: 600;
+  }
 
   .empty-state {
     text-align: center;
@@ -716,7 +787,8 @@ onMounted(() => {
       flex-direction: column;
       gap: 1rem;
 
-      .header-left, .header-right {
+      .header-left,
+      .header-right {
         flex: none;
       }
 

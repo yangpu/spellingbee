@@ -5,7 +5,15 @@
         <template #icon><t-icon name="chevron-left" /></template>
         返回统计
       </t-button>
-      <h1>比赛记录详情</h1>
+      <div class="header-center">
+        <h1>比赛记录详情</h1>
+        <!-- 当前词典信息 -->
+        <div class="current-dictionary" v-if="currentDictionaryInfo" @click="goToDictionary">
+          <t-icon name="book" />
+          <span>{{ currentDictionaryInfo.name }}</span>
+          <t-icon name="chevron-right" size="14px" />
+        </div>
+      </div>
       <div class="header-placeholder"></div>
     </div>
 
@@ -45,35 +53,24 @@
       <!-- Words List -->
       <div class="words-section">
         <h2>单词列表</h2>
-        
+
         <!-- 工具栏：过滤、搜索 -->
-        <WordListToolbar
-          v-model="wordsToolbar"
-          :filter-options="wordsFilterOptions"
-        />
-        
+        <WordListToolbar v-model="wordsToolbar" :filter-options="wordsFilterOptions" />
+
         <div class="words-table-container" v-if="paginatedWordsList.length > 0">
-          <t-table
-            :data="paginatedWordsList"
-            :columns="columns"
-            row-key="index"
-            hover
-            stripe
-          >
+          <t-table :data="paginatedWordsList" :columns="columns" row-key="index" hover stripe>
             <template #index="{ row }">
               <span class="word-index">{{ row._displayIndex }}</span>
             </template>
             <template #status="{ row }">
               <div class="status-cell">
-                <t-icon 
-                  :name="row.isCorrect ? 'check-circle-filled' : (row.isCorrect === false ? 'close-circle-filled' : 'help-circle')" 
-                  :class="{ 
-                    'status-correct': row.isCorrect === true, 
+                <t-icon
+                  :name="row.isCorrect ? 'check-circle-filled' : (row.isCorrect === false ? 'close-circle-filled' : 'help-circle')"
+                  :class="{
+                    'status-correct': row.isCorrect === true,
                     'status-wrong': row.isCorrect === false,
-                    'status-unknown': row.isCorrect === null 
-                  }"
-                  size="20px"
-                />
+                    'status-unknown': row.isCorrect === null
+                  }" size="20px" />
               </div>
             </template>
             <template #word="{ row }">
@@ -101,38 +98,28 @@
             </template>
           </t-table>
         </div>
-        
+
         <!-- 空状态 -->
         <div class="empty-filter-result" v-else>
           <t-icon name="search" size="32px" />
           <span>没有找到匹配的单词</span>
         </div>
-        
+
         <!-- 分页器 -->
         <div class="list-pagination" v-if="filteredWordsList.length > wordsToolbar.pageSize">
-          <t-pagination
-            :current="wordsToolbar.page"
-            :page-size="wordsToolbar.pageSize"
-            :total="filteredWordsList.length"
-            :page-size-options="[10, 20, 50]"
-            :show-jumper="true"
-            size="small"
-            @change="handleWordsPageChange"
-          />
+          <t-pagination :current="wordsToolbar.page" :page-size="wordsToolbar.pageSize"
+            :total="filteredWordsList.length" :page-size-options="[10, 20, 50]" :show-jumper="true" size="small"
+            @change="handleWordsPageChange" />
         </div>
       </div>
 
       <!-- Error Words Review -->
       <div class="error-words-section" v-if="errorWords.length > 0">
         <h2>错误单词复习 ({{ errorWords.length }} 词)</h2>
-        
+
         <!-- 工具栏：搜索 -->
-        <WordListToolbar
-          v-model="errorWordsToolbar"
-          :filter-options="[]"
-          hide-filter
-        />
-        
+        <WordListToolbar v-model="errorWordsToolbar" :filter-options="[]" hide-filter />
+
         <div class="error-words-grid" v-if="paginatedErrorWords.length > 0">
           <div class="error-word-card" v-for="(item, idx) in paginatedErrorWords" :key="idx">
             <div class="error-word-header">
@@ -154,23 +141,18 @@
             </div>
           </div>
         </div>
-        
+
         <!-- 空状态 -->
         <div class="empty-filter-result" v-else>
           <t-icon name="search" size="32px" />
           <span>没有找到匹配的单词</span>
         </div>
-        
+
         <!-- 分页器 -->
         <div class="list-pagination" v-if="filteredErrorWords.length > errorWordsToolbar.pageSize">
-          <t-pagination
-            :current="errorWordsToolbar.page"
-            :page-size="errorWordsToolbar.pageSize"
-            :total="filteredErrorWords.length"
-            :page-size-options="[5, 10, 20]"
-            size="small"
-            @change="handleErrorWordsPageChange"
-          />
+          <t-pagination :current="errorWordsToolbar.page" :page-size="errorWordsToolbar.pageSize"
+            :total="filteredErrorWords.length" :page-size-options="[5, 10, 20]" size="small"
+            @change="handleErrorWordsPageChange" />
         </div>
       </div>
 
@@ -199,18 +181,44 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { useRoute, useRouter } from 'vue-router'
 import { useCompetitionStore } from '@/stores/competition'
 import { useWordsStore } from '@/stores/words'
+import { useDictionaryStore } from '@/stores/dictionary'
 import { useSpeechStore } from '@/stores/speech'
 import WordListToolbar from '@/components/WordListToolbar.vue'
 
 const route = useRoute()
+const router = useRouter()
 const competitionStore = useCompetitionStore()
 const wordsStore = useWordsStore()
+const dictionaryStore = useDictionaryStore()
 const speechStore = useSpeechStore()
 
+// 使用 storeToRefs 确保响应式
+const { currentDictionary } = storeToRefs(dictionaryStore)
+
+// 当前词典信息（直接从 dictionaryStore 获取，确保响应式）
+const currentDictionaryInfo = computed(() => {
+  if (currentDictionary.value) {
+    return {
+      id: currentDictionary.value.id,
+      name: currentDictionary.value.name
+    }
+  }
+  return null
+})
+
 const record = ref(null)
+
+// 跳转到词典详情页
+function goToDictionary() {
+  const dictId = currentDictionaryInfo.value?.id
+  if (dictId) {
+    router.push(`/dictionaries/${dictId}`)
+  }
+}
 
 // 单词列表工具栏状态
 const wordsToolbar = ref({
@@ -248,7 +256,7 @@ function getWordIndex(word) {
 // Build words list with status
 const wordsList = computed(() => {
   if (!record.value) return []
-  
+
   const incorrectWordsMap = new Map()
   if (record.value.incorrect_words_detail) {
     // If we have detailed incorrect words with user answers
@@ -261,11 +269,11 @@ const wordsList = computed(() => {
       incorrectWordsMap.set(word.toLowerCase(), '[错误]')
     })
   }
-  
+
   // Get all words from the record
   const allWords = []
   const processedWords = new Set()
-  
+
   // Add correct words
   if (record.value.correct_words_list) {
     record.value.correct_words_list.forEach(word => {
@@ -283,7 +291,7 @@ const wordsList = computed(() => {
       }
     })
   }
-  
+
   // Add incorrect words
   if (record.value.incorrect_words) {
     record.value.incorrect_words.forEach(word => {
@@ -301,7 +309,7 @@ const wordsList = computed(() => {
       }
     })
   }
-  
+
   // Sort by index (vocabulary order)
   allWords.sort((a, b) => {
     if (a.index === null && b.index === null) return 0
@@ -309,7 +317,7 @@ const wordsList = computed(() => {
     if (b.index === null) return -1
     return a.index - b.index
   })
-  
+
   return allWords
 })
 
@@ -317,7 +325,7 @@ const wordsList = computed(() => {
 const wordsFilterOptions = computed(() => {
   const correctCount = wordsList.value.filter(w => w.isCorrect === true).length
   const wrongCount = wordsList.value.filter(w => w.isCorrect === false).length
-  
+
   return [
     { value: 'all', label: '全部', count: wordsList.value.length },
     { value: 'correct', label: '正确', icon: 'check-circle', type: 'correct', count: correctCount },
@@ -329,24 +337,24 @@ const wordsFilterOptions = computed(() => {
 const filteredWordsList = computed(() => {
   let words = [...wordsList.value]
   const { filter, keyword } = wordsToolbar.value
-  
+
   // 按类型过滤
   if (filter === 'correct') {
     words = words.filter(w => w.isCorrect === true)
   } else if (filter === 'wrong') {
     words = words.filter(w => w.isCorrect === false)
   }
-  
+
   // 按关键词搜索
   if (keyword.trim()) {
     const kw = keyword.trim().toLowerCase()
-    words = words.filter(w => 
+    words = words.filter(w =>
       w.word.toLowerCase().includes(kw) ||
       w.definition_cn?.toLowerCase().includes(kw) ||
       w.definition?.toLowerCase().includes(kw)
     )
   }
-  
+
   return words.map((w, i) => ({ ...w, _displayIndex: i + 1 }))
 })
 
@@ -366,17 +374,17 @@ const errorWords = computed(() => {
 const filteredErrorWords = computed(() => {
   let words = [...errorWords.value]
   const { keyword } = errorWordsToolbar.value
-  
+
   // 按关键词搜索
   if (keyword.trim()) {
     const kw = keyword.trim().toLowerCase()
-    words = words.filter(w => 
+    words = words.filter(w =>
       w.word.toLowerCase().includes(kw) ||
       w.definition_cn?.toLowerCase().includes(kw) ||
       w.definition?.toLowerCase().includes(kw)
     )
   }
-  
+
   return words.map((w, i) => ({ ...w, _displayIndex: i + 1 }))
 })
 
@@ -442,7 +450,7 @@ function speakWord(word) {
 onMounted(async () => {
   await wordsStore.init()
   await competitionStore.loadRecords()
-  
+
   const recordId = route.params.id
   record.value = competitionStore.records.find(r => r.id === recordId)
 })
@@ -455,12 +463,38 @@ onMounted(async () => {
 
   .page-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     margin-bottom: 2rem;
 
-    h1 {
-      font-size: 1.75rem;
+    .header-center {
+      text-align: center;
+      flex: 1;
+      width: 100%;
+
+      h1 {
+        font-size: 1.75rem;
+      }
+
+      .current-dictionary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: var(--honey-50);
+        border: 1px solid var(--honey-200);
+        border-radius: 8px;
+        color: var(--honey-700);
+        font-size: 0.9rem;
+        margin-top: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          background: var(--honey-100);
+          border-color: var(--honey-300);
+        }
+      }
     }
 
     .header-placeholder {
@@ -532,8 +566,13 @@ onMounted(async () => {
           font-family: Georgia, 'Times New Roman', serif;
           color: var(--charcoal-800);
 
-          &.text-success { color: var(--success); }
-          &.text-error { color: var(--error); }
+          &.text-success {
+            color: var(--success);
+          }
+
+          &.text-error {
+            color: var(--error);
+          }
         }
 
         .stat-label {
@@ -559,7 +598,7 @@ onMounted(async () => {
       box-shadow: var(--shadow-sm);
       margin-top: 1rem;
     }
-    
+
     .empty-filter-result {
       display: flex;
       flex-direction: column;
@@ -571,7 +610,7 @@ onMounted(async () => {
       border-radius: 12px;
       margin-top: 1rem;
     }
-    
+
     .list-pagination {
       display: flex;
       justify-content: center;
@@ -635,7 +674,7 @@ onMounted(async () => {
       font-size: 1.25rem;
       margin-bottom: 1rem;
     }
-    
+
     .empty-filter-result {
       display: flex;
       flex-direction: column;
@@ -647,7 +686,7 @@ onMounted(async () => {
       border-radius: 12px;
       margin-top: 1rem;
     }
-    
+
     .list-pagination {
       display: flex;
       justify-content: center;

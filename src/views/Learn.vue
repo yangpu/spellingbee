@@ -3,6 +3,12 @@
     <div class="page-header" v-if="!isLearning">
       <h1>单词学习</h1>
       <p>通过卡片学习单词，掌握拼写、发音和释义</p>
+      <!-- 当前词典信息 -->
+      <div class="current-dictionary" v-if="currentDictionaryInfo" @click="goToDictionary">
+        <t-icon name="book" />
+        <span>{{ currentDictionaryInfo.name }}</span>
+        <t-icon name="chevron-right" size="14px" />
+      </div>
       <div class="header-actions">
         <t-button variant="outline" @click="showSpeechSettings = true" class="speech-btn">
           <template #icon><t-icon name="sound" /></template>
@@ -18,13 +24,18 @@
     <!-- Settings -->
     <div class="settings-bar" v-if="!isLearning">
       <!-- 恢复未完成学习提示 -->
-      <div class="resume-banner" v-if="learningStore.hasUnfinishedSession">
-        <div class="resume-info">
-          <t-icon name="history" />
-          <span>您有一次未完成的学习</span>
+      <div class="resume-banner" v-if="showResumeBanner">
+        <div class="resume-content">
+          <div class="resume-icon">
+            <t-icon name="history" />
+          </div>
+          <div class="resume-text">
+            <span class="resume-title">您有一次未完成的学习</span>
+            <t-tag v-if="resumeSessionDictName" size="small" variant="light" class="resume-dict">{{ resumeSessionDictName }}</t-tag>
+          </div>
         </div>
         <div class="resume-actions">
-          <t-button size="small" variant="outline" @click="learningStore.clearSession()">
+          <t-button size="small" variant="outline" @click="discardSession">
             放弃
           </t-button>
           <t-button size="small" theme="primary" @click="resumeLearning">
@@ -67,13 +78,20 @@
 
     <!-- Learning Card -->
     <div class="learning-container" v-if="isLearning && currentWord">
-      <!-- Progress -->
-      <div class="progress-bar">
-        <div class="progress-info">
-          <span>第 {{ currentIndex + 1 }} / {{ learnWords.length }} 个单词</span>
-          <span>已掌握: {{ masteredCount }} | 复习: {{ reviewCount }}</span>
+      <!-- Progress Header -->
+      <div class="learning-header">
+        <div class="mastered-display">
+          <t-icon name="check-circle" />
+          <span>{{ masteredCount }}</span>
         </div>
-        <t-progress :percentage="Math.round(((currentIndex + 1) / learnWords.length) * 100)" theme="plump" />
+        <div class="progress-display">
+          <span class="progress-text">{{ currentIndex + 1 }} / {{ learnWords.length }}</span>
+          <t-tag v-if="currentDictName" size="small" variant="light">{{ currentDictName }}</t-tag>
+        </div>
+        <div class="review-display">
+          <t-icon name="refresh" />
+          <span>{{ reviewCount }}</span>
+        </div>
       </div>
 
       <!-- Auto Learn Toggle -->
@@ -164,7 +182,7 @@
       <t-icon name="folder-open" size="64px" />
       <h3>词库为空</h3>
       <p>请先添加一些单词到词库</p>
-      <t-button theme="primary" @click="$router.push('/words')">
+      <t-button theme="primary" @click="$router.push('/dictionaries')">
         前往词库
       </t-button>
     </div>
@@ -173,6 +191,10 @@
     <div class="completion-card" v-if="isCompleted">
       <div class="completion-icon">🎉</div>
       <h2>学习完成！</h2>
+      <div class="completion-dict" v-if="currentDictName">
+        <t-icon name="book" />
+        <span>{{ currentDictName }}</span>
+      </div>
       <div class="completion-stats">
         <div class="stat">
           <span class="value">{{ learnWords.length }}</span>
@@ -257,20 +279,39 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useWordsStore } from '@/stores/words'
+import { useDictionaryStore } from '@/stores/dictionary'
 import { useLearningStore } from '@/stores/learning'
 import { useSpeechStore } from '@/stores/speech'
 import { backgroundAudio } from '@/utils/backgroundAudio'
 import SpeechSettings from '@/components/SpeechSettings.vue'
 import WordListToolbar from '@/components/WordListToolbar.vue'
 
+const router = useRouter()
+
 const wordsStore = useWordsStore()
+const dictionaryStore = useDictionaryStore()
 const learningStore = useLearningStore()
 const speechStore = useSpeechStore()
 
 // 语音配置弹窗
 const showSpeechSettings = ref(false)
+
+// 当前词典信息（直接从 dictionaryStore 获取，确保响应式）
+// 注意：使用 computed 直接访问 store 属性，Vue 会自动追踪依赖
+const currentDictionaryInfo = computed(() => {
+  // 显式依赖 dictionaryVersion 确保词典切换时重新计算
+  void dictionaryStore.dictionaryVersion
+  if (dictionaryStore.currentDictionary) {
+    return {
+      id: dictionaryStore.currentDictionary.id,
+      name: dictionaryStore.currentDictionary.name
+    }
+  }
+  return null
+})
 
 // Settings
 const settings = reactive({
@@ -283,6 +324,14 @@ const settings = reactive({
 
 // 设置存储键
 const SETTINGS_KEY = 'spellingbee_learn_settings'
+
+// 跳转到词典详情页
+function goToDictionary() {
+  const dictId = currentDictionaryInfo.value?.id
+  if (dictId) {
+    router.push(`/dictionaries/${dictId}`)
+  }
+}
 
 // 加载保存的设置
 function loadSettings() {
@@ -321,6 +370,14 @@ const currentIndex = ref(0)
 const masteredWords = ref([])
 const reviewWords = ref([])
 const showLearningRecord = ref(true) // 学习记录折叠状态，默认展开
+
+// 当前学习的词典信息
+const currentDictId = ref('')
+const currentDictName = ref('')
+
+// 恢复会话相关
+const showResumeBanner = ref(false)
+const resumeSessionDictName = ref('')
 
 // 学习记录工具栏状态
 const learnRecordToolbar = ref({
@@ -415,6 +472,13 @@ const learningModeHint = computed(() => {
 
 // Methods
 function startLearning() {
+  // 检查是否有词典和单词
+  const currentActiveWords = wordsStore.activeWords
+  if (currentActiveWords.length === 0) {
+    MessagePlugin.warning('当前词典没有单词，请先添加单词或选择其他词典')
+    return
+  }
+
   // 保存设置
   saveSettings()
 
@@ -444,9 +508,25 @@ function startLearning() {
       words = wordsStore.getRandomWords(settings.count, settings.difficulty)
   }
 
-  if (words.length === 0) return
+  if (words.length === 0) {
+    MessagePlugin.warning('没有符合条件的单词')
+    return
+  }
 
-  learnWords.value = words
+  // 二次验证：确保所有单词都在当前词典中
+  const currentWordSet = new Set(currentActiveWords.map(w => w.word.toLowerCase()))
+  const validWords = words.filter(w => currentWordSet.has(w.word.toLowerCase()))
+  
+  if (validWords.length === 0) {
+    MessagePlugin.warning('选取的单词不在当前词典中，请重试')
+    return
+  }
+
+  // 保存当前词典信息
+  currentDictId.value = currentDictionaryInfo.value?.id || ''
+  currentDictName.value = currentDictionaryInfo.value?.name || ''
+
+  learnWords.value = validWords
   currentIndex.value = 0
   masteredWords.value = []
   reviewWords.value = []
@@ -471,7 +551,7 @@ function startLearning() {
 
 // 自然模式：按最佳记忆曲线
 function getWordsNaturalMode(count, difficulty) {
-  let filtered = [...wordsStore.words]
+  let filtered = [...wordsStore.activeWords]
 
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
@@ -517,7 +597,7 @@ function getWordsNaturalMode(count, difficulty) {
 
 // 顺序模式
 function getWordsSequentialMode(count, difficulty) {
-  let filtered = [...wordsStore.words]
+  let filtered = [...wordsStore.activeWords]
 
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
@@ -548,7 +628,7 @@ function getWordsSequentialMode(count, difficulty) {
 
 // 倒序模式
 function getWordsReverseMode(count, difficulty) {
-  let filtered = [...wordsStore.words].reverse()
+  let filtered = [...wordsStore.activeWords].reverse()
 
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
@@ -579,7 +659,7 @@ function getWordsReverseMode(count, difficulty) {
 
 // 新题模式：只选择从未学习过的单词
 function getWordsNewMode(count, difficulty) {
-  let filtered = [...wordsStore.words]
+  let filtered = [...wordsStore.activeWords]
 
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
@@ -605,7 +685,7 @@ function getWordsNewMode(count, difficulty) {
 
 // 备考模式：重点复习容易出错的单词
 function getWordsReviewMode(count, difficulty) {
-  let filtered = [...wordsStore.words]
+  let filtered = [...wordsStore.activeWords]
 
   if (difficulty !== null) {
     filtered = filtered.filter(w => w.difficulty === difficulty)
@@ -666,8 +746,17 @@ function saveCurrentSession() {
     reviewWords: reviewWords.value,
     isFlipped: isFlipped.value,
     flipCount: flipCount.value,
-    isAutoLearning: isAutoLearning.value // 保存自动学习状态
+    isAutoLearning: isAutoLearning.value, // 保存自动学习状态
+    dictionaryId: currentDictId.value,
+    dictionaryName: currentDictName.value
   })
+}
+
+// 放弃当前会话
+function discardSession() {
+  learningStore.clearSession()
+  showResumeBanner.value = false
+  resumeSessionDictName.value = ''
 }
 
 // 恢复学习 - 直接恢复，不检查语音权限
@@ -681,18 +770,49 @@ function doResumeLearning() {
   if (!session || !session.learnWords || session.learnWords.length === 0) {
     // 会话无效，清除
     learningStore.clearSession()
+    showResumeBanner.value = false
     return
   }
 
-  learnWords.value = session.learnWords
-  currentIndex.value = session.currentIndex
-  masteredWords.value = session.masteredWords || []
-  reviewWords.value = session.reviewWords || []
+  // 验证会话词典与当前词典是否匹配
+  const currentDictIdValue = currentDictionaryInfo.value?.id
+  if (session.dictionaryId && currentDictIdValue && session.dictionaryId !== currentDictIdValue) {
+    // 词典已变化，放弃旧会话
+    MessagePlugin.warning('词典已变化，无法恢复之前的学习')
+    learningStore.clearSession()
+    showResumeBanner.value = false
+    return
+  }
+
+  // 验证恢复的单词是否都属于当前词典
+  const currentWordSet = new Set(wordsStore.activeWords.map(w => w.word.toLowerCase()))
+  const validLearnWords = session.learnWords.filter(w => currentWordSet.has(w.word.toLowerCase()))
+  
+  if (validLearnWords.length === 0) {
+    MessagePlugin.warning('保存的单词不在当前词典中，无法恢复')
+    learningStore.clearSession()
+    showResumeBanner.value = false
+    return
+  }
+
+  // 恢复词典信息
+  currentDictId.value = session.dictionaryId || ''
+  currentDictName.value = session.dictionaryName || ''
+
+  // 使用验证后的单词列表
+  learnWords.value = validLearnWords
+  // 调整索引，确保不超出范围
+  currentIndex.value = Math.min(session.currentIndex, validLearnWords.length - 1)
+  // 过滤已掌握和待复习的单词，只保留在有效列表中的
+  const validWordSet = new Set(validLearnWords.map(w => w.word.toLowerCase()))
+  masteredWords.value = (session.masteredWords || []).filter(w => validWordSet.has(w.word.toLowerCase()))
+  reviewWords.value = (session.reviewWords || []).filter(w => validWordSet.has(w.word.toLowerCase()))
   isFlipped.value = session.isFlipped || false
   flipCount.value = session.flipCount || 0
   isLearning.value = true
   isCompleted.value = false
   highlightedLetterIndex.value = 0
+  showResumeBanner.value = false
 
   // 根据设置决定是否开启自动学习
   setTimeout(() => {
@@ -1071,9 +1191,24 @@ onMounted(async () => {
   loadSettings() // 加载保存的设置
   window.addEventListener('keydown', handleKeydown)
 
-  // 自动恢复未完成的学习（会检测语音权限）
+  // 检查未完成的学习会话
   if (learningStore.hasUnfinishedSession) {
-    resumeLearning()
+    const sessionDictId = learningStore.getSessionDictionaryId()
+    const currentDictIdValue = currentDictionaryInfo.value?.id
+    
+    // 如果词典已变化，自动放弃旧会话
+    if (sessionDictId && currentDictIdValue && sessionDictId !== currentDictIdValue) {
+      learningStore.clearSession()
+      showResumeBanner.value = false
+    } else {
+      // 显示恢复提示，获取会话词典名称
+      const session = learningStore.restoreSession()
+      if (session) {
+        resumeSessionDictName.value = session.dictionaryName || ''
+        showResumeBanner.value = true
+        // 不自动恢复，让用户选择
+      }
+    }
   }
 })
 
@@ -1104,6 +1239,26 @@ onUnmounted(() => {
       color: var(--text-secondary);
     }
 
+    .current-dictionary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--honey-50);
+      border: 1px solid var(--honey-200);
+      border-radius: 8px;
+      color: var(--honey-700);
+      font-size: 0.9rem;
+      margin-top: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: var(--honey-100);
+        border-color: var(--honey-300);
+      }
+    }
+
     .header-actions {
       display: flex;
       justify-content: center;
@@ -1128,27 +1283,58 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 1rem;
       padding: 1rem 1.5rem;
       background: linear-gradient(135deg, var(--honey-50) 0%, var(--honey-100) 100%);
       border: 1px solid var(--honey-300);
       border-radius: 12px;
-      margin-bottom: 0.5rem;
+      margin-bottom: 1rem;
 
-      .resume-info {
+      .resume-content {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .resume-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: var(--honey-200);
+        border-radius: 50%;
         color: var(--honey-700);
-        font-weight: 500;
+        flex-shrink: 0;
 
         .t-icon {
           font-size: 1.25rem;
         }
       }
 
+      .resume-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0;
+
+        .resume-title {
+          color: var(--honey-800);
+          font-weight: 600;
+          font-size: 0.95rem;
+        }
+
+        .resume-dict {
+          align-self: flex-start;
+        }
+      }
+
       .resume-actions {
         display: flex;
         gap: 0.5rem;
+        flex-shrink: 0;
       }
     }
 
@@ -1180,15 +1366,44 @@ onUnmounted(() => {
   }
 
   .learning-container {
-    .progress-bar {
-      margin-bottom: 1rem;
+    .learning-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      background: var(--bg-card);
+      border-radius: 16px;
+      margin-bottom: 1.5rem;
 
-      .progress-info {
+      .mastered-display {
         display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-        color: var(--text-secondary);
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--success);
+      }
+
+      .progress-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+
+        .progress-text {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+      }
+
+      .review-display {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--warning);
       }
     }
 
@@ -1392,7 +1607,20 @@ onUnmounted(() => {
     }
 
     h2 {
-      margin-bottom: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .completion-dict {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--honey-50);
+      border: 1px solid var(--honey-200);
+      border-radius: 8px;
+      color: var(--honey-700);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
     }
 
     .completion-stats {
@@ -1606,6 +1834,23 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .learn-page {
+    .settings-bar {
+      .resume-banner {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1rem;
+
+        .resume-content {
+          justify-content: flex-start;
+        }
+
+        .resume-actions {
+          justify-content: flex-end;
+          margin-top: 0.5rem;
+        }
+      }
+    }
+
     .word-card {
       height: 350px;
 
@@ -1659,7 +1904,12 @@ onUnmounted(() => {
         background: var(--accent-bg);
         border-color: rgba(251, 191, 36, 0.3);
 
-        .resume-info {
+        .resume-icon {
+          background: rgba(251, 191, 36, 0.2);
+          color: var(--accent-color);
+        }
+
+        .resume-text .resume-title {
           color: var(--accent-color);
         }
       }
@@ -1796,8 +2046,13 @@ onUnmounted(() => {
       }
     }
 
-    .progress-bar .progress-info {
-      color: var(--text-secondary);
+    .learning-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+
+      .progress-display .progress-text {
+        color: var(--text-primary);
+      }
     }
 
     .auto-learn-bar .auto-status {

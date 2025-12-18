@@ -126,6 +126,36 @@ export default defineConfig({
               }
             }
           },
+          // Supabase API 缓存 - 词典列表（使用 StaleWhileRevalidate 策略）
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/dictionaries.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'supabase-dictionaries-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 30 // 30 minutes
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Supabase API 缓存 - 词典单词（使用 StaleWhileRevalidate 策略）
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/dictionary_words.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'supabase-dictionary-words-cache',
+              expiration: {
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 // 1 hour
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           // Supabase Storage 缓存 - 头像和封面图片（CacheFirst，长期缓存）
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,

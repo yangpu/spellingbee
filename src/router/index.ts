@@ -32,9 +32,19 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/Challenge.vue')
   },
   {
+    path: '/dictionaries',
+    name: 'Dictionaries',
+    component: () => import('@/views/Dictionaries.vue')
+  },
+  {
+    path: '/dictionaries/:id',
+    name: 'DictionaryWords',
+    component: () => import('@/views/Words.vue')
+  },
+  {
     path: '/words',
     name: 'Words',
-    component: () => import('@/views/Words.vue')
+    redirect: '/dictionaries'
   },
   {
     path: '/stats',

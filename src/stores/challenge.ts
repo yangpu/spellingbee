@@ -2448,6 +2448,12 @@ export const useChallengeStore = defineStore('challenge', () => {
       }
     }
 
+    // 获取当前词典的单词
+    const currentActiveWords = wordsStore.activeWords
+    if (currentActiveWords.length === 0) {
+      throw new Error('当前词典没有单词')
+    }
+
     // 生成比赛单词（根据出题模式）
     const words = wordsStore.getWordsForChallenge(
       currentChallenge.value.word_count,
@@ -2462,8 +2468,16 @@ export const useChallengeStore = defineStore('challenge', () => {
       throw new Error('没有足够的单词')
     }
 
+    // 二次验证：确保所有单词都在当前词典中
+    const currentWordSet = new Set(currentActiveWords.map(w => w.word.toLowerCase()))
+    const validWords = words.filter(w => currentWordSet.has(w.word.toLowerCase()))
+    
+    if (validWords.length === 0) {
+      throw new Error('选取的单词不在当前词典中')
+    }
+
     // 初始化游戏
-    gameWords.value = words.map((word, index) => ({
+    gameWords.value = validWords.map((word, index) => ({
       word,
       round: index + 1,
       status: index === 0 ? 'active' : 'pending',
@@ -2699,6 +2713,9 @@ export const useChallengeStore = defineStore('challenge', () => {
     connectionId.value = authStore.user.id
     peerId.value = authStore.user.id
 
+    // 获取当前词典信息
+    const dictionaryInfo = wordsStore.currentDictionaryInfo
+
     const challenge: Omit<Challenge, 'id' | 'created_at'> = {
       ...data,
       show_chinese: data.show_chinese ?? true,
@@ -2707,6 +2724,8 @@ export const useChallengeStore = defineStore('challenge', () => {
       creator_id: authStore.user.id,
       creator_name: authStore.profile?.nickname || authStore.user.email?.split('@')[0],
       creator_avatar: authStore.profile?.avatar_url,
+      dictionary_id: dictionaryInfo?.id,
+      dictionary_name: dictionaryInfo?.name,
       status: 'waiting',
       participants: [{
         user_id: authStore.user.id,

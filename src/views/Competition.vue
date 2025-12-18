@@ -4,6 +4,12 @@
     <div class="page-header" v-if="!competitionStore.isActive">
       <h1>Spelling Bee 比赛</h1>
       <p>模拟真实比赛场景，挑战你的拼写能力</p>
+      <!-- 当前词典信息 -->
+      <div class="current-dictionary" v-if="currentDictionaryInfo" @click="goToDictionary">
+        <t-icon name="book" />
+        <span>{{ currentDictionaryInfo.name }}</span>
+        <t-icon name="chevron-right" size="14px" />
+      </div>
       <div class="header-actions">
         <t-button variant="outline" @click="showSpeechSettings = true" class="speech-btn">
           <template #icon><t-icon name="sound" /></template>
@@ -17,16 +23,20 @@
     </div>
 
     <!-- Pre-competition setup -->
-    <div
-      class="setup-container"
-      v-if="!competitionStore.isActive && !showResults"
-    >
+    <div class="setup-container" v-if="!competitionStore.isActive && !showResults">
       <div class="setup-card">
         <!-- 恢复未完成比赛提示 -->
         <div class="resume-banner" v-if="competitionStore.hasUnfinishedSession">
-          <div class="resume-info">
-            <t-icon name="history" />
-            <span>您有一场未完成的比赛</span>
+          <div class="resume-content">
+            <div class="resume-icon">
+              <t-icon name="history" />
+            </div>
+            <div class="resume-text">
+              <span class="resume-title">您有一场未完成的比赛</span>
+              <t-tag v-if="resumeSessionDictName" size="small" variant="light" class="resume-dict">{{
+                resumeSessionDictName
+                }}</t-tag>
+            </div>
           </div>
           <div class="resume-actions">
             <t-button size="small" variant="outline" @click="competitionStore.clearSession()">
@@ -41,30 +51,15 @@
         <div class="setup-form">
           <div class="form-group">
             <label>单词数量</label>
-            <t-slider
-              v-model="settings.wordCount"
-              :min="5"
-              :max="500"
-              :step="5"
-              :marks="wordCountMarks"
-            />
+            <t-slider v-model="settings.wordCount" :min="5" :max="500" :step="5" :marks="wordCountMarks" />
           </div>
           <div class="form-group">
             <label>答题时间（秒）</label>
-            <t-slider
-              v-model="settings.timeLimit"
-              :min="10"
-              :max="90"
-              :step="5"
-              :marks="timeLimitMarks"
-            />
+            <t-slider v-model="settings.timeLimit" :min="10" :max="90" :step="5" :marks="timeLimitMarks" />
           </div>
           <div class="form-group">
             <label>难度选择</label>
-            <t-radio-group
-              v-model="settings.difficulty"
-              variant="default-filled"
-            >
+            <t-radio-group v-model="settings.difficulty" variant="default-filled">
               <t-radio-button :value="null">全部</t-radio-button>
               <t-radio-button :value="1">简单</t-radio-button>
               <t-radio-button :value="2">较易</t-radio-button>
@@ -75,10 +70,7 @@
           </div>
           <div class="form-group">
             <label>出题模式</label>
-            <t-radio-group
-              v-model="settings.wordMode"
-              variant="default-filled"
-            >
+            <t-radio-group v-model="settings.wordMode" variant="default-filled">
               <t-radio-button value="simulate">模拟</t-radio-button>
               <t-radio-button value="new">新题</t-radio-button>
               <t-radio-button value="wrong">错题</t-radio-button>
@@ -116,7 +108,7 @@
             <li>直接在字母框中输入，正确显示绿色，错误显示红色</li>
             <li>开启语音输入后，先朗读单词，再逐个拼读字母</li>
           </ul>
-          
+
           <h3>计分规则</h3>
           <ul>
             <li><strong>基础分</strong>：正确拼写一个单词得 10 分</li>
@@ -138,8 +130,10 @@
           <span>{{ competitionStore.score }}</span>
         </div>
         <div class="progress-display">
-          {{ competitionStore.progress.current }} /
-          {{ competitionStore.progress.total }}
+          <span class="progress-text">{{ competitionStore.progress.current }} / {{ competitionStore.progress.total
+            }}</span>
+          <t-tag v-if="currentDictionaryInfo" size="small" variant="light">{{
+            currentDictionaryInfo.name }}</t-tag>
         </div>
         <div class="timer-display" :class="timerClass">
           <t-icon name="time" />
@@ -149,7 +143,8 @@
 
       <!-- Announcer -->
       <div class="announcer-section">
-        <div class="announcer-avatar" :class="{ 'avatar-hidden': showResultAnimal }" @click="showAnnouncerSettings = true" title="点击配置播音员">
+        <div class="announcer-avatar" :class="{ 'avatar-hidden': showResultAnimal }"
+          @click="showAnnouncerSettings = true" title="点击配置播音员">
           <img :src="`${baseUrl}bee.svg`" alt="Announcer" />
         </div>
         <!-- 成功小猫动画 -->
@@ -166,7 +161,8 @@
           <p class="announcer-text">{{ announcerMessage }}</p>
           <!-- 中文释义区域 - 始终存在，通过透明度控制显示 -->
           <div class="definition-hint" :class="{ 'hint-visible': showDefinitionHint && currentWord }">
-            <span class="definition-cn" v-if="currentWord">{{ currentWord.definition_cn || currentWord.definition }}</span>
+            <span class="definition-cn" v-if="currentWord">{{ currentWord.definition_cn || currentWord.definition
+            }}</span>
             <span class="definition-cn" v-else>&nbsp;</span>
           </div>
         </div>
@@ -181,55 +177,34 @@
         </div>
 
         <!-- Letter input boxes -->
-        <LetterInput
-          ref="letterInputRef"
-          :word="currentWord?.word || ''"
-          :disabled="isAnswerSubmitted"
-          :auto-submit="settings.assistedInput"
-          :assisted-mode="settings.assistedInput"
-          v-model:letters="currentLetters"
-          @submit="submitAnswer"
-          @change="handleLetterChange"
-        />
+        <LetterInput ref="letterInputRef" :word="currentWord?.word || ''" :disabled="isAnswerSubmitted"
+          :auto-submit="settings.assistedInput" :assisted-mode="settings.assistedInput" v-model:letters="currentLetters"
+          @submit="submitAnswer" @change="handleLetterChange" />
 
         <!-- Voice input toggle and status -->
         <div class="voice-status">
           <div class="voice-toggle">
             <span>语音输入</span>
-            <t-switch
-              v-model="settings.voiceInput"
-              @change="handleVoiceToggle"
-              :disabled="voiceNotSupported"
-            />
+            <t-switch v-model="settings.voiceInput" @change="handleVoiceToggle" :disabled="voiceNotSupported" />
           </div>
           <template v-if="voiceNotSupported">
             <div class="voice-not-supported">
               <t-icon name="error-circle" />
               <span>当前环境不支持语音识别</span>
-              <t-button
-                size="small"
-                theme="primary"
-                @click="openInSystemBrowser"
-              >
+              <t-button size="small" theme="primary" @click="openInSystemBrowser">
                 在浏览器中打开
               </t-button>
             </div>
           </template>
           <template v-else-if="settings.voiceInput">
-            <div
-              class="voice-indicator"
-              :class="{
-                'voice-active': isListening,
-                'voice-spelling': voicePhase === 'spelling',
-              }"
-            >
+            <div class="voice-indicator" :class="{
+              'voice-active': isListening,
+              'voice-spelling': voicePhase === 'spelling',
+            }">
               <t-icon :name="isListening ? 'sound' : 'microphone'" />
               <span>{{ voiceStatusText }}</span>
-              <span
-                v-if="similarityScore !== null"
-                class="similarity-badge"
-                :class="getSimilarityClass(similarityScore)"
-              >
+              <span v-if="similarityScore !== null" class="similarity-badge"
+                :class="getSimilarityClass(similarityScore)">
                 {{ similarityScore }}%
               </span>
             </div>
@@ -239,35 +214,19 @@
 
       <!-- Question buttons -->
       <div class="question-buttons">
-        <t-button
-          variant="outline"
-          @click="askQuestion('pronunciation')"
-          :disabled="askedQuestions.pronunciation"
-        >
+        <t-button variant="outline" @click="askQuestion('pronunciation')" :disabled="askedQuestions.pronunciation">
           <template #icon><t-icon name="sound" /></template>
           发音
         </t-button>
-        <t-button
-          variant="outline"
-          @click="askQuestion('definition')"
-          :disabled="askedQuestions.definition"
-        >
+        <t-button variant="outline" @click="askQuestion('definition')" :disabled="askedQuestions.definition">
           <template #icon><t-icon name="book" /></template>
           释义
         </t-button>
-        <t-button
-          variant="outline"
-          @click="askQuestion('partOfSpeech')"
-          :disabled="askedQuestions.partOfSpeech"
-        >
+        <t-button variant="outline" @click="askQuestion('partOfSpeech')" :disabled="askedQuestions.partOfSpeech">
           <template #icon><t-icon name="layers" /></template>
           词性
         </t-button>
-        <t-button
-          variant="outline"
-          @click="askQuestion('example')"
-          :disabled="askedQuestions.example"
-        >
+        <t-button variant="outline" @click="askQuestion('example')" :disabled="askedQuestions.example">
           <template #icon><t-icon name="chat" /></template>
           例句
         </t-button>
@@ -284,12 +243,8 @@
             <template #icon><t-icon name="next" /></template>
             跳过单词
           </t-button>
-          <t-button
-            theme="primary"
-            size="large"
-            @click="submitAnswer"
-            :disabled="!isAllLettersFilled || isAnswerSubmitted"
-          >
+          <t-button theme="primary" size="large" @click="submitAnswer"
+            :disabled="!isAllLettersFilled || isAnswerSubmitted">
             <template #icon><t-icon name="check" /></template>
             提交答案
           </t-button>
@@ -303,11 +258,7 @@
 
       <!-- 退出比赛按钮 -->
       <div class="exit-competition-section">
-        <t-button
-          variant="text"
-          theme="danger"
-          @click="exitCompetition"
-        >
+        <t-button variant="text" theme="danger" @click="exitCompetition">
           <template #icon><t-icon name="logout" /></template>
           退出比赛
         </t-button>
@@ -357,42 +308,24 @@
         </div>
 
         <!-- Incorrect words review -->
-        <div
-          class="incorrect-words"
-          v-if="competitionStore.incorrectWords.length > 0"
-        >
+        <div class="incorrect-words" v-if="competitionStore.incorrectWords.length > 0">
           <h3>需要复习的单词 ({{ competitionStore.incorrectWords.length }} 词)</h3>
-          
+
           <!-- 工具栏：过滤、搜索 -->
-          <WordListToolbar
-            v-model="incorrectWordsToolbar"
-            :filter-options="incorrectWordsFilterOptions"
-          />
-          
+          <WordListToolbar v-model="incorrectWordsToolbar" :filter-options="incorrectWordsFilterOptions" />
+
           <div class="word-list" v-if="paginatedIncorrectWords.length > 0">
-            <div
-              class="word-item"
-              :class="item._type"
-              v-for="item in paginatedIncorrectWords"
-              :key="item.id"
-            >
+            <div class="word-item" :class="item._type" v-for="item in paginatedIncorrectWords" :key="item.id">
               <div class="word-main">
                 <span class="word-index">{{ item._index }}</span>
                 <span class="correct-word">{{ item.word }}</span>
-                <t-button
-                  variant="text"
-                  size="small"
-                  @click="speakWord(item.word)"
-                >
+                <t-button variant="text" size="small" @click="speakWord(item.word)">
                   <t-icon name="sound" />
                 </t-button>
               </div>
-              <div
-                class="word-user"
-                v-if="
-                  item.userAnswer !== '[超时]' && item.userAnswer !== '[跳过]'
-                "
-              >
+              <div class="word-user" v-if="
+                item.userAnswer !== '[超时]' && item.userAnswer !== '[跳过]'
+              ">
                 你的答案: <span class="wrong">{{ item.userAnswer }}</span>
               </div>
               <div class="word-user" v-else>
@@ -404,32 +337,23 @@
               </div>
             </div>
           </div>
-          
+
           <!-- 空状态 -->
           <div class="empty-filter-result" v-else>
             <t-icon name="search" size="32px" />
             <span>没有找到匹配的单词</span>
           </div>
-          
+
           <!-- 分页器 -->
           <div class="list-pagination" v-if="filteredIncorrectWords.length > incorrectWordsToolbar.pageSize">
-            <t-pagination
-              :current="incorrectWordsToolbar.page"
-              :page-size="incorrectWordsToolbar.pageSize"
-              :total="filteredIncorrectWords.length"
-              :page-size-options="[5, 10, 20]"
-              size="small"
-              @change="handleIncorrectWordsPageChange"
-            />
+            <t-pagination :current="incorrectWordsToolbar.page" :page-size="incorrectWordsToolbar.pageSize"
+              :total="filteredIncorrectWords.length" :page-size-options="[5, 10, 20]" size="small"
+              @change="handleIncorrectWordsPageChange" />
           </div>
         </div>
 
         <div class="results-actions">
-          <t-button
-            variant="outline"
-            size="large"
-            @click="$router.push('/stats')"
-          >
+          <t-button variant="outline" size="large" @click="$router.push('/stats')">
             查看历史
           </t-button>
           <t-button theme="primary" size="large" @click="restartCompetition">
@@ -441,7 +365,7 @@
 
     <!-- 语音配置弹窗 -->
     <SpeechSettings v-model="showSpeechSettings" />
-    
+
     <!-- 播音员配置弹窗 -->
     <AnnouncerSettings v-model="showAnnouncerSettings" />
   </div>
@@ -457,8 +381,10 @@ import {
   onUnmounted,
   nextTick,
 } from 'vue';
+import { useRouter } from 'vue-router';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { useWordsStore } from '@/stores/words';
+import { useDictionaryStore } from '@/stores/dictionary';
 import { useCompetitionStore } from '@/stores/competition';
 import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
@@ -468,12 +394,28 @@ import AnnouncerSettings from '@/components/AnnouncerSettings.vue';
 import LetterInput from '@/components/LetterInput.vue';
 import WordListToolbar from '@/components/WordListToolbar.vue';
 
+const router = useRouter();
 const baseUrl = import.meta.env.BASE_URL;
 const wordsStore = useWordsStore();
+const dictionaryStore = useDictionaryStore();
 const competitionStore = useCompetitionStore();
 const learningStore = useLearningStore();
 const speechStore = useSpeechStore();
 const announcerStore = useAnnouncerStore();
+
+// 当前词典信息（直接从 dictionaryStore 获取，确保响应式）
+// 注意：使用 computed 直接访问 store 属性，Vue 会自动追踪依赖
+const currentDictionaryInfo = computed(() => {
+  // 显式依赖 dictionaryVersion 确保词典切换时重新计算
+  void dictionaryStore.dictionaryVersion;
+  if (dictionaryStore.currentDictionary) {
+    return {
+      id: dictionaryStore.currentDictionary.id,
+      name: dictionaryStore.currentDictionary.name
+    }
+  }
+  return null
+});
 
 // 语音配置弹窗
 const showSpeechSettings = ref(false);
@@ -495,7 +437,7 @@ const incorrectWordsFilterOptions = computed(() => {
   const wrongCount = words.filter(w => w.userAnswer !== '[超时]' && w.userAnswer !== '[跳过]').length;
   const timeoutCount = words.filter(w => w.userAnswer === '[超时]').length;
   const skipCount = words.filter(w => w.userAnswer === '[跳过]').length;
-  
+
   return [
     { value: 'all', label: '全部', count: words.length },
     { value: 'wrong', label: '答错', icon: 'close-circle', type: 'wrong', count: wrongCount },
@@ -511,9 +453,9 @@ const filteredIncorrectWords = computed(() => {
     _originalIndex: i + 1,
     _type: w.userAnswer === '[超时]' ? 'timeout' : (w.userAnswer === '[跳过]' ? 'skip' : 'wrong')
   }));
-  
+
   const { filter, keyword } = incorrectWordsToolbar.value;
-  
+
   // 按类型过滤
   if (filter === 'wrong') {
     words = words.filter(w => w._type === 'wrong');
@@ -522,17 +464,17 @@ const filteredIncorrectWords = computed(() => {
   } else if (filter === 'skip') {
     words = words.filter(w => w._type === 'skip');
   }
-  
+
   // 按关键词搜索
   if (keyword.trim()) {
     const kw = keyword.trim().toLowerCase();
-    words = words.filter(w => 
+    words = words.filter(w =>
       w.word.toLowerCase().includes(kw) ||
       w.definition_cn?.toLowerCase().includes(kw) ||
       w.definition?.toLowerCase().includes(kw)
     );
   }
-  
+
   return words.map((w, i) => ({ ...w, _index: i + 1 }));
 });
 
@@ -593,6 +535,14 @@ function saveSettings() {
   }
 }
 
+// 跳转到词典详情页
+function goToDictionary() {
+  const dictId = currentDictionaryInfo.value?.id
+  if (dictId) {
+    router.push(`/dictionaries/${dictId}`)
+  }
+}
+
 // Word mode hint text
 const wordModeHint = computed(() => {
   switch (settings.wordMode) {
@@ -641,6 +591,9 @@ const showDefinitionHint = ref(false); // 显示中文释义
 const isStarting = ref(false); // 开始比赛按钮加载状态
 const isPaused = ref(false); // 比赛是否因页面切换而暂停
 const isComponentMounted = ref(true); // 组件是否已挂载（用于防止卸载后执行回调）
+
+// 恢复会话相关
+const resumeSessionDictName = computed(() => competitionStore.getSessionDictionaryName());
 
 // Letter input state
 const letterInputRef = ref(null);
@@ -722,54 +675,72 @@ function resumeCompetition() {
 async function doResumeCompetition() {
   // 先获取保存的 session 数据（不恢复状态）
   const savedSession = competitionStore.getSavedSession();
-  
+
   if (!savedSession) {
     MessagePlugin.warning('无法恢复比赛，请开始新比赛');
     return;
   }
+
+  // 验证会话词典与当前词典是否匹配
+  const currentDictId = currentDictionaryInfo.value?.id;
+  if (savedSession.dictionaryId && currentDictId && savedSession.dictionaryId !== currentDictId) {
+    MessagePlugin.warning('词典已变化，无法恢复之前的比赛');
+    competitionStore.clearSession();
+    return;
+  }
+
+  // 验证恢复的单词是否都属于当前词典
+  const currentWordSet = new Set(wordsStore.activeWords.map(w => w.word.toLowerCase()));
+  const validWords = savedSession.words.filter(w => currentWordSet.has(w.word.toLowerCase()));
   
+  if (validWords.length === 0) {
+    MessagePlugin.warning('保存的单词不在当前词典中，无法恢复');
+    competitionStore.clearSession();
+    return;
+  }
+
   // 保存要恢复的用户输入
   const userInputToRestore = savedSession.userInput || '';
-  
+
   // 设置恢复标志
   isRestoring.value = true;
-  
+
   // 恢复比赛状态（这会触发 currentWord 变化和 LetterInput 重置）
   const session = competitionStore.restoreSession();
-  
+
   if (!session) {
     isRestoring.value = false;
     currentLetters.value = '';
     MessagePlugin.warning('无法恢复比赛，请开始新比赛');
     return;
   }
-  
+
   showResults.value = false;
   lastResult.value = null;
   isPaused.value = false;
-  
+
   // Reset state
   resetAskedQuestions();
-  
+
   // 等待 LetterInput 组件完成重置（word watch -> resetSlots -> nextTick）
   await nextTick();
   await nextTick(); // 双重 nextTick 确保 LetterInput 的 resetSlots 完成
-  
+
   // 现在设置用户输入并直接调用 setValue
   if (userInputToRestore) {
     currentLetters.value = userInputToRestore;
     letterInputRef.value?.setValue(userInputToRestore);
   }
-  
+
   // 清除恢复标志
   isRestoring.value = false;
-  
+
   // Start with word announcement
   announceWord();
-  
+
   // Start timer
   startTimer();
-  
+
   // Initialize voice recognition if enabled
   if (settings.voiceInput) {
     initVoiceRecognition();
@@ -781,7 +752,7 @@ async function startCompetition() {
   // 防止重复点击
   if (isStarting.value) return;
   isStarting.value = true;
-  
+
   // 设置超时
   const timeoutId = setTimeout(() => {
     if (isStarting.value) {
@@ -789,30 +760,37 @@ async function startCompetition() {
       MessagePlugin.error('加载超时，请重试');
     }
   }, 10000);
-  
+
   try {
     await wordsStore.init();
-    
+
     // 保存设置
     saveSettings();
-    
+
     // 准备学习记录和比赛记录（用于 new 和 wrong 模式）
     let learningRecordsData = [];
     let competitionRecordsData = [];
-    
+
     if (settings.wordMode === 'new' || settings.wordMode === 'wrong') {
       // 获取学习记录
       learningRecordsData = learningStore.learningRecords.map(r => ({
         word: r.word,
         is_correct: r.is_correct
       }));
-      
+
       // 获取比赛记录
       competitionRecordsData = competitionStore.records.map(r => ({
         incorrect_words: r.incorrect_words || []
       }));
     }
-    
+
+    // 获取当前词典的单词
+    const currentActiveWords = wordsStore.activeWords;
+    if (currentActiveWords.length === 0) {
+      MessagePlugin.warning('当前词典没有单词，请先添加单词或选择其他词典');
+      return;
+    }
+
     // 使用统一的出题管理器获取单词
     const words = wordsStore.getWordsForChallenge(
       settings.wordCount,
@@ -832,10 +810,19 @@ async function startCompetition() {
       return;
     }
 
+    // 二次验证：确保所有单词都在当前词典中
+    const currentWordSet = new Set(currentActiveWords.map(w => w.word.toLowerCase()));
+    const validWords = words.filter(w => currentWordSet.has(w.word.toLowerCase()));
+    
+    if (validWords.length === 0) {
+      MessagePlugin.warning('选取的单词不在当前词典中，请重试');
+      return;
+    }
+
     showResults.value = false;
     lastResult.value = null;
     isPaused.value = false;
-    competitionStore.startCompetition(words, settings.timeLimit);
+    competitionStore.startCompetition(validWords, settings.timeLimit);
 
     // Reset state
     resetAskedQuestions();
@@ -1056,7 +1043,7 @@ function initVoiceRecognition() {
         ) {
           try {
             recognition.value.start();
-          } catch (e) {}
+          } catch (e) { }
         }
       }, 100);
     }
@@ -1934,7 +1921,7 @@ function speakWord(word, callback = null) {
     if (callback) callback();
     return;
   }
-  
+
   speechSynthesis.cancel();
   isSpeaking.value = true;
 
@@ -1945,7 +1932,7 @@ function speakWord(word, callback = null) {
   speechStore.speakWord(word).then(() => {
     // 检查组件是否已卸载
     if (!isComponentMounted.value) return;
-    
+
     isSpeaking.value = false;
     if (callback) {
       callback();
@@ -1966,7 +1953,7 @@ function speakWithCallback(text, callback) {
     if (callback) callback();
     return;
   }
-  
+
   speechSynthesis.cancel();
   isSpeaking.value = true;
 
@@ -1990,7 +1977,7 @@ function pauseVoiceRecognition() {
   if (recognition.value && isListening.value) {
     try {
       recognition.value.stop();
-    } catch (e) {}
+    } catch (e) { }
   }
   isListening.value = false;
 }
@@ -2046,9 +2033,8 @@ function askQuestion(type) {
 
   switch (type) {
     case 'pronunciation':
-      announcerMessage.value = `音标是: ${
-        currentWord.value.pronunciation || '暂无音标'
-      }`;
+      announcerMessage.value = `音标是: ${currentWord.value.pronunciation || '暂无音标'
+        }`;
       // 朗读单词
       speakWord(currentWord.value.word);
       break;
@@ -2059,14 +2045,12 @@ function askQuestion(type) {
       announcerMessage.value = `释义: ${currentWord.value.definition}${defCn}`;
       break;
     case 'partOfSpeech':
-      announcerMessage.value = `词性: ${
-        currentWord.value.part_of_speech || '未知'
-      }`;
+      announcerMessage.value = `词性: ${currentWord.value.part_of_speech || '未知'
+        }`;
       break;
     case 'example':
-      announcerMessage.value = `例句: ${
-        currentWord.value.example_sentence || '暂无例句'
-      }`;
+      announcerMessage.value = `例句: ${currentWord.value.example_sentence || '暂无例句'
+        }`;
       break;
   }
 }
@@ -2097,7 +2081,7 @@ function stopTimer() {
 function handleTimeout() {
   // 检查组件是否已卸载
   if (!isComponentMounted.value) return;
-  
+
   stopTimer();
   stopVoiceInput();
   competitionStore.timeOut();
@@ -2106,7 +2090,7 @@ function handleTimeout() {
 
   // 显示中文释义
   showDefinitionHint.value = true;
-  
+
   // 如果是动物模式，显示动画（playDogSound 会设置 showResultAnimal）
   // 如果是人物模式，不显示动画
   if (announcerStore.settings.type === 'animal') {
@@ -2120,7 +2104,7 @@ function handleTimeout() {
   setTimeout(() => {
     // 再次检查组件是否已卸载
     if (!isComponentMounted.value) return;
-    
+
     showResultAnimal.value = null;
     showDefinitionHint.value = false;
     moveToNextOrEnd();
@@ -2131,18 +2115,18 @@ async function submitAnswer() {
   if (!currentWord.value) return;
   // 检查组件是否已卸载
   if (!isComponentMounted.value) return;
-  
+
   const userAnswer = letterInputRef.value?.getAnswer() || '';
   if (!userAnswer || !letterInputRef.value?.isFilled()) return;
-  
+
   // 标记已提交，禁止修改
   isAnswerSubmitted.value = true;
-  
+
   // 非辅助模式：提交后显示颜色对比
   if (!settings.assistedInput) {
     letterInputRef.value?.showResult();
   }
-  
+
   const isCorrect = competitionStore.checkAnswer(userAnswer);
 
   stopTimer();
@@ -2153,7 +2137,7 @@ async function submitAnswer() {
 
   if (isCorrect) {
     announcerMessage.value = `太棒了！"${currentWord.value.word}" 拼写正确！`;
-    
+
     // 如果是动物模式，显示动画
     if (announcerStore.settings.type === 'animal') {
       showResultAnimal.value = announcerStore.settings.animal.success.type;
@@ -2164,7 +2148,7 @@ async function submitAnswer() {
     playCatSound();
   } else {
     announcerMessage.value = `很遗憾，正确答案是 "${currentWord.value.word}"`;
-    
+
     // 如果是动物模式，显示动画
     if (announcerStore.settings.type === 'animal') {
       showResultAnimal.value = announcerStore.settings.animal.failure.type;
@@ -2177,7 +2161,7 @@ async function submitAnswer() {
   setTimeout(() => {
     // 检查组件是否已卸载
     if (!isComponentMounted.value) return;
-    
+
     // 隐藏动画和释义
     showResultAnimal.value = null;
     showDefinitionHint.value = false;
@@ -2228,7 +2212,7 @@ async function playDogSound() {
 function skipWord() {
   // 检查组件是否已卸载
   if (!isComponentMounted.value) return;
-  
+
   stopTimer();
   stopVoiceInput();
 
@@ -2251,11 +2235,11 @@ function skipWord() {
   setTimeout(() => {
     // 检查组件是否已卸载
     if (!isComponentMounted.value) return;
-    
+
     // 隐藏动画和释义
     showResultAnimal.value = null;
     showDefinitionHint.value = false;
-    
+
     // skipWord 已经移动了索引，直接检查是否还有下一个单词
     if (competitionStore.currentWord) {
       resetAskedQuestions();
@@ -2282,7 +2266,7 @@ function skipWord() {
 async function moveToNextOrEnd() {
   // 检查组件是否已卸载
   if (!isComponentMounted.value) return;
-  
+
   if (competitionStore.nextWord()) {
     resetAskedQuestions();
     initLetterSlots();
@@ -2302,7 +2286,7 @@ async function moveToNextOrEnd() {
 async function endCompetition() {
   // 检查组件是否已卸载
   if (!isComponentMounted.value) return;
-  
+
   stopTimer();
   stopVoiceInput();
   lastResult.value = await competitionStore.endCompetition();
@@ -2339,13 +2323,13 @@ function handleVisibilityChange() {
     // 只有当比赛仍然处于激活状态时才恢复（如果组件已卸载，isActive 会被设为 false）
     if (competitionStore.isActive && isPaused.value) {
       isPaused.value = false;
-      
+
       // 恢复计时器（继续上次剩余时间）
       startTimer();
-      
+
       // 重置输入状态，允许用户继续输入
       isAnswerSubmitted.value = false;
-      
+
       // 重新朗读当前单词
       if (currentWord.value) {
         announcerMessage.value = '比赛继续，请拼写单词...';
@@ -2356,7 +2340,7 @@ function handleVisibilityChange() {
           }
         }, 500);
       }
-      
+
       // 恢复语音识别
       if (settings.voiceInput) {
         initVoiceRecognition();
@@ -2377,10 +2361,10 @@ onMounted(async () => {
   speechStore.init(); // 初始化语音配置
   announcerStore.init(); // 初始化播音员配置
   loadSettings(); // 加载保存的设置
-  
+
   // 监听页面可见性变化
   document.addEventListener('visibilitychange', handleVisibilityChange);
-  
+
   // 自动恢复未完成的比赛
   if (competitionStore.hasUnfinishedSession) {
     resumeCompetition();
@@ -2390,19 +2374,19 @@ onMounted(async () => {
 onUnmounted(() => {
   // 标记组件已卸载，防止后续回调执行
   isComponentMounted.value = false;
-  
+
   // 如果比赛正在进行中，保存当前进度并暂停比赛
   if (competitionStore.isActive) {
     // 保存进度并暂停比赛（这会设置 isActive = false）
     competitionStore.pauseCompetition(currentLetters.value);
   }
-  
+
   // 清理所有定时器和语音实例
   stopTimer();
   stopVoiceInput();
   clearWordPhaseTimer();
   speechSynthesis.cancel();
-  
+
   // 移除可见性监听
   document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
@@ -2436,6 +2420,26 @@ watch(
       color: var(--text-secondary);
     }
 
+    .current-dictionary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--honey-50);
+      border: 1px solid var(--honey-200);
+      border-radius: 8px;
+      color: var(--honey-700);
+      font-size: 0.9rem;
+      margin-top: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: var(--honey-100);
+        border-color: var(--honey-300);
+      }
+    }
+
     .header-actions {
       display: flex;
       justify-content: center;
@@ -2456,27 +2460,58 @@ watch(
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 1rem;
       padding: 1rem 1.5rem;
       background: linear-gradient(135deg, var(--honey-50) 0%, var(--honey-100) 100%);
       border: 1px solid var(--honey-300);
       border-radius: 12px;
       margin-bottom: 1.5rem;
 
-      .resume-info {
+      .resume-content {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .resume-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: var(--honey-200);
+        border-radius: 50%;
         color: var(--honey-700);
-        font-weight: 500;
+        flex-shrink: 0;
 
         .t-icon {
           font-size: 1.25rem;
         }
       }
 
+      .resume-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        min-width: 0;
+
+        .resume-title {
+          color: var(--accent-color);
+          font-weight: 600;
+          font-size: 0.95rem;
+        }
+
+        .resume-dict {
+          align-self: flex-start;
+        }
+      }
+
       .resume-actions {
         display: flex;
         gap: 0.5rem;
+        flex-shrink: 0;
       }
     }
 
@@ -2562,10 +2597,12 @@ watch(
 }
 
 @keyframes float {
+
   0%,
   100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-8px);
   }
@@ -2591,8 +2628,16 @@ watch(
     }
 
     .progress-display {
-      font-size: 1rem;
-      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.25rem;
+
+      .progress-text {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
     }
 
     .timer-display {
@@ -2733,37 +2778,49 @@ watch(
 
   // 动画关键帧
   @keyframes cat-happy {
-    0%, 100% {
+
+    0%,
+    100% {
       transform: translateY(0) rotate(0deg);
     }
+
     25% {
       transform: translateY(-8px) rotate(-5deg);
     }
+
     50% {
       transform: translateY(0) rotate(0deg);
     }
+
     75% {
       transform: translateY(-8px) rotate(5deg);
     }
   }
 
   @keyframes dog-sad {
-    0%, 100% {
+
+    0%,
+    100% {
       transform: translateY(0) rotate(0deg);
     }
+
     25% {
       transform: translateY(2px) rotate(-3deg);
     }
+
     75% {
       transform: translateY(2px) rotate(3deg);
     }
   }
 
   @keyframes sparkle {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
       transform: scale(1) rotate(0deg);
     }
+
     50% {
       opacity: 0.5;
       transform: scale(1.3) rotate(180deg);
@@ -2775,6 +2832,7 @@ watch(
       opacity: 1;
       transform: translateY(0);
     }
+
     100% {
       opacity: 0;
       transform: translateY(10px);
@@ -2782,9 +2840,12 @@ watch(
   }
 
   @keyframes bounce {
-    0%, 100% {
+
+    0%,
+    100% {
       transform: translateY(0);
     }
+
     50% {
       transform: translateY(-5px);
     }
@@ -3005,10 +3066,12 @@ watch(
 }
 
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
@@ -3044,11 +3107,9 @@ watch(
         width: 150px;
         height: 150px;
         border-radius: 50%;
-        background: linear-gradient(
-          135deg,
-          var(--honey-400) 0%,
-          var(--honey-500) 100%
-        );
+        background: linear-gradient(135deg,
+            var(--honey-400) 0%,
+            var(--honey-500) 100%);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -3089,6 +3150,7 @@ watch(
         .text-success {
           color: var(--success);
         }
+
         .text-error {
           color: var(--error);
         }
@@ -3116,7 +3178,7 @@ watch(
         margin-bottom: 1rem;
         color: var(--honey-700);
       }
-      
+
       .empty-filter-result {
         display: flex;
         flex-direction: column;
@@ -3128,7 +3190,7 @@ watch(
         border-radius: 12px;
         margin-top: 1rem;
       }
-      
+
       .list-pagination {
         display: flex;
         justify-content: center;
@@ -3148,11 +3210,11 @@ watch(
           background: white;
           border-radius: 8px;
           border-left: 3px solid var(--error);
-          
+
           &.timeout {
             border-left-color: var(--warning);
           }
-          
+
           &.skip {
             border-left-color: var(--charcoal-400);
           }
@@ -3162,7 +3224,7 @@ watch(
             align-items: center;
             gap: 0.5rem;
             margin-bottom: 0.25rem;
-            
+
             .word-index {
               display: flex;
               align-items: center;
@@ -3228,13 +3290,28 @@ watch(
 @media (max-width: 768px) {
   .setup-container .setup-card {
     padding: 1.5rem;
+
+    .resume-banner {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 1rem;
+
+      .resume-content {
+        justify-content: flex-start;
+      }
+
+      .resume-actions {
+        justify-content: flex-end;
+        margin-top: 0.5rem;
+      }
+    }
   }
 
   .competition-container {
     .competition-header {
       flex-wrap: wrap;
       gap: 1rem;
-      justify-content: center;
+      // justify-content: center;
     }
 
     .word-section .word-mystery .letter-slot {

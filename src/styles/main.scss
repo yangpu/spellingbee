@@ -178,6 +178,25 @@
     color: var(--text-primary) !important;
   }
 
+  // Dropdown menu
+  .t-dropdown__menu {
+    background-color: #2d2d32 !important;
+    border-color: #404045 !important;
+  }
+
+  .t-dropdown__item {
+    color: var(--text-primary) !important;
+
+    &:hover, &.t-is-hover {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    &.t-is-active {
+      background-color: var(--accent-bg) !important;
+      color: var(--accent-color) !important;
+    }
+  }
+
   // Button overrides
   .t-button--theme-default {
     background-color: #3a3a3f !important;

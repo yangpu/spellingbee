@@ -37,6 +37,13 @@
         </div>
       </div>
 
+      <!-- 当前词典 -->
+      <div class="current-dictionary" v-if="challenge?.dictionary_name" @click="goToDictionary">
+        <t-icon name="book" />
+        <span>{{ challenge?.dictionary_name }}</span>
+        <t-icon name="chevron-right" size="14px" />
+      </div>
+
       <div class="room-info">
         <div class="info-card">
           <div class="info-label">参赛积分</div>
@@ -97,7 +104,9 @@
                   <t-icon name="wifi-off" class="offline" />
                   <span class="offline-text">离线</span>
                   <!-- 比赛中显示退赛倒计时 -->
-                  <span v-if="challengeStore.gameStatus === 'playing' && !p.has_left && (p.exit_countdown !== undefined || p.offline_since)" class="exit-countdown">
+                  <span
+                    v-if="challengeStore.gameStatus === 'playing' && !p.has_left && (p.exit_countdown !== undefined || p.offline_since)"
+                    class="exit-countdown">
                     ({{ getExitCountdown(p) }})
                   </span>
                 </template>
@@ -172,7 +181,13 @@
       v-else-if="challengeStore.gameStatus === 'playing' || challengeStore.gameStatus === 'round_result'">
       <!-- 顶部信息栏 -->
       <div class="game-header">
-        <div class="game-title">{{ challenge?.name }}</div>
+        <div class="game-header-left">
+          <div class="game-title">{{ challenge?.name }}</div>
+          <div class="game-dictionary" v-if="challenge?.dictionary_name">
+            <t-icon name="book" size="14px" />
+            <span>{{ challenge?.dictionary_name }}</span>
+          </div>
+        </div>
         <div class="round-info">
           第 {{ challengeStore.currentRound }} / {{ challenge?.word_count }} 轮
         </div>
@@ -193,7 +208,8 @@
           </div>
           <span class="score-name">{{ p.nickname }}</span>
           <!-- 离线倒计时 -->
-          <span v-if="!isParticipantOnline(p) && !p.has_left && (p.exit_countdown !== undefined || p.offline_since)" class="exit-countdown-badge">
+          <span v-if="!isParticipantOnline(p) && !p.has_left && (p.exit_countdown !== undefined || p.offline_since)"
+            class="exit-countdown-badge">
             {{ getExitCountdown(p) }}
           </span>
           <span class="score-value">{{ p.score }}</span>
@@ -340,45 +356,58 @@
             <div class="header-overlay"></div>
           </div>
 
-          <!-- 比赛信息内容 -->
+          <!-- 比赛信息内容（简化版，只显示名称和时间） -->
           <div class="header-content">
             <h3 class="challenge-name">{{ challenge?.name }}</h3>
-            <div class="challenge-stats">
-              <div class="stat-item">
-                <t-icon name="layers" />
-                <span>{{ challenge?.word_count }} 词</span>
-              </div>
-              <div class="stat-item">
-                <t-icon name="time" />
-                <span>{{ challenge?.time_limit }}s/题</span>
-              </div>
-              <div class="stat-item">
-                <t-icon name="chart-bar" />
-                <span>{{ getDifficultyText(challenge?.difficulty) }}</span>
-              </div>
-              <div class="stat-item">
-                <t-icon name="setting" />
-                <span>{{ getWordModeText(challenge?.word_mode) }}</span>
-              </div>
-            </div>
-            <div class="challenge-config">
-              <t-tag size="small" variant="light" theme="warning">
-                <t-icon name="star" /> {{ challenge?.entry_fee }} 积分
-              </t-tag>
-              <t-tag size="small" variant="light" v-if="challenge?.show_chinese !== false">
-                中文提示
-              </t-tag>
-              <t-tag size="small" variant="light" v-if="challenge?.show_english !== false">
-                英文提示
-              </t-tag>
-              <t-tag size="small" variant="light" :theme="challenge?.assisted_input !== false ? 'primary' : 'default'">
-                {{ challenge?.assisted_input !== false ? '辅助输入' : '无辅助' }}
-              </t-tag>
-            </div>
             <div class="challenge-time">
-              <span><t-icon name="calendar" /> {{ formatDateTime(challenge?.created_at) }}</span>
+              <t-icon name="calendar" />
+              <span>{{ formatDateTime(challenge?.created_at) }}</span>
               <span v-if="challenge?.finished_at"> → {{ formatDateTime(challenge?.finished_at, true) }}</span>
             </div>
+          </div>
+        </div>
+
+        <!-- 比赛详情信息（移到背景图片外部） -->
+        <div class="challenge-details">
+          <!-- 词典信息 -->
+          <div class="detail-row dictionary" v-if="challenge?.dictionary_name" @click="goToDictionary">
+            <t-icon name="book" />
+            <span>{{ challenge?.dictionary_name }}</span>
+            <t-icon name="chevron-right" size="14px" />
+          </div>
+          <!-- 比赛参数 -->
+          <div class="detail-row stats">
+            <div class="stat-item">
+              <t-icon name="layers" />
+              <span>{{ challenge?.word_count }} 词</span>
+            </div>
+            <div class="stat-item">
+              <t-icon name="time" />
+              <span>{{ challenge?.time_limit }}s/题</span>
+            </div>
+            <div class="stat-item">
+              <t-icon name="chart-bar" />
+              <span>{{ getDifficultyText(challenge?.difficulty) }}</span>
+            </div>
+            <div class="stat-item">
+              <t-icon name="setting" />
+              <span>{{ getWordModeText(challenge?.word_mode) }}</span>
+            </div>
+          </div>
+          <!-- 配置标签 -->
+          <div class="detail-row config">
+            <t-tag size="small" variant="light" theme="warning">
+              <t-icon name="star" /> {{ challenge?.entry_fee }} 积分
+            </t-tag>
+            <t-tag size="small" variant="light" v-if="challenge?.show_chinese !== false">
+              中文提示
+            </t-tag>
+            <t-tag size="small" variant="light" v-if="challenge?.show_english !== false">
+              英文提示
+            </t-tag>
+            <t-tag size="small" variant="light" :theme="challenge?.assisted_input !== false ? 'primary' : 'default'">
+              {{ challenge?.assisted_input !== false ? '辅助输入' : '无辅助' }}
+            </t-tag>
           </div>
         </div>
 
@@ -443,51 +472,45 @@
                 <span class="filter-label">全部</span>
                 <span class="filter-count">{{ recordsStats.all }}</span>
               </div>
-              <div class="filter-item correct" :class="{ active: recordsFilter === 'correct' }" @click="setRecordsFilter('correct')">
+              <div class="filter-item correct" :class="{ active: recordsFilter === 'correct' }"
+                @click="setRecordsFilter('correct')">
                 <t-icon name="check-circle" />
                 <span class="filter-label">正确</span>
                 <span class="filter-count">{{ recordsStats.correct }}</span>
               </div>
-              <div class="filter-item wrong" :class="{ active: recordsFilter === 'wrong' }" @click="setRecordsFilter('wrong')">
+              <div class="filter-item wrong" :class="{ active: recordsFilter === 'wrong' }"
+                @click="setRecordsFilter('wrong')">
                 <t-icon name="close-circle" />
                 <span class="filter-label">错误</span>
                 <span class="filter-count">{{ recordsStats.wrong }}</span>
               </div>
-              <div class="filter-item other" :class="{ active: recordsFilter === 'other' }" @click="setRecordsFilter('other')">
+              <div class="filter-item other" :class="{ active: recordsFilter === 'other' }"
+                @click="setRecordsFilter('other')">
                 <t-icon name="help-circle" />
                 <span class="filter-label">其他</span>
                 <span class="filter-count">{{ recordsStats.other }}</span>
               </div>
             </div>
-            
+
             <!-- 移动端下拉筛选 -->
             <div class="records-filter-mobile">
-              <t-select
-                v-model="recordsFilter"
-                size="small"
-                @change="handleFilterChange"
-              >
+              <t-select v-model="recordsFilter" size="small" @change="handleFilterChange">
                 <t-option value="all" :label="`全部 (${recordsStats.all})`" />
                 <t-option value="correct" :label="`正确 (${recordsStats.correct})`" />
                 <t-option value="wrong" :label="`错误 (${recordsStats.wrong})`" />
                 <t-option value="other" :label="`其他 (${recordsStats.other})`" />
               </t-select>
             </div>
-            
+
             <!-- 搜索框 -->
             <div class="records-search">
-              <t-input
-                v-model="recordsSearchKeyword"
-                placeholder="搜索单词..."
-                clearable
-                size="small"
-                @change="handleRecordsSearch"
-              >
+              <t-input v-model="recordsSearchKeyword" placeholder="搜索单词..." clearable size="small"
+                @change="handleRecordsSearch">
                 <template #prefix-icon><t-icon name="search" /></template>
               </t-input>
             </div>
           </div>
-          
+
           <div class="record-item" v-for="(gameWord, index) in paginatedGameWords" :key="gameWord.word.word + index">
             <div class="record-word-row">
               <span class="round-num">{{ gameWord.originalIndex }}</span>
@@ -511,15 +534,9 @@
           </div>
           <!-- 分页控制 -->
           <div class="records-pagination" v-if="filteredGameWords.length > 0">
-            <t-pagination
-              v-model:current="recordsCurrentPage"
-              v-model:page-size="recordsPageSize"
-              :total="filteredGameWords.length"
-              :page-size-options="recordsPageSizeOptions"
-              :show-jumper="true"
-              size="small"
-              @change="handleRecordsPageChange"
-            />
+            <t-pagination v-model:current="recordsCurrentPage" v-model:page-size="recordsPageSize"
+              :total="filteredGameWords.length" :page-size-options="recordsPageSizeOptions" :show-jumper="true"
+              size="small" @change="handleRecordsPageChange" />
           </div>
         </div>
       </div>
@@ -555,6 +572,14 @@ function getCoverUrl(imageUrl) {
   return imageUrl
 }
 
+// 跳转到词典详情页
+function goToDictionary() {
+  const dictId = challenge.value?.dictionary_id
+  if (dictId) {
+    router.push(`/dictionaries/${dictId}`)
+  }
+}
+
 const starting = ref(false)
 const letterInputRef = ref(null)
 const showRecords = ref(true) // 是否显示比赛记录（默认展开）
@@ -574,7 +599,7 @@ const recordsStats = computed(() => {
   let correct = 0
   let wrong = 0
   let other = 0
-  
+
   challengeStore.gameWords.forEach(gw => {
     // 查找当前用户的答题结果
     const myResult = gw.results?.find(r => r.user_id === userId)
@@ -589,7 +614,7 @@ const recordsStats = computed(() => {
       other++
     }
   })
-  
+
   return {
     all: challengeStore.gameWords.length,
     correct,
@@ -605,7 +630,7 @@ const filteredGameWords = computed(() => {
     ...gw,
     originalIndex: idx + 1
   }))
-  
+
   // 先按分类过滤
   if (recordsFilter.value === 'correct') {
     result = result.filter(gw => {
@@ -623,17 +648,17 @@ const filteredGameWords = computed(() => {
       return !myResult // 没有当前用户的答题记录
     })
   }
-  
+
   // 再按搜索关键词过滤
   if (recordsSearchKeyword.value.trim()) {
     const keyword = recordsSearchKeyword.value.trim().toLowerCase()
-    result = result.filter(gw => 
+    result = result.filter(gw =>
       gw.word.word.toLowerCase().includes(keyword) ||
       gw.word.definition_cn?.toLowerCase().includes(keyword) ||
       gw.word.definition?.toLowerCase().includes(keyword)
     )
   }
-  
+
   return result
 })
 
@@ -709,7 +734,7 @@ function stopCountdownTimer() {
 function getExitCountdown(participant) {
   // 触发响应式更新
   void countdownTick.value
-  
+
   // 优先使用房主广播的 exit_countdown（确保所有客户端同步）
   if (participant.exit_countdown !== undefined && participant.exit_countdown !== null) {
     if (participant.exit_countdown <= 0) {
@@ -717,21 +742,21 @@ function getExitCountdown(participant) {
     }
     return `${participant.exit_countdown}秒后退赛`
   }
-  
+
   // 本地计算（房主自己不会收到广播，或者房主离线时其他客户端需要自己计算）
   if (participant.offline_since) {
     const now = Date.now()
     const elapsed = now - participant.offline_since
     const remaining = challengeStore.OFFLINE_PROTECTION_TIME - elapsed
-    
+
     if (remaining <= 0) {
       return '即将退赛'
     }
-    
+
     const seconds = Math.ceil(remaining / 1000)
     return `${seconds}秒后退赛`
   }
-  
+
   return ''
 }
 
@@ -1257,6 +1282,26 @@ onUnmounted(() => {
     }
   }
 
+  .current-dictionary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--honey-50);
+    border: 1px solid var(--honey-200);
+    border-radius: 8px;
+    color: var(--honey-700);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: var(--honey-100);
+      border-color: var(--honey-300);
+    }
+  }
+
   .room-info {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1373,15 +1418,15 @@ onUnmounted(() => {
           .ready {
             color: var(--success);
           }
-          
+
           .offline {
             color: var(--error);
           }
-          
+
           .offline-text {
             color: var(--error);
           }
-          
+
           .exit-countdown {
             color: var(--warning);
             font-weight: 500;
@@ -1462,10 +1507,29 @@ onUnmounted(() => {
     border-radius: 12px;
     margin-bottom: 1.5rem;
 
+    .game-header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
     .game-title {
       font-size: 1rem;
       font-weight: 600;
       color: var(--text-primary);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .game-dictionary {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      color: var(--honey-600);
       max-width: 200px;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1555,7 +1619,7 @@ onUnmounted(() => {
         font-weight: 700;
         color: var(--honey-600);
       }
-      
+
       .exit-countdown-badge {
         font-size: 0.7rem;
         color: var(--warning);
@@ -1567,10 +1631,10 @@ onUnmounted(() => {
         text-align: center;
         white-space: nowrap;
       }
-      
+
       &.is-offline {
         opacity: 0.7;
-        
+
         .score-name {
           color: var(--text-muted);
         }
@@ -1884,7 +1948,7 @@ onUnmounted(() => {
 
     .finish-card-header {
       position: relative;
-      min-height: 160px;
+      min-height: 120px;
       overflow: hidden;
 
       .header-background {
@@ -1911,7 +1975,7 @@ onUnmounted(() => {
           right: 0;
           bottom: 0;
           background: linear-gradient(to bottom,
-              rgba(0, 0, 0, 0.2) 0%,
+              rgba(0, 0, 0, 0.3) 0%,
               rgba(0, 0, 0, 0.6) 100%);
         }
       }
@@ -1919,21 +1983,59 @@ onUnmounted(() => {
       .header-content {
         position: relative;
         z-index: 1;
-        padding: 1.25rem;
+        padding: 1.5rem;
         display: flex;
         flex-direction: column;
-        justify-content: flex-end;
-        min-height: 160px;
+        align-items: center;
+        justify-content: center;
+        min-height: 120px;
         color: white;
+        text-align: center;
 
         .challenge-name {
-          margin: 0 0 0.75rem;
-          font-size: 1.25rem;
+          margin: 0 0 0.5rem;
+          font-size: 1.35rem;
           font-weight: 700;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+          text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
         }
 
-        .challenge-stats {
+        .challenge-time {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.85rem;
+          opacity: 0.9;
+          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        }
+      }
+    }
+
+    .challenge-details {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+
+      .detail-row {
+        &.dictionary {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          background: var(--honey-50);
+          border: 1px solid var(--honey-200);
+          border-radius: 8px;
+          color: var(--honey-700);
+          font-size: 0.9rem;
+          margin-bottom: 0.75rem;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &:hover {
+            background: var(--honey-100);
+            border-color: var(--honey-300);
+          }
+        }
+
+        &.stats {
           display: flex;
           flex-wrap: wrap;
           gap: 1rem;
@@ -1943,42 +2045,19 @@ onUnmounted(() => {
             display: flex;
             align-items: center;
             gap: 0.35rem;
-            font-size: 0.9rem;
-            opacity: 0.95;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
 
             .t-icon {
-              font-size: 1rem;
+              color: var(--honey-500);
             }
           }
         }
 
-        .challenge-config {
+        &.config {
           display: flex;
           flex-wrap: wrap;
           gap: 0.5rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .challenge-time {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-          font-size: 0.8rem;
-          opacity: 0.85;
-
-          span {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-          }
-        }
-      }
-
-      &.has-cover {
-        .header-content {
-          .challenge-name {
-            color: white;
-          }
         }
       }
     }
@@ -2303,6 +2382,7 @@ onUnmounted(() => {
             .t-icon {
               color: var(--success);
             }
+
             &.active {
               border-color: var(--success);
               background: var(--success-light, #d1fae5);
@@ -2313,6 +2393,7 @@ onUnmounted(() => {
             .t-icon {
               color: var(--error);
             }
+
             &.active {
               border-color: var(--error);
               background: var(--error-light, #fee2e2);
@@ -2323,6 +2404,7 @@ onUnmounted(() => {
             .t-icon {
               color: var(--text-secondary);
             }
+
             &.active {
               border-color: var(--charcoal-400);
               background: var(--charcoal-100);
@@ -2476,6 +2558,22 @@ onUnmounted(() => {
     }
   }
 
+  .room-playing {
+    .game-header {
+      .game-header-left {
+        max-width: 120px;
+      }
+
+      .game-title {
+        max-width: 120px;
+      }
+
+      .game-dictionary {
+        max-width: 120px;
+      }
+    }
+  }
+
   .room-finished {
     .records-card {
       .records-content {
@@ -2484,11 +2582,11 @@ onUnmounted(() => {
             display: block;
             flex: 1;
           }
-          
+
           .records-filter-pc {
             display: none !important;
           }
-          
+
           .records-search {
             width: 140px;
           }
@@ -2496,6 +2594,7 @@ onUnmounted(() => {
       }
 
       .records-pagination {
+
         // 移动端隐藏跳转控件
         :deep(.t-pagination__jump) {
           display: none;

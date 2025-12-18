@@ -1,7 +1,8 @@
-import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { defineStore, storeToRefs } from 'pinia'
+import { ref, computed, toRef } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
+import { useDictionaryStore } from './dictionary'
 import type { Word } from '@/types'
 
 // Default word list for offline/demo mode
@@ -51,13 +52,69 @@ export const useWordsStore = defineStore('words', () => {
   const useLocalStorage = ref(true)
 
   const authStore = useAuthStore()
+  
+  // 延迟获取 dictionaryStore 的响应式引用
+  // 使用闭包缓存，确保只初始化一次
+  let _dictionaryRefs: {
+    currentDictionary: ReturnType<typeof toRef<ReturnType<typeof useDictionaryStore>, 'currentDictionary'>>
+    currentWords: ReturnType<typeof toRef<ReturnType<typeof useDictionaryStore>, 'currentWords'>>
+    dictionaryVersion: ReturnType<typeof toRef<ReturnType<typeof useDictionaryStore>, 'dictionaryVersion'>>
+  } | null = null
+  
+  const getDictionaryRefs = () => {
+    if (!_dictionaryRefs) {
+      const store = useDictionaryStore()
+      const refs = storeToRefs(store)
+      _dictionaryRefs = {
+        currentDictionary: refs.currentDictionary,
+        currentWords: refs.currentWords,
+        dictionaryVersion: refs.dictionaryVersion
+      }
+    }
+    return _dictionaryRefs
+  }
+  
+  // Computed - 仅使用当前词典中的单词
+  // 通过 storeToRefs 获取的 ref 建立正确的响应式依赖
+  const wordCount = computed(() => {
+    const { currentDictionary, currentWords, dictionaryVersion } = getDictionaryRefs()
+    // 显式读取 dictionaryVersion 确保词典切换时重新计算
+    void dictionaryVersion.value
+    if (currentDictionary.value) {
+      return currentWords.value.length
+    }
+    return 0
+  })
 
-  // Computed
-  const wordCount = computed(() => words.value.length)
+  // 获取当前活跃的单词列表（仅当前词典）
+  const activeWords = computed(() => {
+    const { currentDictionary, currentWords, dictionaryVersion } = getDictionaryRefs()
+    // 显式读取 dictionaryVersion 确保词典切换时重新计算
+    void dictionaryVersion.value
+    if (currentDictionary.value && currentWords.value.length > 0) {
+      return [...currentWords.value] // 返回新数组确保响应性
+    }
+    // 没有选择词典或词典没有单词时返回空数组
+    return []
+  })
+
+  // 获取当前词典信息
+  const currentDictionaryInfo = computed(() => {
+    const { currentDictionary, dictionaryVersion } = getDictionaryRefs()
+    // 显式读取 dictionaryVersion 确保词典切换时重新计算
+    void dictionaryVersion.value
+    if (currentDictionary.value) {
+      return {
+        id: currentDictionary.value.id,
+        name: currentDictionary.value.name
+      }
+    }
+    return null
+  })
 
   const wordsByDifficulty = computed(() => {
     const grouped: Record<number, Word[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] }
-    words.value.forEach(word => {
+    activeWords.value.forEach(word => {
       if (grouped[word.difficulty]) {
         grouped[word.difficulty].push(word)
       }
@@ -67,7 +124,7 @@ export const useWordsStore = defineStore('words', () => {
 
   const wordsByCategory = computed(() => {
     const grouped: Record<string, Word[]> = {}
-    words.value.forEach(word => {
+    activeWords.value.forEach(word => {
       const category = word.category || 'uncategorized'
       if (!grouped[category]) {
         grouped[category] = []
@@ -101,34 +158,31 @@ export const useWordsStore = defineStore('words', () => {
     
     loading.value = true
     try {
+      // 初始化词典 store（这会加载当前选用的词典）
+      const dictionaryStore = useDictionaryStore()
+      await dictionaryStore.init()
+      
+      // 如果词典 store 已有单词，不需要额外加载
+      if (dictionaryStore.currentWords.length > 0) {
+        loading.value = false
+        return
+      }
+      
       // Try to load from Supabase first
       if (authStore.user) {
         await fetchWordsFromSupabase()
       }
 
-      // If no words loaded, use local storage or default
+      // If no words loaded, use local storage
       if (words.value.length === 0) {
         loadFromLocalStorage()
       }
-
-      // If still no words, load grade3 word list as default
-      if (words.value.length === 0) {
-        try {
-          await replaceWithWordList('grade3-400')
-        } catch (e) {
-          // Fallback to default words if grade3 list fails to load
-          console.error('Failed to load grade3 word list, using defaults:', e)
-          words.value = [...defaultWords]
-          saveToLocalStorage()
-        }
-      }
+      
+      // 不再默认加载 grade3 词库，用户需要选择词典
     } catch (error) {
       console.error('Error initializing words:', error)
       // Fallback to local storage
       loadFromLocalStorage()
-      if (words.value.length === 0) {
-        words.value = [...defaultWords]
-      }
     } finally {
       loading.value = false
     }
@@ -268,7 +322,7 @@ export const useWordsStore = defineStore('words', () => {
 
   // Get random words for practice/competition
   function getRandomWords(count = 10, difficulty: number | null = null): Word[] {
-    let filtered = [...words.value]
+    let filtered = [...activeWords.value]
 
     if (difficulty !== null) {
       filtered = filtered.filter(w => w.difficulty === difficulty)
@@ -301,7 +355,7 @@ export const useWordsStore = defineStore('words', () => {
     challengeRecords: { word: string; is_correct: boolean }[] = []
   ): Word[] {
     // 先按难度筛选
-    let filtered = [...words.value]
+    let filtered = [...activeWords.value]
     if (difficulty !== null) {
       filtered = filtered.filter(w => w.difficulty === difficulty)
     }
@@ -488,13 +542,13 @@ export const useWordsStore = defineStore('words', () => {
 
   // Get word by ID
   function getWordById(id: string): Word | undefined {
-    return words.value.find(w => w.id === id)
+    return activeWords.value.find(w => w.id === id)
   }
 
   // Search words
   function searchWords(query: string): Word[] {
     const q = query.toLowerCase()
-    return words.value.filter(w =>
+    return activeWords.value.filter(w =>
       w.word.toLowerCase().includes(q) ||
       w.definition.toLowerCase().includes(q)
     )
@@ -558,6 +612,8 @@ export const useWordsStore = defineStore('words', () => {
     userWords,
     loading,
     wordCount,
+    activeWords,
+    currentDictionaryInfo,
     wordsByDifficulty,
     wordsByCategory,
     availableWordLists,

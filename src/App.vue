@@ -22,9 +22,9 @@
           <t-icon name="usergroup" />
           <span>挑战</span>
         </router-link>
-        <router-link to="/words" class="nav-link">
+        <router-link to="/dictionaries" class="nav-link">
           <t-icon name="book" />
-          <span>词库</span>
+          <span>词典</span>
         </router-link>
         <router-link to="/stats" class="nav-link">
           <t-icon name="chart" />
@@ -124,23 +124,23 @@ let notificationInitialized = false;
 // 从云端加载主题
 const loadThemeFromCloud = async () => {
   if (!authStore.user) return;
-  
+
   try {
     const { data, error } = await supabase
       .from('user_settings')
       .select('theme')
       .eq('user_id', authStore.user.id)
       .maybeSingle();
-    
+
     if (error) {
       console.error('Error loading theme from cloud:', error);
       return;
     }
-    
+
     if (data?.theme) {
       const cloudTheme = data.theme;
       const localTheme = localStorage.getItem(THEME_KEY);
-      
+
       // 如果云端主题与当前不同，应用云端主题
       if (cloudTheme !== localTheme) {
         document.documentElement.setAttribute('data-theme', cloudTheme);
@@ -348,12 +348,12 @@ const handleOffline = () => {
 // Initialize
 onMounted(async () => {
   await authStore.init();
-  
+
   // 加载云端主题（在 authStore.init 之后，确保用户已登录）
   if (authStore.user) {
     await loadThemeFromCloud();
   }
-  
+
   await speechStore.init();
   await wordsStore.init();
   await learningStore.init();

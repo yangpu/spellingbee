@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
+import { useWordsStore } from './words'
 import type { Word, CompetitionRecord, IncorrectWord, CompetitionSession } from '@/types'
 
 const SESSION_KEY = 'spellingbee_competition_session'
@@ -45,6 +46,10 @@ export const useCompetitionStore = defineStore('competition', () => {
       return
     }
     
+    // 获取当前词典信息
+    const wordsStore = useWordsStore()
+    const dictInfo = wordsStore.currentDictionaryInfo
+    
     const session: CompetitionSession = {
       words: words.value,
       currentWordIndex: currentWordIndex.value,
@@ -56,7 +61,9 @@ export const useCompetitionStore = defineStore('competition', () => {
       startTime: startTime.value,
       streak: streak.value,
       savedAt: Date.now(),
-      userInput: userInput || ''
+      userInput: userInput || '',
+      dictionaryId: dictInfo?.id || '',
+      dictionaryName: dictInfo?.name || ''
     }
     
     localStorage.setItem(SESSION_KEY, JSON.stringify(session))
@@ -122,6 +129,12 @@ export const useCompetitionStore = defineStore('competition', () => {
   function clearSession(): void {
     localStorage.removeItem(SESSION_KEY)
     _hasSession.value = false
+  }
+
+  // 获取会话词典名称
+  function getSessionDictionaryName(): string {
+    const session = getSavedSession()
+    return session?.dictionaryName || ''
   }
 
   // Start competition
@@ -265,7 +278,8 @@ export const useCompetitionStore = defineStore('competition', () => {
       })),
       accuracy: accuracy.value,
       duration,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      dictionary_name: useWordsStore().currentDictionaryInfo?.name
     }
 
     // Save to Supabase if logged in
@@ -443,6 +457,7 @@ export const useCompetitionStore = defineStore('competition', () => {
     getSavedSession,
     restoreSession,
     clearSession,
+    getSessionDictionaryName,
     clearAllRecords
   }
 })

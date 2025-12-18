@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" width="400" height="240">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF3C7"/>
+      <stop offset="100%" stop-color="#FDE68A"/>
+    </linearGradient>
+    <linearGradient id="bookGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="240" fill="url(#bgGrad)"/>
+  
+  <!-- Decorative circles -->
+  <circle cx="50" cy="40" r="30" fill="#FCD34D" opacity="0.4"/>
+  <circle cx="350" cy="200" r="40" fill="#FCD34D" opacity="0.3"/>
+  <circle cx="380" cy="60" r="20" fill="#FBBF24" opacity="0.3"/>
+  
+  <!-- Book icon -->
+  <g transform="translate(120, 50)">
+    <!-- Book spine -->
+    <rect x="0" y="10" width="24" height="120" rx="4" fill="url(#bookGrad)"/>
+    
+    <!-- Book cover -->
+    <path d="M24 10 L24 130 Q75 124 120 130 L120 10 Q75 16 24 10" fill="#FBBF24"/>
+    
+    <!-- Book pages -->
+    <path d="M30 18 L30 122 Q72 118 108 122 L108 18 Q72 22 30 18" fill="#FFFBEB"/>
+    
+    <!-- Page lines -->
+    <line x1="42" y1="40" x2="96" y2="38" stroke="#D1D5DB" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="58" x2="96" y2="56" stroke="#D1D5DB" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="76" x2="96" y2="74" stroke="#D1D5DB" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="94" x2="80" y2="92" stroke="#D1D5DB" stroke-width="3" stroke-linecap="round"/>
+    
+    <!-- ABC text on book -->
+    <text x="69" y="72" font-family="Georgia, serif" font-size="20" font-weight="bold" fill="#D97706" text-anchor="middle">ABC</text>
+  </g>
+  
+  <!-- Bee icon -->
+  <g transform="translate(265, 70)">
+    <!-- Wings -->
+    <ellipse cx="22" cy="8" rx="16" ry="10" fill="#F3F4F6" opacity="0.9"/>
+    <ellipse cx="35" cy="5" rx="14" ry="8" fill="#F3F4F6" opacity="0.7"/>
+    <!-- Body -->
+    <ellipse cx="25" cy="30" rx="22" ry="16" fill="#FCD34D"/>
+    <!-- Stripes -->
+    <rect x="10" y="24" width="30" height="5" rx="2" fill="#1F2937"/>
+    <rect x="12" y="34" width="26" height="5" rx="2" fill="#1F2937"/>
+    <!-- Head -->
+    <circle cx="50" cy="30" r="12" fill="#FCD34D"/>
+    <!-- Eye -->
+    <circle cx="55" cy="28" r="4" fill="#1F2937"/>
+    <circle cx="56" cy="27" r="1.5" fill="#FFFFFF"/>
+    <!-- Antenna -->
+    <path d="M56 18 Q62 10 68 12" stroke="#1F2937" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <circle cx="68" cy="12" r="3" fill="#1F2937"/>
+  </g>
+  
+  <!-- Bottom text -->
+  <text x="200" y="205" font-family="Arial, sans-serif" font-size="16" fill="#92400E" text-anchor="middle" font-weight="600">Dictionary</text>
+</svg>

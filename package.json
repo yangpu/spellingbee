@@ -1,6 +1,6 @@
 {
   "name": "spellingbee",
-  "version": "1.10.31",
+  "version": "2.1.1",
   "private": true,
   "type": "module",
   "scripts": {
