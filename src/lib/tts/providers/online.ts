@@ -118,9 +118,8 @@ export class OnlineTTSProvider implements TTSProvider {
     en: OnlineTTSConfig
     zh: OnlineTTSConfig
   }
-  private audioContext: AudioContext | null = null
-  private currentSource: AudioBufferSourceNode | null = null
-  private currentAudio: HTMLAudioElement | null = null  // 用于有道等直接播放 URL 的供应商
+  private currentAudio: HTMLAudioElement | null = null  // 用于播放音频
+  private currentBlobUrl: string | null = null  // 跟踪当前 Blob URL 以便清理
 
   constructor() {
     this.config = {
@@ -575,49 +574,75 @@ export class OnlineTTSProvider implements TTSProvider {
 
   /**
    * 播放音频数据
+   * 使用 HTMLAudioElement 播放，兼容移动端
+   * 复用同一个 Audio 元素以支持移动端连续播放
    */
   private async playAudio(audioData: ArrayBuffer, volume: number): Promise<void> {
-    this.stop()
-
-    if (!this.audioContext) {
-      this.audioContext = new AudioContext()
+    // 清理之前的 Blob URL
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl)
+      this.currentBlobUrl = null
     }
+
+    // 创建新的 Blob URL
+    const blob = new Blob([audioData], { type: 'audio/mpeg' })
+    const url = URL.createObjectURL(blob)
+    this.currentBlobUrl = url
     
-    // 确保 AudioContext 处于运行状态（某些浏览器需要用户交互后才能播放）
-    if (this.audioContext.state === 'suspended') {
-      await this.audioContext.resume()
-    }
-
-    const audioBuffer = await this.audioContext.decodeAudioData(audioData.slice(0))
-    const source = this.audioContext.createBufferSource()
-    const gainNode = this.audioContext.createGain()
-
-    source.buffer = audioBuffer
-    gainNode.gain.value = volume
-
-    source.connect(gainNode)
-    gainNode.connect(this.audioContext.destination)
-
-    this.currentSource = source
-
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // 复用或创建 Audio 元素
+      // 移动端需要复用同一个 Audio 元素才能连续播放
+      if (!this.currentAudio) {
+        this.currentAudio = new Audio()
+      }
+      
+      const audio = this.currentAudio
+      audio.volume = volume
+      
       // 超时保护
       const timeoutId = setTimeout(() => {
-        try {
-          source.stop()
-        } catch {
-          // 忽略
+        if (this.currentBlobUrl === url) {
+          URL.revokeObjectURL(url)
+          this.currentBlobUrl = null
         }
-        this.currentSource = null
         resolve()
-      }, 10000)  // 10秒超时
+      }, 30000)  // 30秒超时
       
-      source.onended = () => {
+      const cleanup = () => {
         clearTimeout(timeoutId)
-        this.currentSource = null
+        audio.onended = null
+        audio.onerror = null
+      }
+      
+      audio.onended = () => {
+        cleanup()
+        if (this.currentBlobUrl === url) {
+          URL.revokeObjectURL(url)
+          this.currentBlobUrl = null
+        }
         resolve()
       }
-      source.start()
+      
+      audio.onerror = (e) => {
+        cleanup()
+        if (this.currentBlobUrl === url) {
+          URL.revokeObjectURL(url)
+          this.currentBlobUrl = null
+        }
+        reject(new Error(`音频播放失败: ${e}`))
+      }
+      
+      // 设置新的音频源并播放
+      audio.src = url
+      audio.load()
+      audio.play().catch((e) => {
+        cleanup()
+        if (this.currentBlobUrl === url) {
+          URL.revokeObjectURL(url)
+          this.currentBlobUrl = null
+        }
+        reject(new Error(`音频播放失败: ${e.message}`))
+      })
     })
   }
 
@@ -625,17 +650,7 @@ export class OnlineTTSProvider implements TTSProvider {
    * 停止播放
    */
   stop(): void {
-    // 停止 AudioBufferSourceNode
-    if (this.currentSource) {
-      try {
-        this.currentSource.stop()
-      } catch {
-        // 忽略已停止的错误
-      }
-      this.currentSource = null
-    }
-    
-    // 停止 Audio 元素（有道等）
+    // 停止 Audio 元素
     if (this.currentAudio) {
       try {
         this.currentAudio.pause()
@@ -643,7 +658,11 @@ export class OnlineTTSProvider implements TTSProvider {
       } catch {
         // 忽略错误
       }
-      this.currentAudio = null
+      // 不要销毁 Audio 元素，保留以便复用
+    }
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl)
+      this.currentBlobUrl = null
     }
   }
 }

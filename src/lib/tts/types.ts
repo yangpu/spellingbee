@@ -193,16 +193,16 @@ export const DEFAULT_BROWSER_CONFIG: BrowserTTSConfig = {
 }
 
 export const DEFAULT_ONLINE_CONFIG: OnlineTTSConfig = {
-  provider: 'azure',
-  voiceId: 'en-US-JennyNeural',
+  provider: 'tencent',
+  voiceId: '101051',
   rate: 1.0,
   pitch: 1.0,
   volume: 1.0
 }
 
 export const DEFAULT_AI_CONFIG: AITTSConfig = {
-  provider: 'openai',
-  voiceId: 'alloy',
+  provider: 'doubao',
+  voiceId: 'BV503_streaming',
   model: 'tts-1',
   rate: 1.0,
   pitch: 1.0,
@@ -230,10 +230,14 @@ export function getDefaultTTSSettings(): TTSSettings {
       browser: { ...DEFAULT_BROWSER_CONFIG, rate: 1.0 },
       online: { 
         ...DEFAULT_ONLINE_CONFIG, 
-        provider: 'azure',
-        voiceId: 'zh-CN-XiaoxiaoNeural'
+        provider: 'tencent',
+        voiceId: '101001'
       },
-      ai: { ...DEFAULT_AI_CONFIG }
+      ai: { 
+        ...DEFAULT_AI_CONFIG,
+        provider: 'doubao',
+        voiceId: 'BV700_streaming'
+      }
     },
     spelling: { ...DEFAULT_SPELLING_CONFIG },
     platform: { os: 'unknown', browser: 'unknown' }
