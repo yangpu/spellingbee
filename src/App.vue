@@ -65,14 +65,14 @@
       </t-button>
     </footer>
 
-    <!-- Network Status Dialog -->
-    <NetworkStatus v-model:visible="showNetworkStatus" :is-logged-in="!!authStore.user" />
+    <!-- Network Status Dialog - 使用 v-if 避免 slot 警告 -->
+    <NetworkStatus v-if="showNetworkStatus" v-model:visible="showNetworkStatus" :is-logged-in="!!authStore.user" />
 
-    <!-- Auth Dialog -->
-    <AuthDialog v-model:visible="showAuthDialog" @success="handleAuthSuccess" />
+    <!-- Auth Dialog - 使用 v-if 避免 slot 警告 -->
+    <AuthDialog v-if="showAuthDialog" v-model:visible="showAuthDialog" @success="handleAuthSuccess" />
 
-    <!-- User Profile Dialog -->
-    <UserProfile v-model:visible="showProfileDialog" @logout="handleLogout" />
+    <!-- User Profile Dialog - 使用 v-if 避免 slot 警告 -->
+    <UserProfile v-if="showProfileDialog" v-model:visible="showProfileDialog" @logout="handleLogout" />
   </div>
 </template>
 

@@ -231,6 +231,7 @@
               <t-input
                 v-model="onlineEnglishConfig.apiKey"
                 type="password"
+                autocomplete="off"
                 :placeholder="getOnlineApiKeyPlaceholder"
                 clearable
               />
@@ -342,6 +343,7 @@
               <t-input
                 v-model="aiEnglishConfig.apiKey"
                 type="password"
+                autocomplete="off"
                 :placeholder="getAIApiKeyPlaceholder"
                 clearable
               />

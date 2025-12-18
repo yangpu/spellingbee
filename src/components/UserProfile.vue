@@ -136,14 +136,15 @@
       </div>
     </div>
 
-    <!-- 语音配置弹窗 -->
-    <SpeechSettings v-model="showSpeechSettings" />
+    <!-- 语音配置弹窗 - 使用 v-if 避免 slot 警告 -->
+    <SpeechSettings v-if="showSpeechSettings" v-model="showSpeechSettings" />
     
-    <!-- 播音员弹窗 -->
-    <AnnouncerSettings v-model="showAnnouncer" />
+    <!-- 播音员弹窗 - 使用 v-if 避免 slot 警告 -->
+    <AnnouncerSettings v-if="showAnnouncer" v-model="showAnnouncer" />
     
-    <!-- 网络状态弹窗 -->
+    <!-- 网络状态弹窗 - 使用 v-if 避免 slot 警告 -->
     <NetworkStatus 
+      v-if="showNetworkStatus"
       v-model:visible="showNetworkStatus" 
       :is-logged-in="!!authStore.user" 
     />
