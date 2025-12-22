@@ -1,12 +1,12 @@
-import { defineStore, storeToRefs } from 'pinia'
-import { ref, computed, toRef } from 'vue'
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { useDictionaryStore } from './dictionary'
 import type { Word } from '@/types'
 
 // Default word list for offline/demo mode
-const defaultWords: Word[] = [
+export const defaultWords: Word[] = [
   { id: '1', word: 'abandon', pronunciation: '/əˈbændən/', definition: 'to leave someone or something completely', definition_cn: '放弃；抛弃', part_of_speech: 'verb', example_sentence: 'The ship was abandoned by its crew.', difficulty: 2, category: 'basic' },
   { id: '2', word: 'brilliant', pronunciation: '/ˈbrɪliənt/', definition: 'very bright, intelligent, or successful', definition_cn: '聪明的；杰出的；明亮的', part_of_speech: 'adjective', example_sentence: 'She had a brilliant idea.', difficulty: 2, category: 'basic' },
   { id: '3', word: 'calculate', pronunciation: '/ˈkælkjuleɪt/', definition: 'to find an answer using numbers', definition_cn: '计算；估计', part_of_speech: 'verb', example_sentence: 'Can you calculate the total cost?', difficulty: 2, category: 'basic' },
@@ -53,46 +53,29 @@ export const useWordsStore = defineStore('words', () => {
 
   const authStore = useAuthStore()
   
-  // 延迟获取 dictionaryStore 的响应式引用
-  // 使用闭包缓存，确保只初始化一次
-  let _dictionaryRefs: {
-    currentDictionary: ReturnType<typeof toRef<ReturnType<typeof useDictionaryStore>, 'currentDictionary'>>
-    currentWords: ReturnType<typeof toRef<ReturnType<typeof useDictionaryStore>, 'currentWords'>>
-    dictionaryVersion: ReturnType<typeof toRef<ReturnType<typeof useDictionaryStore>, 'dictionaryVersion'>>
-  } | null = null
-  
-  const getDictionaryRefs = () => {
-    if (!_dictionaryRefs) {
-      const store = useDictionaryStore()
-      const refs = storeToRefs(store)
-      _dictionaryRefs = {
-        currentDictionary: refs.currentDictionary,
-        currentWords: refs.currentWords,
-        dictionaryVersion: refs.dictionaryVersion
-      }
-    }
-    return _dictionaryRefs
-  }
+  // 注意：不在这里调用 useDictionaryStore()，而是在 computed 中延迟获取
+  // 这样可以避免循环依赖和响应式问题
   
   // Computed - 仅使用当前词典中的单词
-  // 通过 storeToRefs 获取的 ref 建立正确的响应式依赖
   const wordCount = computed(() => {
-    const { currentDictionary, currentWords, dictionaryVersion } = getDictionaryRefs()
+    const dictionaryStore = useDictionaryStore()
     // 显式读取 dictionaryVersion 确保词典切换时重新计算
-    void dictionaryVersion.value
-    if (currentDictionary.value) {
-      return currentWords.value.length
+    void dictionaryStore.dictionaryVersion
+    if (dictionaryStore.currentDictionary) {
+      return dictionaryStore.currentWords.length
     }
     return 0
   })
 
   // 获取当前活跃的单词列表（仅当前词典）
   const activeWords = computed(() => {
-    const { currentDictionary, currentWords, dictionaryVersion } = getDictionaryRefs()
+    const dictionaryStore = useDictionaryStore()
     // 显式读取 dictionaryVersion 确保词典切换时重新计算
-    void dictionaryVersion.value
-    if (currentDictionary.value && currentWords.value.length > 0) {
-      return [...currentWords.value] // 返回新数组确保响应性
+    void dictionaryStore.dictionaryVersion
+    const dict = dictionaryStore.currentDictionary
+    const wordsArr = dictionaryStore.currentWords
+    if (dict && wordsArr.length > 0) {
+      return [...wordsArr] // 返回新数组确保响应性
     }
     // 没有选择词典或词典没有单词时返回空数组
     return []
@@ -100,13 +83,13 @@ export const useWordsStore = defineStore('words', () => {
 
   // 获取当前词典信息
   const currentDictionaryInfo = computed(() => {
-    const { currentDictionary, dictionaryVersion } = getDictionaryRefs()
+    const dictionaryStore = useDictionaryStore()
     // 显式读取 dictionaryVersion 确保词典切换时重新计算
-    void dictionaryVersion.value
-    if (currentDictionary.value) {
+    void dictionaryStore.dictionaryVersion
+    if (dictionaryStore.currentDictionary) {
       return {
-        id: currentDictionary.value.id,
-        name: currentDictionary.value.name
+        id: dictionaryStore.currentDictionary.id,
+        name: dictionaryStore.currentDictionary.name
       }
     }
     return null

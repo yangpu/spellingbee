@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import type { Dictionary, Word, DictionaryLevel, DictionaryType } from '@/types'
@@ -12,7 +12,6 @@ const WORDS_STORE = 'dictionary_words'
 
 // localStorage 键
 const CURRENT_DICT_KEY = 'spellingbee_current_dictionary'
-const DICT_CACHE_KEY = 'spellingbee_dictionaries_cache'
 
 interface DictionaryWithWords extends Dictionary {
   words?: Word[]
@@ -23,8 +22,16 @@ export const useDictionaryStore = defineStore('dictionary', () => {
   
   // State
   const dictionaries = ref<Dictionary[]>([])
+  
+  // 当前"选用"的词典（用于学习）
   const currentDictionary = ref<DictionaryWithWords | null>(null)
   const currentWords = ref<Word[]>([])
+  
+  // 当前"查看"的词典（Words.vue 页面使用，可能与 currentDictionary 不同）
+  const viewingDictionary = ref<Dictionary | null>(null)
+  const viewingWords = ref<Word[]>([])
+  const viewingDictId = ref<string | null>(null)
+  
   const loading = ref(false)
   const syncing = ref(false)
   
@@ -39,6 +46,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
 
   // Computed
   const wordCount = computed(() => currentWords.value.length)
+  const viewingWordCount = computed(() => viewingWords.value.length)
   const hasDictionary = computed(() => currentDictionary.value !== null)
   const myDictionaries = computed(() => 
     dictionaries.value.filter(d => d.creator_id === authStore.user?.id)
@@ -81,26 +89,125 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     })
   }
 
-  // 保存词典到 IndexedDB
+  // 保存词典到 IndexedDB（完全替换该词典的所有单词）
   async function saveDictionaryToCache(dictionary: Dictionary, words?: Word[]): Promise<void> {
+    const database = await initDB()
+    const dictionaryId = dictionary.id
+    
+    // 如果需要更新单词，先删除旧单词
+    if (words !== undefined) {
+      // 第一步：删除旧单词
+      await new Promise<void>((resolve, reject) => {
+        const deleteTransaction = database.transaction([WORDS_STORE], 'readwrite')
+        deleteTransaction.onerror = () => reject(deleteTransaction.error)
+        
+        const wordsStore = deleteTransaction.objectStore(WORDS_STORE)
+        const wordsIndex = wordsStore.index('dictionary_id')
+        const cursorRequest = wordsIndex.openCursor(IDBKeyRange.only(dictionaryId))
+        
+        cursorRequest.onsuccess = (event) => {
+          const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result
+          if (cursor) {
+            cursor.delete()
+            cursor.continue()
+          }
+        }
+        
+        deleteTransaction.oncomplete = () => resolve()
+      })
+      
+      // 第二步：添加新单词
+      if (words.length > 0) {
+        await new Promise<void>((resolve, reject) => {
+          const addTransaction = database.transaction([WORDS_STORE], 'readwrite')
+          addTransaction.onerror = () => reject(addTransaction.error)
+          addTransaction.oncomplete = () => resolve()
+          
+          const wordsStore = addTransaction.objectStore(WORDS_STORE)
+          words.forEach(word => {
+            wordsStore.put({ ...word, dictionary_id: dictionaryId })
+          })
+        })
+      }
+    }
+    
+    // 第三步：保存词典信息
+    return new Promise((resolve, reject) => {
+      const dictTransaction = database.transaction([DICT_STORE], 'readwrite')
+      dictTransaction.onerror = () => reject(dictTransaction.error)
+      dictTransaction.oncomplete = () => resolve()
+      
+      const dictStore = dictTransaction.objectStore(DICT_STORE)
+      dictStore.put(dictionary)
+    })
+  }
+  
+  // 从 IndexedDB 删除单个单词
+  async function deleteWordFromCache(wordId: string): Promise<void> {
     const database = await initDB()
     
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction([DICT_STORE, WORDS_STORE], 'readwrite')
-      
+      const transaction = database.transaction([WORDS_STORE], 'readwrite')
       transaction.onerror = () => reject(transaction.error)
       transaction.oncomplete = () => resolve()
       
-      // 保存词典
-      const dictStore = transaction.objectStore(DICT_STORE)
-      dictStore.put(dictionary)
+      const wordsStore = transaction.objectStore(WORDS_STORE)
+      wordsStore.delete(wordId)
+    })
+  }
+  
+  // 更新 IndexedDB 中的单个单词
+  async function updateWordInCache(wordId: string, updates: Partial<Word>): Promise<void> {
+    const database = await initDB()
+    
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([WORDS_STORE], 'readwrite')
+      transaction.onerror = () => reject(transaction.error)
+      transaction.oncomplete = () => resolve()
       
-      // 保存单词
-      if (words && words.length > 0) {
-        const wordsStore = transaction.objectStore(WORDS_STORE)
-        words.forEach(word => {
-          wordsStore.put({ ...word, dictionary_id: dictionary.id })
-        })
+      const wordsStore = transaction.objectStore(WORDS_STORE)
+      const getRequest = wordsStore.get(wordId)
+      
+      getRequest.onsuccess = () => {
+        const existingWord = getRequest.result
+        if (existingWord) {
+          wordsStore.put({ ...existingWord, ...updates })
+        }
+      }
+    })
+  }
+  
+  // 添加单个单词到 IndexedDB
+  async function addWordToCache(word: Word): Promise<void> {
+    const database = await initDB()
+    
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([WORDS_STORE], 'readwrite')
+      transaction.onerror = () => reject(transaction.error)
+      transaction.oncomplete = () => resolve()
+      
+      const wordsStore = transaction.objectStore(WORDS_STORE)
+      wordsStore.put(word)
+    })
+  }
+  
+  // 更新 IndexedDB 中词典的 word_count
+  async function updateDictionaryCountInCache(dictionaryId: string, wordCount: number): Promise<void> {
+    const database = await initDB()
+    
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([DICT_STORE], 'readwrite')
+      transaction.onerror = () => reject(transaction.error)
+      transaction.oncomplete = () => resolve()
+      
+      const dictStore = transaction.objectStore(DICT_STORE)
+      const getRequest = dictStore.get(dictionaryId)
+      
+      getRequest.onsuccess = () => {
+        const dict = getRequest.result
+        if (dict) {
+          dictStore.put({ ...dict, word_count: wordCount, updated_at: new Date().toISOString() })
+        }
       }
     })
   }
@@ -186,15 +293,23 @@ export const useDictionaryStore = defineStore('dictionary', () => {
   // 初始化
   async function init(): Promise<void> {
     // 如果已经初始化过，直接返回（防止重复初始化覆盖用户选择）
-    if (initialized) return
-    if (loading.value) return
+    if (initialized) {
+      console.log('[init] Already initialized, skipping')
+      return
+    }
+    if (loading.value) {
+      console.log('[init] Already loading, skipping')
+      return
+    }
     
+    console.log('[init] Starting initialization')
     loading.value = true
     try {
       // 先从缓存加载
       const cachedDicts = await loadAllDictionariesFromCache()
       if (cachedDicts.length > 0) {
         dictionaries.value = cachedDicts
+        console.log('[init] Loaded', cachedDicts.length, 'dictionaries from cache')
       }
       
       // 恢复当前选择的词典
@@ -204,6 +319,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         if (cached) {
           currentDictionary.value = cached
           currentWords.value = cached.words || []
+          console.log('[init] Restored current dictionary:', savedDictId, 'with', currentWords.value.length, 'words')
         }
       }
       
@@ -214,6 +330,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       
       // 标记为已初始化
       initialized = true
+      console.log('[init] Initialization complete')
     } catch (error) {
       console.error('Failed to initialize dictionary store:', error)
     } finally {
@@ -295,7 +412,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       description: data.description || '',
       author: data.author || authStore.user?.email?.split('@')[0] || 'Anonymous',
       cover_image: data.cover_image || '',
-      level: data.level || 'junior',
+      level: data.level || 'custom',
       type: data.type || 'custom',
       word_count: 0,
       is_public: data.is_public || false,
@@ -435,12 +552,124 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     }
   }
 
-  // 添加单词到词典
+  // 加载指定词典用于查看（不改变当前选用的词典）
+  // 优先从缓存加载，forceRefresh=true 时强制从服务器刷新
+  async function loadViewingDictionary(dictionaryId: string, forceRefresh = false): Promise<void> {
+    console.log('[loadViewingDictionary] Start loading:', dictionaryId, 'forceRefresh:', forceRefresh)
+    
+    viewingDictId.value = dictionaryId
+    
+    // 如果不是强制刷新，先尝试从缓存加载
+    if (!forceRefresh) {
+      const cached = await loadDictionaryFromCache(dictionaryId)
+      if (cached && cached.words && cached.words.length > 0) {
+        console.log('[loadViewingDictionary] Using cache:', cached.words.length, 'words')
+        viewingDictionary.value = cached
+        viewingWords.value = cached.words
+        return
+      }
+      console.log('[loadViewingDictionary] No cache found, loading from server')
+    }
+    
+    loading.value = true
+    
+    // 先清空旧数据，确保 UI 显示加载状态
+    viewingDictionary.value = null
+    viewingWords.value = []
+    
+    try {
+      // 从服务器加载词典详情
+      const { data: dictData, error: dictError } = await supabase
+        .from('dictionaries')
+        .select('*')
+        .eq('id', dictionaryId)
+        .single()
+      
+      if (dictError) throw dictError
+      
+      // 加载单词列表
+      const { data: wordsData, error: wordsError } = await supabase
+        .from('dictionary_words')
+        .select('*')
+        .eq('dictionary_id', dictionaryId)
+        .order('created_at', { ascending: true })
+      
+      if (wordsError) throw wordsError
+      
+      const dict = dictData as Dictionary
+      const words = wordsData as Word[]
+      const actualCount = words.length
+      
+      console.log('[loadViewingDictionary] Server returned:', actualCount, 'words')
+      
+      // 更新内存状态
+      viewingDictionary.value = { ...dict, word_count: actualCount }
+      viewingWords.value = [...words]
+      
+      // 同步更新 dictionaries 列表中的 word_count
+      const dictIndex = dictionaries.value.findIndex(d => d.id === dictionaryId)
+      if (dictIndex !== -1) {
+        dictionaries.value[dictIndex] = { ...dictionaries.value[dictIndex], word_count: actualCount }
+      }
+      
+      // 如果是当前选用的词典，也同步更新
+      if (currentDictionary.value?.id === dictionaryId) {
+        currentDictionary.value = { ...currentDictionary.value, word_count: actualCount }
+        currentWords.value = [...words]
+      }
+      
+      // 同步更新 IndexedDB 缓存
+      await saveDictionaryToCache({ ...dict, word_count: actualCount }, words)
+      console.log('[loadViewingDictionary] Cache updated')
+    } catch (error) {
+      console.error('Failed to load viewing dictionary:', error)
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 强制从服务器刷新词典数据
+  async function refreshViewingDictionary(): Promise<void> {
+    if (!viewingDictId.value) return
+    await loadViewingDictionary(viewingDictId.value, true)
+  }
+  
+  // 清除查看状态
+  function clearViewingDictionary(): void {
+    console.log('[clearViewingDictionary] Clearing viewing state')
+    viewingDictionary.value = null
+    viewingWords.value = []
+    viewingDictId.value = null
+  }
+
+  // 添加单词到词典（统一更新 viewingWords 和 currentWords）
   async function addWord(dictionaryId: string, wordData: Omit<Word, 'id' | 'created_at' | 'dictionary_id'>): Promise<Word> {
+    const wordLower = wordData.word.trim().toLowerCase()
+    
+    // 检查单词是否已存在（优先检查 viewingWords）
+    const wordsToCheck = viewingDictId.value === dictionaryId ? viewingWords.value : currentWords.value
+    if (wordsToCheck.some(w => w.word.toLowerCase() === wordLower)) {
+      throw new Error(`单词 "${wordData.word}" 在此词典中已存在`)
+    }
+    
+    if (authStore.user) {
+      const { data: existingWord } = await supabase
+        .from('dictionary_words')
+        .select('id')
+        .eq('dictionary_id', dictionaryId)
+        .ilike('word', wordLower)
+        .maybeSingle()
+      
+      if (existingWord) {
+        throw new Error(`单词 "${wordData.word}" 在此词典中已存在`)
+      }
+    }
+    
     // 获取当前最大的 sort_order
-    const existingCount = currentDictionary.value?.id === dictionaryId 
-      ? currentWords.value.length 
-      : 0
+    const existingCount = viewingDictId.value === dictionaryId 
+      ? viewingWords.value.length 
+      : (currentDictionary.value?.id === dictionaryId ? currentWords.value.length : 0)
     
     const newWord: Word = {
       id: crypto.randomUUID(),
@@ -457,36 +686,73 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error(`单词 "${wordData.word}" 在此词典中已存在`)
+        }
+        throw error
+      }
       
       const word = data as Word
-      if (currentDictionary.value?.id === dictionaryId) {
-        currentWords.value.push(word)
+      
+      // 更新 viewingWords
+      if (viewingDictId.value === dictionaryId) {
+        viewingWords.value = [...viewingWords.value, word]
       }
+      
+      // 更新 currentWords（如果是同一个词典，直接同步）
+      if (currentDictionary.value?.id === dictionaryId) {
+        if (viewingDictId.value === dictionaryId) {
+          currentWords.value = [...viewingWords.value]
+        } else {
+          currentWords.value = [...currentWords.value, word]
+        }
+      }
+      
+      // 更新缓存：添加单词到 IndexedDB
+      await addWordToCache(word)
+      
+      // 更新词典的单词数量
+      await syncDictionaryWordCount(dictionaryId)
+      
       return word
     } else {
+      // 离线模式
+      if (viewingDictId.value === dictionaryId) {
+        viewingWords.value = [...viewingWords.value, newWord]
+      }
       if (currentDictionary.value?.id === dictionaryId) {
-        currentWords.value.push(newWord)
+        if (viewingDictId.value === dictionaryId) {
+          currentWords.value = [...viewingWords.value]
+        } else {
+          currentWords.value = [...currentWords.value, newWord]
+        }
       }
+      
       // 更新缓存
-      const dict = await loadDictionaryFromCache(dictionaryId)
-      if (dict) {
-        const words = [...(dict.words || []), newWord]
-        await saveDictionaryToCache({ ...dict, word_count: words.length }, words)
-      }
+      await addWordToCache(newWord)
+      
+      const newCount = viewingDictId.value === dictionaryId 
+        ? viewingWords.value.length 
+        : currentWords.value.length
+      await updateDictionaryCountInCache(dictionaryId, newCount)
+      updateLocalDictionaryCount(dictionaryId, newCount)
+      
       return newWord
     }
   }
 
   // 批量添加单词
   async function addWords(dictionaryId: string, wordsData: Omit<Word, 'id' | 'created_at' | 'dictionary_id'>[]): Promise<Word[]> {
+    console.log('[addWords] Adding', wordsData.length, 'words to dictionary:', dictionaryId)
     // 获取当前最大的 sort_order
     let existingCount = 0
     
-    if (currentDictionary.value?.id === dictionaryId) {
+    if (viewingDictId.value === dictionaryId) {
+      existingCount = viewingWords.value.length
+    } else if (currentDictionary.value?.id === dictionaryId) {
       existingCount = currentWords.value.length
     } else if (authStore.user) {
-      // 如果不是当前词典，从数据库查询现有单词数量
       const { count, error } = await supabase
         .from('dictionary_words')
         .select('*', { count: 'exact', head: true })
@@ -505,45 +771,137 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       created_at: new Date().toISOString()
     }))
     
+    let insertedWords: Word[] = []
+    
     if (authStore.user) {
-      const { error } = await supabase
-        .from('dictionary_words')
-        .upsert(newWords, { onConflict: 'dictionary_id,word' })
+      // 使用 insert 而不是 upsert，并返回插入的数据
+      // 先过滤掉已存在的单词
+      const existingWordsLower = new Set(
+        viewingDictId.value === dictionaryId 
+          ? viewingWords.value.map(w => w.word.toLowerCase())
+          : currentWords.value.map(w => w.word.toLowerCase())
+      )
+      const wordsToInsert = newWords.filter(w => !existingWordsLower.has(w.word.toLowerCase()))
       
-      if (error) throw error
-    }
-    
-    // 用于返回实际添加的单词（去重后）
-    let addedWords: Word[] = []
-    
-    if (currentDictionary.value?.id === dictionaryId) {
-      // 合并单词，避免重复
-      const existingWords = new Set(currentWords.value.map(w => w.word.toLowerCase()))
-      const uniqueNewWords = newWords.filter(w => !existingWords.has(w.word.toLowerCase()))
-      currentWords.value = [...currentWords.value, ...uniqueNewWords]
-      addedWords = uniqueNewWords
+      console.log('[addWords] Words to insert after filtering:', wordsToInsert.length)
       
-      // 更新缓存
-      const dict = dictionaries.value.find(d => d.id === dictionaryId)
-      if (dict) {
-        const updatedDict = { ...dict, word_count: currentWords.value.length }
-        await saveDictionaryToCache(updatedDict, currentWords.value)
+      if (wordsToInsert.length > 0) {
+        const { data, error } = await supabase
+          .from('dictionary_words')
+          .insert(wordsToInsert)
+          .select()
         
-        // 更新列表中的词典
-        const index = dictionaries.value.findIndex(d => d.id === dictionaryId)
-        if (index !== -1) {
-          dictionaries.value[index] = updatedDict
-        }
+        if (error) throw error
+        insertedWords = (data || []) as Word[]
+        console.log('[addWords] Server insert returned:', insertedWords.length, 'words')
       }
-      
-      // 递增版本号，触发依赖此词典的其他组件更新
-      dictionaryVersion.value++
     } else {
-      // 非当前词典，返回所有新单词
-      addedWords = newWords
+      // 离线模式：过滤重复后直接使用
+      const existingWordsLower = new Set(
+        viewingDictId.value === dictionaryId 
+          ? viewingWords.value.map(w => w.word.toLowerCase())
+          : currentWords.value.map(w => w.word.toLowerCase())
+      )
+      insertedWords = newWords.filter(w => !existingWordsLower.has(w.word.toLowerCase()))
     }
     
-    return addedWords
+    // 更新 viewingWords
+    if (viewingDictId.value === dictionaryId && insertedWords.length > 0) {
+      viewingWords.value = [...viewingWords.value, ...insertedWords]
+      console.log('[addWords] viewingWords updated:', viewingWords.value.length)
+    }
+    
+    // 更新 currentWords
+    if (currentDictionary.value?.id === dictionaryId && insertedWords.length > 0) {
+      // 避免重复添加（如果 viewingDictId 和 currentDictionary 是同一个）
+      if (viewingDictId.value !== dictionaryId) {
+        currentWords.value = [...currentWords.value, ...insertedWords]
+      } else {
+        // 同一个词典，currentWords 也需要同步
+        currentWords.value = [...viewingWords.value]
+      }
+      dictionaryVersion.value++
+    }
+    
+    // 更新缓存：批量添加单词到 IndexedDB
+    for (const word of insertedWords) {
+      await addWordToCache(word)
+    }
+    console.log('[addWords] Cache updated')
+    
+    // 统一同步词典单词数量
+    await syncDictionaryWordCount(dictionaryId)
+    console.log('[addWords] Word count synced')
+    
+    return insertedWords
+  }
+  
+  // 同步词典单词数量（从数据库获取实际数量并更新所有相关状态和缓存）
+  async function syncDictionaryWordCount(dictionaryId: string): Promise<void> {
+    console.log('[syncDictionaryWordCount] Start syncing for dictionary:', dictionaryId)
+    let newCount: number
+    
+    if (authStore.user) {
+      const { count, error } = await supabase
+        .from('dictionary_words')
+        .select('*', { count: 'exact', head: true })
+        .eq('dictionary_id', dictionaryId)
+      
+      if (error || count === null) {
+        console.log('[syncDictionaryWordCount] Failed to get count:', error)
+        return
+      }
+      newCount = count
+      console.log('[syncDictionaryWordCount] Server word count:', newCount)
+      
+      // 更新数据库中的 word_count
+      const { error: updateError } = await supabase
+        .from('dictionaries')
+        .update({ word_count: newCount, updated_at: new Date().toISOString() })
+        .eq('id', dictionaryId)
+      
+      if (updateError) {
+        console.log('[syncDictionaryWordCount] Failed to update dictionary:', updateError)
+      } else {
+        console.log('[syncDictionaryWordCount] Dictionary word_count updated to:', newCount)
+      }
+    } else {
+      // 离线模式：从本地状态获取
+      if (viewingDictId.value === dictionaryId) {
+        newCount = viewingWords.value.length
+      } else if (currentDictionary.value?.id === dictionaryId) {
+        newCount = currentWords.value.length
+      } else {
+        return
+      }
+    }
+    
+    // 更新内存状态
+    updateLocalDictionaryCount(dictionaryId, newCount)
+    console.log('[syncDictionaryWordCount] Local state updated')
+    
+    // 更新 IndexedDB 缓存
+    await updateDictionaryCountInCache(dictionaryId, newCount)
+    console.log('[syncDictionaryWordCount] Cache updated')
+  }
+  
+  // 更新本地词典数量（不涉及数据库）
+  function updateLocalDictionaryCount(dictionaryId: string, newCount: number): void {
+    // 更新 dictionaries 列表
+    const index = dictionaries.value.findIndex(d => d.id === dictionaryId)
+    if (index !== -1) {
+      dictionaries.value[index] = { ...dictionaries.value[index], word_count: newCount }
+    }
+    
+    // 更新 viewingDictionary
+    if (viewingDictionary.value?.id === dictionaryId) {
+      viewingDictionary.value = { ...viewingDictionary.value, word_count: newCount }
+    }
+    
+    // 更新 currentDictionary
+    if (currentDictionary.value?.id === dictionaryId) {
+      currentDictionary.value = { ...currentDictionary.value, word_count: newCount }
+    }
   }
 
   // 更新单词
@@ -557,19 +915,44 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       if (error) throw error
     }
     
-    const index = currentWords.value.findIndex(w => w.id === wordId)
-    if (index !== -1) {
-      currentWords.value[index] = { ...currentWords.value[index], ...updates }
+    // 获取单词所属的词典ID
+    const word = viewingWords.value.find(w => w.id === wordId) || currentWords.value.find(w => w.id === wordId)
+    const dictionaryId = word?.dictionary_id
+    
+    // 更新 viewingWords
+    const viewingIndex = viewingWords.value.findIndex(w => w.id === wordId)
+    if (viewingIndex !== -1) {
+      viewingWords.value[viewingIndex] = { ...viewingWords.value[viewingIndex], ...updates }
+      viewingWords.value = [...viewingWords.value] // 触发响应式更新
     }
     
-    // 更新缓存
-    if (currentDictionary.value) {
-      await saveDictionaryToCache(currentDictionary.value, currentWords.value)
+    // 更新 currentWords（如果是同一个词典，直接同步）
+    if (dictionaryId && currentDictionary.value?.id === dictionaryId) {
+      if (viewingDictId.value === dictionaryId) {
+        currentWords.value = [...viewingWords.value]
+      } else {
+        const currentIndex = currentWords.value.findIndex(w => w.id === wordId)
+        if (currentIndex !== -1) {
+          currentWords.value[currentIndex] = { ...currentWords.value[currentIndex], ...updates }
+          currentWords.value = [...currentWords.value]
+        }
+      }
     }
+    
+    // 更新 IndexedDB 缓存
+    await updateWordInCache(wordId, updates)
   }
 
   // 删除单词
   async function deleteWord(wordId: string): Promise<void> {
+    console.log('[deleteWord] Deleting word:', wordId)
+    // 先从 viewingWords 或 currentWords 找到单词
+    let wordToDelete = viewingWords.value.find(w => w.id === wordId)
+    if (!wordToDelete) {
+      wordToDelete = currentWords.value.find(w => w.id === wordId)
+    }
+    const dictionaryId = wordToDelete?.dictionary_id || viewingDictId.value || currentDictionary.value?.id
+    
     if (authStore.user) {
       const { error } = await supabase
         .from('dictionary_words')
@@ -577,14 +960,30 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         .eq('id', wordId)
       
       if (error) throw error
+      console.log('[deleteWord] Server delete successful')
     }
     
-    currentWords.value = currentWords.value.filter(w => w.id !== wordId)
+    // 更新 viewingWords
+    viewingWords.value = viewingWords.value.filter(w => w.id !== wordId)
+    console.log('[deleteWord] viewingWords updated:', viewingWords.value.length)
     
-    // 更新缓存
-    if (currentDictionary.value) {
-      const updatedDict = { ...currentDictionary.value, word_count: currentWords.value.length }
-      await saveDictionaryToCache(updatedDict, currentWords.value)
+    // 更新 currentWords（如果是同一个词典，直接同步）
+    if (dictionaryId && currentDictionary.value?.id === dictionaryId) {
+      if (viewingDictId.value === dictionaryId) {
+        currentWords.value = [...viewingWords.value]
+      } else {
+        currentWords.value = currentWords.value.filter(w => w.id !== wordId)
+      }
+    }
+    
+    // 从 IndexedDB 缓存中删除单词
+    await deleteWordFromCache(wordId)
+    console.log('[deleteWord] Cache delete successful')
+    
+    // 同步词典单词数量（会同时更新内存状态和缓存）
+    if (dictionaryId) {
+      await syncDictionaryWordCount(dictionaryId)
+      console.log('[deleteWord] Word count synced')
     }
   }
 
@@ -726,12 +1125,16 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     dictionaries,
     currentDictionary,
     currentWords,
+    viewingDictionary,
+    viewingWords,
+    viewingDictId,
     loading,
     syncing,
     dictionaryVersion,
     
     // Computed
     wordCount,
+    viewingWordCount,
     hasDictionary,
     myDictionaries,
     publicDictionaries,
@@ -743,6 +1146,9 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     updateDictionary,
     deleteDictionary,
     selectDictionary,
+    loadViewingDictionary,
+    refreshViewingDictionary,
+    clearViewingDictionary,
     addWord,
     addWords,
     updateWord,

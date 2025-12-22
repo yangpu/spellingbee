@@ -14,12 +14,7 @@
     <!-- 操作栏 -->
     <div class="action-bar">
       <div class="action-left">
-        <t-input
-          v-model="searchQuery"
-          placeholder="搜索词典..."
-          clearable
-          class="search-input"
-        >
+        <t-input v-model="searchQuery" placeholder="搜索词典..." clearable class="search-input">
           <template #prefix-icon>
             <t-icon name="search" />
           </template>
@@ -29,6 +24,10 @@
         </t-select>
       </div>
       <div class="action-right">
+        <t-button variant="outline" :loading="refreshing" @click="handleRefresh">
+          <template #icon><t-icon name="refresh" /></template>
+          刷新
+        </t-button>
         <t-button theme="primary" @click="showCreateDialog = true">
           <template #icon><t-icon name="add" /></template>
           创建词典
@@ -38,31 +37,28 @@
 
     <!-- 我的词典 -->
     <div class="section" v-if="myDictionaries.length > 0 || !searchQuery">
-      <div class="section-header">
+      <div class="section-header" @click="toggleSection('my')">
+        <t-icon :name="expandedSections.includes('my') ? 'chevron-down' : 'chevron-right'" class="collapse-icon" />
         <h2>我的词典</h2>
         <span class="count">{{ myDictionaries.length }} 个</span>
       </div>
-      <div class="dict-grid" v-if="myDictionaries.length > 0">
-        <div
-          v-for="dict in myDictionaries"
-          :key="dict.id"
-          class="dict-card"
-          :class="{ selected: currentDictionary?.id === dict.id }"
-          @click="handleCardClick(dict)"
-        >
+      <div class="dict-grid" v-if="myDictionaries.length > 0" v-show="expandedSections.includes('my')">
+        <div v-for="dict in myDictionaries" :key="dict.id" class="dict-card"
+          :class="{ selected: currentDictionary?.id === dict.id }" @click="handleCardClick(dict)">
           <div class="card-cover">
             <img v-if="getCoverUrl(dict)" :src="getCoverUrl(dict)" alt="封面" />
             <div v-else class="cover-placeholder">
               <t-icon name="book" size="32px" />
             </div>
-            <div class="card-badge" v-if="currentDictionary?.id === dict.id">
-              <t-icon name="check" />
-              当前使用
-            </div>
+            <t-tooltip content="当前使用" placement="left">
+              <div class="card-bookmark" v-if="currentDictionary?.id === dict.id">
+                <t-icon name="bookmark" />
+              </div>
+            </t-tooltip>
           </div>
           <div class="card-content">
             <h3>{{ dict.name }}</h3>
-            <p class="description">{{ dict.description || '暂无描述' }}</p>
+            <p class="description">{{ dict.description || '--' }}</p>
             <div class="card-meta">
               <t-tag size="small" variant="light" theme="primary">{{ DictionaryLevelLabels[dict.level] }}</t-tag>
               <t-tag size="small" variant="light">{{ dict.word_count }} 词</t-tag>
@@ -70,7 +66,8 @@
             </div>
           </div>
           <div class="card-actions" @click.stop>
-            <t-button v-if="currentDictionary?.id !== dict.id" size="small" variant="text" @click="handleSelectDictionary(dict)">
+            <t-button v-if="currentDictionary?.id !== dict.id" size="small" variant="text"
+              @click="handleSelectDictionary(dict)">
               <template #icon><t-icon name="check-circle" /></template>
               选用
             </t-button>
@@ -87,38 +84,41 @@
           </div>
         </div>
       </div>
-      <div class="empty-hint" v-else>
-        <p>还没有创建词典，点击上方按钮创建第一个词典</p>
+      <div class="empty-hint" v-else-if="expandedSections.includes('my')">
+        <t-icon name="file-add" size="48px" />
+        <h3>还没有创建词典</h3>
+        <p>创建你的第一个词典，开始学习单词</p>
+        <t-button theme="primary" @click="showCreateDialog = true">
+          <template #icon><t-icon name="add" /></template>
+          创建词典
+        </t-button>
       </div>
     </div>
 
     <!-- 公开词典 -->
     <div class="section" v-if="publicDictionaries.length > 0">
-      <div class="section-header">
+      <div class="section-header" @click="toggleSection('public')">
+        <t-icon :name="expandedSections.includes('public') ? 'chevron-down' : 'chevron-right'" class="collapse-icon" />
         <h2>公开词典</h2>
         <span class="count">{{ publicDictionaries.length }} 个</span>
       </div>
-      <div class="dict-grid">
-        <div
-          v-for="dict in publicDictionaries"
-          :key="dict.id"
-          class="dict-card"
-          :class="{ selected: currentDictionary?.id === dict.id }"
-          @click="handleCardClick(dict)"
-        >
+      <div class="dict-grid" v-show="expandedSections.includes('public')">
+        <div v-for="dict in publicDictionaries" :key="dict.id" class="dict-card"
+          :class="{ selected: currentDictionary?.id === dict.id }" @click="handleCardClick(dict)">
           <div class="card-cover">
             <img v-if="getCoverUrl(dict)" :src="getCoverUrl(dict)" alt="封面" />
             <div v-else class="cover-placeholder">
               <t-icon name="book" size="32px" />
             </div>
-            <div class="card-badge" v-if="currentDictionary?.id === dict.id">
-              <t-icon name="check" />
-              当前使用
-            </div>
+            <t-tooltip content="当前使用" placement="left">
+              <div class="card-bookmark" v-if="currentDictionary?.id === dict.id">
+                <t-icon name="bookmark" />
+              </div>
+            </t-tooltip>
           </div>
           <div class="card-content">
             <h3>{{ dict.name }}</h3>
-            <p class="description">{{ dict.description || '暂无描述' }}</p>
+            <p class="description">{{ dict.description || '--' }}</p>
             <div class="card-author">
               <t-icon name="user" size="14px" />
               {{ dict.author || '未知作者' }}
@@ -129,7 +129,8 @@
             </div>
           </div>
           <div class="card-actions" @click.stop>
-            <t-button v-if="currentDictionary?.id !== dict.id" size="small" variant="text" @click="handleSelectDictionary(dict)">
+            <t-button v-if="currentDictionary?.id !== dict.id" size="small" variant="text"
+              @click="handleSelectDictionary(dict)">
               <template #icon><t-icon name="check-circle" /></template>
               选用
             </t-button>
@@ -156,15 +157,9 @@
     </div>
 
     <!-- 创建/编辑词典对话框 -->
-    <t-dialog
-      v-model:visible="showCreateDialog"
-      :header="editingDictionary ? '编辑词典' : '创建词典'"
-      width="600px"
-      :confirm-btn="{ content: '保存', theme: 'primary', loading: saving }"
-      :cancel-btn="{ content: '取消' }"
-      @confirm="handleSaveDictionary"
-      @close="resetForm"
-    >
+    <t-dialog v-model:visible="showCreateDialog" :header="editingDictionary ? '编辑词典' : '创建词典'" width="600px"
+      :confirm-btn="{ content: '保存', theme: 'primary', loading: saving }" :cancel-btn="{ content: '取消' }"
+      @confirm="handleSaveDictionary" @close="resetForm">
       <t-form ref="formRef" :data="formData" :rules="formRules" label-width="80px">
         <t-form-item label="名称" name="name">
           <t-input v-model="formData.name" placeholder="请输入词典名称" maxlength="50" show-limit-number />
@@ -181,7 +176,8 @@
                 </div>
                 <span>无封面</span>
               </div>
-              <div class="cover-option" :class="{ active: coverType === 'default' }" @click="selectCoverType('default')">
+              <div class="cover-option" :class="{ active: coverType === 'default' }"
+                @click="selectCoverType('default')">
                 <div class="cover-option-preview" v-if="!defaultCoverFailed">
                   <img :src="defaultCoverUrl" alt="默认封面" @error="handleDefaultCoverError" />
                 </div>
@@ -210,18 +206,9 @@
                 <span>自定义</span>
               </div>
             </div>
-            <t-upload 
-              ref="uploadRef" 
-              v-model="coverFiles" 
-              :action="''" 
-              theme="custom" 
-              accept="image/*"
-              :auto-upload="false" 
-              :show-upload-progress="false" 
-              :request-method="handleUploadCover"
-              @change="handleCoverChange" 
-              style="display: none;" 
-            />
+            <t-upload ref="uploadRef" v-model="coverFiles" :action="''" theme="custom" accept="image/*"
+              :auto-upload="false" :show-upload-progress="false" :request-method="handleUploadCover"
+              @change="handleCoverChange" style="display: none;" />
             <t-loading v-if="uploadingCover" size="small" class="upload-loading" />
           </div>
         </t-form-item>
@@ -285,10 +272,24 @@ function goToCurrentDictionary() {
 const searchQuery = ref('')
 const filterLevel = ref<DictionaryLevel | null>(null)
 
+// 折叠面板展开状态（默认全部展开）
+const expandedSections = ref(['my', 'public'])
+
+// 切换折叠状态
+function toggleSection(section: string) {
+  const index = expandedSections.value.indexOf(section)
+  if (index > -1) {
+    expandedSections.value.splice(index, 1)
+  } else {
+    expandedSections.value.push(section)
+  }
+}
+
 // 对话框状态
 const showCreateDialog = ref(false)
 const saving = ref(false)
 const editingDictionary = ref<Dictionary | null>(null)
+const refreshing = ref(false)
 
 // 表单
 const formRef = ref()
@@ -296,7 +297,7 @@ const formData = reactive({
   name: '',
   description: '',
   cover_image: '',
-  level: 'junior' as DictionaryLevel,
+  level: 'custom' as DictionaryLevel,
   type: 'vocabulary' as DictionaryType,
   is_public: false
 })
@@ -334,32 +335,44 @@ const UNSPLASH_ACCESS_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY
 // 计算属性
 const filteredDictionaries = computed(() => {
   let result = [...dictionaryStore.dictionaries]
-  
+
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
-    result = result.filter(d => 
+    result = result.filter(d =>
       d.name.toLowerCase().includes(q) ||
       (d.description && d.description.toLowerCase().includes(q)) ||
       (d.author && d.author.toLowerCase().includes(q))
     )
   }
-  
+
   if (filterLevel.value) {
     result = result.filter(d => d.level === filterLevel.value)
   }
-  
+
   return result
 })
 
-const myDictionaries = computed(() => 
+const myDictionaries = computed(() =>
   filteredDictionaries.value.filter(d => d.creator_id === authStore.user?.id)
 )
 
-const publicDictionaries = computed(() => 
+const publicDictionaries = computed(() =>
   filteredDictionaries.value.filter(d => d.is_public && d.creator_id !== authStore.user?.id)
 )
 
 // 方法
+async function handleRefresh() {
+  refreshing.value = true
+  try {
+    await dictionaryStore.syncFromServer()
+    MessagePlugin.success('刷新成功')
+  } catch (error) {
+    MessagePlugin.error('刷新失败')
+  } finally {
+    refreshing.value = false
+  }
+}
+
 function handleCardClick(dict: Dictionary) {
   router.push(`/dictionaries/${dict.id}`)
 }
@@ -429,25 +442,25 @@ async function handleUploadCover(file: { raw: File }) {
   try {
     const fileExt = file.raw.name.split('.').pop()
     const fileName = `${authStore.user.id}/${Date.now()}.${fileExt}`
-    
+
     const { data, error } = await supabase.storage
       .from('dictionary-covers')
       .upload(fileName, file.raw, {
         cacheControl: '3600',
         upsert: false
       })
-    
+
     if (error) throw error
-    
+
     // 获取公开 URL
     const { data: urlData } = supabase.storage
       .from('dictionary-covers')
       .getPublicUrl(data.path)
-    
+
     formData.cover_image = urlData.publicUrl
-    
-    return { 
-      status: 'success', 
+
+    return {
+      status: 'success',
       response: { url: urlData.publicUrl }
     }
   } catch (error: any) {
@@ -488,21 +501,24 @@ async function selectRandomCover() {
 // 获取随机封面（使用词典名称作为主题）
 async function fetchRandomCover() {
   loadingRandomCover.value = true
-  
+
   try {
-    // 使用词典名称或默认词作为查询主题
-    const query = formData.name || 'dictionary'
+    // 组合主题：dictionary, book, english + 词典名称
+    const baseThemes = ['book-cover']
+    const nameTheme = formData.name?.trim()
+    const themes = nameTheme ? [...baseThemes, nameTheme] : baseThemes
+    const query = themes.join(' ')
     const imageUrl = await fetchFromUnsplash(query)
-    
+
     if (imageUrl) {
       randomCoverUrl.value = imageUrl
       formData.cover_image = imageUrl
     }
   } catch (e) {
     console.warn('fetchRandomCover failed:', e)
-    // 失败时尝试 Picsum
+    // 失败时尝试 Picsum（获取固定URL）
     try {
-      const picsumUrl = `https://picsum.photos/400/240?random=${Date.now()}`
+      const picsumUrl = await fetchFromPicsum()
       randomCoverUrl.value = picsumUrl
       formData.cover_image = picsumUrl
     } catch {
@@ -513,13 +529,20 @@ async function fetchRandomCover() {
   }
 }
 
+// 从 Picsum 获取图片（获取重定向后的固定URL）
+async function fetchFromPicsum(): Promise<string> {
+  const randomUrl = `https://picsum.photos/400/240?random=${Date.now()}`
+  const response = await fetch(randomUrl, { method: 'HEAD' })
+  return response.url
+}
+
 // 从 Unsplash 获取图片
 async function fetchFromUnsplash(query: string): Promise<string | null> {
   if (!UNSPLASH_ACCESS_KEY) {
     // 没有 API key，使用 Picsum 替代
     return `https://picsum.photos/400/240?random=${Date.now()}`
   }
-  
+
   const response = await fetch(
     `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)}&orientation=landscape&w=400&h=240`,
     {
@@ -546,14 +569,14 @@ function triggerUpload() {
 // 处理封面文件变化
 async function handleCoverChange(files: any[]) {
   if (files.length === 0) return
-  
+
   const file = files[files.length - 1]
   if (!file.raw) return
-  
+
   // 验证文件
   const isImage = file.raw.type.startsWith('image/')
   const isLt2M = file.raw.size / 1024 / 1024 < 2
-  
+
   if (!isImage) {
     MessagePlugin.error('只能上传图片文件')
     return
@@ -562,7 +585,7 @@ async function handleCoverChange(files: any[]) {
     MessagePlugin.error('图片大小不能超过 2MB')
     return
   }
-  
+
   uploadingCover.value = true
   try {
     const result = await handleUploadCover(file)
@@ -586,7 +609,7 @@ async function handleSaveDictionary() {
   try {
     // 自动设置作者为当前用户昵称或邮箱
     const author = authStore.profile?.nickname || authStore.user?.email?.split('@')[0] || '匿名用户'
-    
+
     if (editingDictionary.value) {
       await dictionaryStore.updateDictionary(editingDictionary.value.id, {
         ...formData,
@@ -634,7 +657,7 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .dictionaries-page {
-  max-width: 1400px;
+  max-width: 1000px;
   margin: 0 auto;
 
   .page-header {
@@ -689,11 +712,11 @@ onMounted(async () => {
       align-items: center;
       flex-wrap: wrap;
     }
-    
+
     .search-input {
       width: 280px;
     }
-    
+
     .filter-select {
       width: 140px;
     }
@@ -707,10 +730,24 @@ onMounted(async () => {
       align-items: center;
       gap: 0.75rem;
       margin-bottom: 1.25rem;
+      cursor: pointer;
+      user-select: none;
+
+      &:hover {
+        .collapse-icon {
+          color: var(--honey-500);
+        }
+      }
+
+      .collapse-icon {
+        color: var(--text-secondary);
+        transition: color 0.2s;
+      }
 
       h2 {
         font-size: 1.25rem;
         font-weight: 600;
+        margin: 0;
       }
 
       .count {
@@ -763,19 +800,16 @@ onMounted(async () => {
         color: var(--honey-500);
       }
 
-      .card-badge {
+      .card-bookmark {
         position: absolute;
-        top: 8px;
-        right: 8px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 4px 8px;
-        background: var(--honey-500);
-        color: white;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 500;
+        top: -4px;
+        right: 12px;
+        color: var(--honey-500);
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+
+        :deep(.t-icon) {
+          font-size: 32px;
+        }
       }
     }
 
@@ -828,11 +862,26 @@ onMounted(async () => {
   }
 
   .empty-hint {
-    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
     text-align: center;
     color: var(--text-secondary);
     background: var(--bg-card);
     border-radius: 12px;
+
+    h3 {
+      margin: 0.75rem 0 0.25rem;
+      font-size: 1.1rem;
+      color: var(--text-primary);
+    }
+
+    p {
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
   }
 
   .loading-state,
@@ -860,20 +909,20 @@ onMounted(async () => {
 // 封面选择样式
 .cover-selection {
   width: 100%;
-  
+
   .cover-options {
     display: flex;
     gap: 1rem;
     flex-wrap: wrap;
   }
-  
+
   .cover-option {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    
+
     .cover-option-preview {
       width: 100px;
       height: 60px;
@@ -882,13 +931,13 @@ onMounted(async () => {
       border: 2px solid var(--border-color);
       transition: all 0.2s;
       background: var(--bg-page);
-      
+
       img {
         width: 100%;
         height: 100%;
         object-fit: cover;
       }
-      
+
       &.empty {
         display: flex;
         align-items: center;
@@ -904,29 +953,29 @@ onMounted(async () => {
         color: var(--honey-500);
       }
     }
-    
+
     span {
       font-size: 0.8rem;
       color: var(--text-secondary);
     }
-    
+
     &:hover .cover-option-preview {
       border-color: var(--honey-400);
     }
-    
+
     &.active {
       .cover-option-preview {
         border-color: var(--honey-500);
         box-shadow: 0 0 0 2px rgba(var(--honey-500-rgb), 0.2);
       }
-      
+
       span {
         color: var(--honey-600);
         font-weight: 500;
       }
     }
   }
-  
+
   .upload-loading {
     margin-top: 0.5rem;
   }
@@ -940,18 +989,18 @@ onMounted(async () => {
       .action-left {
         width: 100%;
         flex-direction: row;
-        
+
         .search-input {
           flex: 1;
           min-width: 0;
         }
-        
+
         .filter-select {
           width: 120px;
           flex-shrink: 0;
         }
       }
-      
+
       .action-right {
         width: 100%;
       }

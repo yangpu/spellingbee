@@ -87,6 +87,7 @@ import { useLearningStore } from '@/stores/learning';
 import { useSpeechStore } from '@/stores/speech';
 import { useChallengeStore } from '@/stores/challenge';
 import { useAnnouncerStore } from '@/stores/announcer';
+import { useDictionaryStore } from '@/stores/dictionary';
 import { useChallengeNotifications, notificationService } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 import UserProfile from '@/components/UserProfile.vue';
@@ -115,13 +116,14 @@ const learningStore = useLearningStore();
 const speechStore = useSpeechStore();
 const challengeStore = useChallengeStore();
 const announcerStore = useAnnouncerStore();
+const dictionaryStore = useDictionaryStore();
 
 // 挑战赛通知取消订阅函数
 let unsubscribeNotification = null;
 // 通知服务是否已初始化
 let notificationInitialized = false;
 
-// 从云端加载主题
+// 从云端加载主题（并同步）
 const loadThemeFromCloud = async () => {
   if (!authStore.user) return;
 
@@ -137,15 +139,26 @@ const loadThemeFromCloud = async () => {
       return;
     }
 
-    if (data?.theme) {
-      const cloudTheme = data.theme;
-      const localTheme = localStorage.getItem(THEME_KEY);
+    const localTheme = localStorage.getItem(THEME_KEY);
 
-      // 如果云端主题与当前不同，应用云端主题
+    if (data?.theme) {
+      // 云端有主题，应用云端主题
+      const cloudTheme = data.theme;
       if (cloudTheme !== localTheme) {
         document.documentElement.setAttribute('data-theme', cloudTheme);
         localStorage.setItem(THEME_KEY, cloudTheme);
       }
+    } else if (localTheme) {
+      // 云端没有主题但本地有，上传本地主题到云端
+      await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: authStore.user.id,
+          theme: localTheme,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        });
     }
   } catch (e) {
     console.error('Error loading theme:', e);
@@ -192,6 +205,7 @@ const syncAllData = async () => {
 
   try {
     await Promise.all([
+      dictionaryStore.syncFromServer(),
       competitionStore.loadRecords(),
       learningStore.syncFromCloud(),
       speechStore.loadFromCloud()

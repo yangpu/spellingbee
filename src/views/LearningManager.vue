@@ -27,7 +27,7 @@
           <t-icon name="books" />
         </div>
         <div class="stat-content">
-          <span class="stat-value">{{ wordsStore.wordCount }}</span>
+          <span class="stat-value">{{ totalWordCount }}</span>
           <span class="stat-label">词库总数</span>
         </div>
       </div>
@@ -149,7 +149,7 @@
     </div>
 
     <!-- Empty State -->
-    <div class="empty-state" v-if="wordsStore.wordCount === 0">
+    <div class="empty-state" v-if="totalWordCount === 0">
       <t-icon name="folder-open" size="64px" />
       <h3>词库为空</h3>
       <p>请先添加一些单词到词库</p>
@@ -190,6 +190,12 @@ const currentDictionaryInfo = computed(() => {
     }
   }
   return null
+})
+
+// 词库单词数量（直接从 dictionaryStore 获取，确保响应式）
+const totalWordCount = computed(() => {
+  void dictionaryStore.dictionaryVersion
+  return dictionaryStore.currentWords.length
 })
 
 // 跳转到词典详情页
@@ -259,8 +265,8 @@ function setFilter(status) {
 
 // Progress percentage
 const progressPercentage = computed(() => {
-  if (wordsStore.wordCount === 0) return 0
-  return Math.round((currentMasteredCount.value / wordsStore.wordCount) * 100)
+  if (totalWordCount.value === 0) return 0
+  return Math.round((currentMasteredCount.value / totalWordCount.value) * 100)
 })
 
 // Get word learning stats
@@ -481,10 +487,10 @@ function confirmClearRecords() {
   })
 }
 
-onMounted(() => {
-  wordsStore.init()
-  learningStore.init()
-  competitionStore.loadRecords()
+onMounted(async () => {
+  await wordsStore.init()
+  await learningStore.init()
+  await competitionStore.loadRecords()
 })
 </script>
 

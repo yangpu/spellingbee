@@ -178,13 +178,19 @@
     </div>
 
     <!-- Empty state -->
-    <div class="empty-state" v-if="!isLearning && !wordsStore.wordCount">
+    <div class="empty-state" v-if="pageReady && !isLearning && !hasWords">
       <t-icon name="folder-open" size="64px" />
       <h3>词库为空</h3>
-      <p>请先添加一些单词到词库</p>
+      <p>当前词典没有单词，请先添加单词或选择其他词典</p>
       <t-button theme="primary" @click="$router.push('/dictionaries')">
-        前往词库
+        前往词典
       </t-button>
+    </div>
+
+    <!-- Loading state -->
+    <div class="loading-state" v-if="!pageReady">
+      <t-loading />
+      <p>加载中...</p>
     </div>
 
     <!-- Completion -->
@@ -313,6 +319,13 @@ const currentDictionaryInfo = computed(() => {
   return null
 })
 
+// 是否有单词可学习（直接从 dictionaryStore 获取，确保响应式）
+const hasWords = computed(() => {
+  // 显式依赖 dictionaryVersion 确保词典切换时重新计算
+  void dictionaryStore.dictionaryVersion
+  return dictionaryStore.currentWords.length > 0
+})
+
 // Settings
 const settings = reactive({
   count: 10,
@@ -370,6 +383,7 @@ const currentIndex = ref(0)
 const masteredWords = ref([])
 const reviewWords = ref([])
 const showLearningRecord = ref(true) // 学习记录折叠状态，默认展开
+const pageReady = ref(false) // 页面初始化完成标志
 
 // 当前学习的词典信息
 const currentDictId = ref('')
@@ -1185,10 +1199,11 @@ watch(currentWord, (newWord) => {
 })
 
 onMounted(async () => {
-  wordsStore.init()
+  await wordsStore.init()
   await learningStore.init()
   speechStore.init() // 初始化语音配置
   loadSettings() // 加载保存的设置
+  pageReady.value = true // 标记页面初始化完成
   window.addEventListener('keydown', handleKeydown)
 
   // 检查未完成的学习会话
@@ -1591,6 +1606,19 @@ onUnmounted(() => {
 
     p {
       margin-bottom: 1.5rem;
+    }
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    color: var(--text-secondary);
+
+    p {
+      margin-top: 1rem;
     }
   }
 

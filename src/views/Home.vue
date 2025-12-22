@@ -206,12 +206,18 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useWordsStore } from '@/stores/words';
+import { useDictionaryStore } from '@/stores/dictionary';
 import { useCompetitionStore } from '@/stores/competition';
 
 const wordsStore = useWordsStore();
+const dictionaryStore = useDictionaryStore();
 const competitionStore = useCompetitionStore();
 
-const wordCount = computed(() => wordsStore.wordCount);
+// 词库单词数量（直接从 dictionaryStore 获取，确保响应式）
+const wordCount = computed(() => {
+  void dictionaryStore.dictionaryVersion
+  return dictionaryStore.currentWords.length
+});
 const stats = computed(() => competitionStore.stats);
 
 // PWA 安装相关状态

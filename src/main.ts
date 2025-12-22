@@ -11,6 +11,12 @@ const THEME_KEY = 'spellingbee_theme'
 const savedTheme = localStorage.getItem(THEME_KEY)
 if (savedTheme) {
   document.documentElement.setAttribute('data-theme', savedTheme)
+} else {
+  // 如果没有保存的主题，检测系统偏好并保存
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const defaultTheme = prefersDark ? 'dark' : 'light'
+  localStorage.setItem(THEME_KEY, defaultTheme)
+  document.documentElement.setAttribute('data-theme', defaultTheme)
 }
 
 const app = createApp(App)

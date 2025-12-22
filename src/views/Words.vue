@@ -11,66 +11,63 @@
     </div>
 
     <!-- 词典信息卡片 -->
-    <div class="dictionary-card" v-if="currentDictionary">
+    <div class="dictionary-card" v-if="viewingDictionary">
       <div class="card-cover">
-        <img v-if="getCoverUrl(currentDictionary)" :src="getCoverUrl(currentDictionary)" alt="封面" />
+        <img v-if="getCoverUrl(viewingDictionary)" :src="getCoverUrl(viewingDictionary)" alt="封面" />
         <div v-else class="cover-placeholder">
           <t-icon name="book" size="48px" />
         </div>
       </div>
       <div class="card-body">
         <div class="card-content">
-          <h1>{{ currentDictionary.name }}</h1>
-          <p class="description">{{ currentDictionary.description || '暂无描述' }}</p>
+          <h1>{{ viewingDictionary.name }}</h1>
+          <p class="description">{{ viewingDictionary.description || '--' }}</p>
           <div class="card-meta">
-            <span class="meta-item"><t-icon name="user" /> {{ currentDictionary.author || '未知作者' }}</span>
-            <span class="meta-item"><t-icon name="time" /> {{ formatDate(currentDictionary.updated_at) }}</span>
+            <span class="meta-item"><t-icon name="user" /> {{ viewingDictionary.author || '未知作者' }}</span>
+            <span class="meta-item"><t-icon name="time" /> {{ formatDate(viewingDictionary.updated_at) }}</span>
           </div>
           <div class="card-tags">
-            <t-tag size="small" variant="light" theme="primary">{{ DictionaryLevelLabels[currentDictionary.level] }}</t-tag>
-            <t-tag size="small" variant="light">{{ DictionaryTypeLabels[currentDictionary.type] }}</t-tag>
-            <t-tag size="small" variant="light">{{ currentDictionary.word_count || words.length }} 词</t-tag>
-            <t-tag size="small" variant="light" v-if="currentDictionary.is_public" theme="success">公开</t-tag>
+            <t-tag size="small" variant="light" theme="primary">{{ DictionaryLevelLabels[viewingDictionary.level]
+            }}</t-tag>
+            <t-tag size="small" variant="light">{{ DictionaryTypeLabels[viewingDictionary.type] }}</t-tag>
+            <t-tag size="small" variant="light">{{ viewingDictionary.word_count || viewingWords.length }} 词</t-tag>
+            <t-tag size="small" variant="light" v-if="viewingDictionary.is_public" theme="success">公开</t-tag>
           </div>
         </div>
-        <div class="card-actions" v-if="!isCurrentDictionary">
-          <t-button theme="primary" @click="handleSelectAsCurrent">
-            <template #icon><t-icon name="check-circle" /></template>
-            设为当前词典
-          </t-button>
-        </div>
       </div>
-      <div class="card-badge" v-if="isCurrentDictionary">
-        <t-icon name="check" />
-        当前使用
+      <!-- 右侧操作区域：书签或按钮 -->
+      <div class="card-right-action">
+        <t-tooltip content="当前使用" placement="left" v-if="isCurrentDictionary">
+          <div class="card-bookmark">
+            <t-icon name="bookmark" />
+          </div>
+        </t-tooltip>
+        <t-button v-else theme="primary" size="small" @click="handleSelectAsCurrent">
+          <template #icon><t-icon name="check-circle" /></template>
+          选用
+        </t-button>
       </div>
     </div>
 
     <!-- 工具栏 -->
-    <div class="toolbar" v-if="currentDictionary">
+    <div class="toolbar" v-if="viewingDictionary">
       <div class="toolbar-left">
-        <t-input
-          v-model="searchQuery"
-          placeholder="搜索单词或释义..."
-          clearable
-          class="search-input"
-        >
+        <t-input v-model="searchQuery" placeholder="搜索单词或释义..." clearable class="search-input">
           <template #prefix-icon>
             <t-icon name="search" />
           </template>
         </t-input>
-        <t-select
-          v-model="filterDifficulty"
-          placeholder="难度筛选"
-          clearable
-          class="filter-select"
-        >
+        <t-select v-model="filterDifficulty" placeholder="难度筛选" clearable class="filter-select">
           <t-option :value="1" label="⭐ 简单" />
           <t-option :value="2" label="⭐⭐ 较易" />
           <t-option :value="3" label="⭐⭐⭐ 中等" />
           <t-option :value="4" label="⭐⭐⭐⭐ 较难" />
           <t-option :value="5" label="⭐⭐⭐⭐⭐ 困难" />
         </t-select>
+        <t-button variant="outline" :loading="refreshing" @click="handleRefresh">
+          <template #icon><t-icon name="refresh" /></template>
+          刷新
+        </t-button>
       </div>
       <div class="toolbar-right" v-if="isOwner">
         <t-dropdown :options="importOptions" @click="handleImportClick" :min-column-width="180">
@@ -84,11 +81,11 @@
           <template #icon><t-icon name="download" /></template>
           导出
         </t-button>
-        <t-button theme="primary" @click="showAddWordDialog = true">
+        <t-button variant="outline" @click="showAddWordDialog = true">
           <template #icon><t-icon name="add" /></template>
           添加单词
         </t-button>
-        <t-button theme="primary" variant="outline" @click="openBatchWordDialog">
+        <t-button theme="primary" @click="openBatchWordDialog">
           <template #icon><t-icon name="file-add" /></template>
           批量单词
         </t-button>
@@ -96,35 +93,22 @@
     </div>
 
     <!-- 统计行 -->
-    <div class="stats-row" v-if="currentDictionary">
+    <div class="stats-row" v-if="viewingDictionary">
       <div class="stat-item" :class="{ active: filterDifficulty === null }" @click="setDifficultyFilter(null)">
-        <span class="stat-value">{{ words.length }}</span>
+        <span class="stat-value">{{ viewingWords.length }}</span>
         <span class="stat-label">总单词数</span>
       </div>
-      <div 
-        class="stat-item" 
-        :class="{ active: filterDifficulty === Number(level) }"
-        v-for="(count, level) in difficultyCounts" 
-        :key="level"
-        @click="setDifficultyFilter(Number(level))"
-      >
+      <div class="stat-item" :class="{ active: filterDifficulty === Number(level) }"
+        v-for="(count, level) in difficultyCounts" :key="level" @click="setDifficultyFilter(Number(level))">
         <span class="stat-value">{{ count }}</span>
         <span class="stat-label">{{ getDifficultyLabel(level) }}</span>
       </div>
     </div>
 
     <!-- 单词表格 -->
-    <div class="words-table-container" v-if="currentDictionary && words.length > 0">
-      <t-table
-        :data="filteredWords"
-        :columns="columns"
-        :loading="loading"
-        :pagination="pagination"
-        row-key="id"
-        hover
-        stripe
-        @page-change="handlePageChange"
-      >
+    <div class="words-table-container" v-if="viewingDictionary && viewingWords.length > 0">
+      <t-table :data="filteredWords" :columns="columns" :loading="loading" :pagination="pagination" row-key="id" hover
+        stripe @page-change="handlePageChange">
         <template #index="{ row }">
           <span class="word-index">{{ getWordIndex(row.id) }}</span>
         </template>
@@ -158,17 +142,17 @@
     </div>
 
     <!-- 空状态 -->
-    <div class="empty-state" v-else-if="currentDictionary && words.length === 0 && !loading">
-      <t-icon name="file-add" size="64px" />
+    <div class="empty-state" v-else-if="viewingDictionary && viewingWords.length === 0 && !loading">
+      <t-icon name="file-add" size="48px" />
       <h3>词典还没有单词</h3>
       <p v-if="isOwner">开始添加单词或导入词库</p>
       <p v-else>该词典暂无单词</p>
       <t-space v-if="isOwner">
-        <t-button theme="primary" @click="showAddWordDialog = true">
-          <template #icon><t-icon name="add" /></template>
-          添加单词
+        <t-button theme="primary" @click="openBatchWordDialog">
+          <template #icon><t-icon name="file-add" /></template>
+          批量单词
         </t-button>
-        <t-dropdown :options="importOptions" @click="handleImportClick">
+        <t-dropdown :options="importOptions" @click="handleImportClick" :min-column-width="200">
           <t-button variant="outline">
             <template #icon><t-icon name="upload" /></template>
             导入词库
@@ -184,21 +168,19 @@
     </div>
 
     <!-- 添加/编辑单词对话框 -->
-    <t-dialog
-      v-model:visible="showAddWordDialog"
-      :header="editingWord ? '编辑单词' : '添加单词'"
-      width="600px"
-      :confirm-btn="{ content: '保存', theme: 'primary', loading: saving }"
-      :cancel-btn="{ content: '取消' }"
-      @confirm="handleSaveWord"
-      @close="resetWordForm"
-    >
+    <t-dialog v-model:visible="showAddWordDialog" :header="editingWord ? '编辑单词' : '添加单词'" width="600px"
+      :confirm-btn="{ content: '保存', theme: 'primary', loading: saving }" :cancel-btn="{ content: '取消' }"
+      @confirm="handleSaveWord" @close="resetWordForm">
       <t-form ref="wordFormRef" :data="wordForm" :rules="wordRules" label-width="80px">
         <t-form-item label="单词" name="word">
           <div class="word-input-with-speak">
             <t-input v-model="wordForm.word" placeholder="请输入单词" style="flex: 1" />
             <t-button variant="outline" :disabled="!wordForm.word" @click="speakWord(wordForm.word)">
               <template #icon><t-icon name="sound" /></template>
+            </t-button>
+            <t-button variant="outline" :disabled="!wordForm.word" :loading="fetchingWordDef" @click="handleFetchWordDefinition">
+              <template #icon><t-icon name="internet" /></template>
+              查词典
             </t-button>
           </div>
         </t-form-item>
@@ -236,22 +218,12 @@
     </t-dialog>
 
     <!-- 导入对话框 -->
-    <t-dialog
-      v-model:visible="showImportDialog"
-      :header="importDialogTitle"
-      width="700px"
+    <t-dialog v-model:visible="showImportDialog" :header="importDialogTitle" width="700px"
       :confirm-btn="{ content: importMode === 'wordlist' ? '生成词库' : '导入', theme: 'primary', loading: importing }"
-      :cancel-btn="{ content: '取消' }"
-      @confirm="handleImportConfirm"
-    >
+      :cancel-btn="{ content: '取消' }" @confirm="handleImportConfirm">
       <!-- JSON 导入 -->
       <div v-if="importMode === 'json'">
-        <t-upload
-          :request-method="handleJSONUpload"
-          accept=".json"
-          theme="custom"
-          draggable
-        >
+        <t-upload :request-method="handleJSONUpload" accept=".json" theme="custom" draggable>
           <div class="upload-area">
             <t-icon name="upload" size="48px" />
             <p>点击或拖拽 JSON 文件到此处</p>
@@ -262,32 +234,28 @@
 
       <!-- CSV 导入 -->
       <div v-else-if="importMode === 'csv'">
-        <t-upload
-          :request-method="handleCSVUpload"
-          accept=".csv"
-          theme="custom"
-          draggable
-        >
+        <t-upload :request-method="handleCSVUpload" accept=".csv" theme="custom" draggable>
           <div class="upload-area">
             <t-icon name="upload" size="48px" />
             <p>点击或拖拽 CSV 文件到此处</p>
-            <span>CSV 首行应包含列名：word, pronunciation, definition, definition_cn, part_of_speech, example_sentence, difficulty, category</span>
+            <span>CSV 首行应包含列名：word, pronunciation, definition, definition_cn, part_of_speech, example_sentence,
+              difficulty,
+              category</span>
           </div>
         </t-upload>
       </div>
 
       <!-- 单词列表导入 -->
       <div v-else-if="importMode === 'wordlist'" class="wordlist-import">
-        <t-textarea
-          v-model="wordListInput"
+        <t-textarea v-model="wordListInput"
           placeholder="输入单词列表，每行一个单词或用逗号分隔&#10;例如：&#10;apple&#10;banana&#10;cherry&#10;&#10;或：apple, banana, cherry"
-          :rows="10"
-        />
+          :rows="10" />
         <div class="wordlist-preview" v-if="parsedWordList.length > 0">
           <p>识别到 <strong>{{ parsedWordList.length }}</strong> 个单词</p>
           <div class="word-tags">
             <t-tag v-for="word in parsedWordList.slice(0, 20)" :key="word" size="small">{{ word }}</t-tag>
-            <t-tag v-if="parsedWordList.length > 20" size="small" variant="light">+{{ parsedWordList.length - 20 }} 更多</t-tag>
+            <t-tag v-if="parsedWordList.length > 20" size="small" variant="light">+{{ parsedWordList.length - 20 }}
+              更多</t-tag>
           </div>
         </div>
         <t-alert theme="info" style="margin-top: 12px">
@@ -305,14 +273,9 @@
     </t-dialog>
 
     <!-- 批量单词弹窗 -->
-    <t-dialog
-      v-model:visible="showBatchWordDialog"
-      header="批量添加单词"
-      width="700px"
-      :confirm-btn="{ content: '生成词库', theme: 'primary', loading: batchGenerating }"
-      :cancel-btn="{ content: '取消' }"
-      @confirm="handleBatchGenerate"
-    >
+    <t-dialog v-model:visible="showBatchWordDialog" header="批量添加单词" width="700px"
+      :confirm-btn="{ content: '生成词库', theme: 'primary', loading: batchGenerating }" :cancel-btn="{ content: '取消' }"
+      @confirm="handleBatchGenerate">
       <div class="batch-word-dialog">
         <div class="provider-select">
           <label>词典服务商：</label>
@@ -323,16 +286,16 @@
           <t-tag v-if="selectedProvider === 'free'" theme="warning" variant="light" size="small">仅英文释义</t-tag>
           <t-tag v-else theme="success" variant="light" size="small">含中文释义</t-tag>
         </div>
-        <t-textarea
-          v-model="batchWordInput"
-          placeholder="输入单词列表，每行一个单词或用逗号分隔&#10;例如：&#10;apple&#10;banana&#10;cherry&#10;&#10;或：apple, banana, cherry"
-          :rows="10"
-        />
+        <t-textarea v-model="batchWordInput"
+          placeholder="输入单词列表，支持换行、逗号或空格分隔&#10;例如：apple banana cherry&#10;或：apple, banana, cherry&#10;或：&#10;apple&#10;banana&#10;cherry"
+          :rows="10" />
         <div class="wordlist-preview" v-if="parsedBatchWordList.length > 0">
           <p>识别到 <strong>{{ parsedBatchWordList.length }}</strong> 个单词</p>
           <div class="word-tags">
             <t-tag v-for="word in parsedBatchWordList.slice(0, 20)" :key="word" size="small">{{ word }}</t-tag>
-            <t-tag v-if="parsedBatchWordList.length > 20" size="small" variant="light">+{{ parsedBatchWordList.length - 20 }} 更多</t-tag>
+            <t-tag v-if="parsedBatchWordList.length > 20" size="small" variant="light">+{{ parsedBatchWordList.length -
+              20
+            }} 更多</t-tag>
           </div>
         </div>
         <t-alert theme="info" style="margin-top: 12px">
@@ -352,16 +315,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive, watch } from 'vue'
+import { ref, computed, reactive, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useDictionaryStore } from '@/stores/dictionary'
 import { useAuthStore } from '@/stores/auth'
 import { useSpeechStore } from '@/stores/speech'
-import { supabase } from '@/lib/supabase'
 import { generateWordDefinitions, setDictionaryProvider, type DictionaryProvider } from '@/lib/dictionary-api'
 import { DictionaryLevelLabels, DictionaryTypeLabels } from '@/types'
-import type { Word, Dictionary } from '@/types'
+import type { Word } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -369,10 +332,12 @@ const dictionaryStore = useDictionaryStore()
 const authStore = useAuthStore()
 const speechStore = useSpeechStore()
 
-// 当前词典和单词
-const currentDictionary = ref<Dictionary | null>(null)
-const words = ref<Word[]>([])
-const loading = ref(false)
+// 使用 storeToRefs 获取响应式状态
+const { 
+  viewingDictionary, 
+  viewingWords, 
+  loading 
+} = storeToRefs(dictionaryStore)
 
 // 保存进入页面时的"当前使用"词典ID（不随页面操作变化）
 const savedCurrentDictId = ref<string | null>(null)
@@ -396,6 +361,8 @@ const showAddWordDialog = ref(false)
 const showImportDialog = ref(false)
 const saving = ref(false)
 const importing = ref(false)
+const fetchingWordDef = ref(false)
+const refreshing = ref(false)
 
 // 编辑状态
 const editingWord = ref<Word | null>(null)
@@ -472,20 +439,22 @@ const columns = computed(() => {
 const importOptions = [
   { content: '📄 导入 JSON 文件', value: 'json' },
   { content: '📊 导入 CSV 文件', value: 'csv' },
-  { content: '✏️ 输入单词列表', value: 'wordlist' }
+  { content: '✏️ 输入单词列表', value: 'wordlist' },
+  { content: '📚 导入 Grade3-400 词库', value: 'grade3' },
+  { content: '🎯 导入 Demo 词库', value: 'demo' }
 ]
 
 // 计算属性
-const isOwner = computed(() => 
-  currentDictionary.value?.creator_id === authStore.user?.id
+const isOwner = computed(() =>
+  viewingDictionary.value?.creator_id === authStore.user?.id
 )
 
 const isCurrentDictionary = computed(() =>
-  savedCurrentDictId.value === currentDictionary.value?.id
+  savedCurrentDictId.value === viewingDictionary.value?.id
 )
 
 const filteredWords = computed(() => {
-  let result = [...words.value]
+  let result = [...viewingWords.value]
 
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
@@ -510,7 +479,7 @@ const filteredWords = computed(() => {
 
 const difficultyCounts = computed(() => {
   const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-  words.value.forEach(w => {
+  viewingWords.value.forEach(w => {
     if (counts[w.difficulty] !== undefined) {
       counts[w.difficulty]++
     }
@@ -527,7 +496,7 @@ const parsedWordList = computed(() => {
 
 const parsedBatchWordList = computed(() => {
   return batchWordInput.value
-    .split(/[,\n]/)
+    .split(/[,\n\s]+/)
     .map(w => w.trim().toLowerCase())
     .filter(w => w.length > 0 && /^[a-z]+$/i.test(w))
 })
@@ -555,7 +524,7 @@ function getDifficultyTheme(level: number) {
 const baseUrl = import.meta.env.BASE_URL
 
 // 获取封面URL（处理默认封面）
-function getCoverUrl(dict: Dictionary | null): string {
+function getCoverUrl(dict: { cover_image?: string } | null): string {
   if (!dict?.cover_image) return ''
   if (dict.cover_image === 'default' || dict.cover_image.includes('dictionary-default')) {
     return `${baseUrl}dictionary-default.svg`
@@ -565,7 +534,7 @@ function getCoverUrl(dict: Dictionary | null): string {
 
 function getWordIndex(wordId: string) {
   // 按添加顺序（原始数组顺序）查找索引
-  const index = words.value.findIndex(w => w.id === wordId)
+  const index = viewingWords.value.findIndex(w => w.id === wordId)
   return index >= 0 ? index + 1 : '-'
 }
 
@@ -582,17 +551,29 @@ function speakWord(word: string) {
   speechStore.speakWord(word)
 }
 
+async function handleRefresh() {
+  refreshing.value = true
+  try {
+    await dictionaryStore.refreshViewingDictionary()
+    MessagePlugin.success('刷新成功')
+  } catch (error) {
+    MessagePlugin.error('刷新失败')
+  } finally {
+    refreshing.value = false
+  }
+}
+
 function handlePageChange(pageInfo: { current: number; pageSize: number }) {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
 }
 
 async function handleSelectAsCurrent() {
-  if (!currentDictionary.value) return
+  if (!viewingDictionary.value) return
   try {
-    await dictionaryStore.selectDictionary(currentDictionary.value.id)
+    await dictionaryStore.selectDictionary(viewingDictionary.value.id)
     // 更新保存的当前词典ID，使标识立即显示
-    savedCurrentDictId.value = currentDictionary.value.id
+    savedCurrentDictId.value = viewingDictionary.value.id
     MessagePlugin.success('已设为当前词典')
   } catch (error) {
     MessagePlugin.error('设置失败')
@@ -608,11 +589,11 @@ function handleEditWord(row: Word) {
 async function handleDeleteWord(id: string) {
   try {
     await dictionaryStore.deleteWord(id)
-    // 从本地列表中移除
-    words.value = words.value.filter(w => w.id !== id)
+    // store 会自动更新 viewingWords，无需手动处理
     MessagePlugin.success('删除成功')
   } catch (error) {
-    MessagePlugin.error('删除失败')
+    console.error('Delete word failed:', error)
+    MessagePlugin.error((error as Error).message || '删除失败')
   }
 }
 
@@ -620,7 +601,7 @@ async function handleSaveWord() {
   const result = await wordFormRef.value?.validate()
   if (result !== true) return
 
-  if (!currentDictionary.value) {
+  if (!viewingDictionary.value) {
     MessagePlugin.warning('词典信息丢失')
     return
   }
@@ -629,15 +610,11 @@ async function handleSaveWord() {
   try {
     if (editingWord.value) {
       await dictionaryStore.updateWord(editingWord.value.id, { ...wordForm })
-      // 更新本地列表
-      const index = words.value.findIndex(w => w.id === editingWord.value!.id)
-      if (index !== -1) {
-        words.value[index] = { ...words.value[index], ...wordForm }
-      }
+      // store 会自动更新 viewingWords
       MessagePlugin.success('更新成功')
     } else {
-      const newWord = await dictionaryStore.addWord(currentDictionary.value.id, { ...wordForm })
-      words.value.push(newWord)
+      await dictionaryStore.addWord(viewingDictionary.value.id, { ...wordForm })
+      // store 会自动更新 viewingWords
       MessagePlugin.success('添加成功')
     }
     showAddWordDialog.value = false
@@ -663,11 +640,140 @@ function resetWordForm() {
   })
 }
 
+// 从在线词典获取单词定义
+async function handleFetchWordDefinition() {
+  if (!wordForm.word) return
+  
+  fetchingWordDef.value = true
+  try {
+    setDictionaryProvider('mymemory') // 使用 MyMemory 获取中英文释义
+    const { success, failed } = await generateWordDefinitions([wordForm.word.trim().toLowerCase()])
+    
+    if (success.length > 0) {
+      const def = success[0]
+      // 填充表单，保留用户已填写的内容
+      if (!wordForm.pronunciation && def.pronunciation) wordForm.pronunciation = def.pronunciation
+      if (!wordForm.definition && def.definition) wordForm.definition = def.definition
+      if (!wordForm.definition_cn && def.definition_cn) wordForm.definition_cn = def.definition_cn
+      if (!wordForm.part_of_speech && def.part_of_speech) wordForm.part_of_speech = def.part_of_speech
+      if (!wordForm.example_sentence && def.example_sentence) wordForm.example_sentence = def.example_sentence
+      MessagePlugin.success('已获取词典释义')
+    } else {
+      MessagePlugin.warning('未找到该单词的释义')
+    }
+  } catch (error) {
+    MessagePlugin.error('获取释义失败')
+  } finally {
+    fetchingWordDef.value = false
+  }
+}
+
 function handleImportClick(data: { value: string }) {
+  if (data.value === 'grade3') {
+    handleImportGrade3()
+    return
+  }
+  if (data.value === 'demo') {
+    handleImportDemo()
+    return
+  }
   importMode.value = data.value as 'json' | 'csv' | 'wordlist'
   wordListInput.value = ''
   importProgress.show = false
   showImportDialog.value = true
+}
+
+// 导入 Grade3-400 词库
+async function handleImportGrade3() {
+  if (!viewingDictionary.value) {
+    MessagePlugin.warning('词典信息丢失')
+    return
+  }
+
+  importing.value = true
+  try {
+    const baseUrl = import.meta.env.BASE_URL
+    const response = await fetch(`${baseUrl}words/grade3-400.json`)
+    if (!response.ok) throw new Error('加载词库失败')
+
+    const wordsData = await response.json()
+
+    // 过滤掉已存在的单词
+    const existingWords = new Set(viewingWords.value.map(w => w.word.toLowerCase()))
+    const newWords = wordsData.filter((w: any) => !existingWords.has(w.word.toLowerCase()))
+
+    if (newWords.length === 0) {
+      MessagePlugin.info('词库中的单词已全部存在')
+      return
+    }
+
+    const addedWords = await dictionaryStore.addWords(
+      viewingDictionary.value.id,
+      newWords.map((w: any) => ({
+        word: w.word || '',
+        pronunciation: w.pronunciation || '',
+        definition: w.definition || '',
+        definition_cn: w.definition_cn || '',
+        part_of_speech: w.part_of_speech || '',
+        example_sentence: w.example_sentence || '',
+        difficulty: w.difficulty || 3,
+        category: w.category || ''
+      }))
+    )
+
+    // store 会自动更新 viewingWords
+    MessagePlugin.success(`成功导入 ${addedWords.length} 个单词`)
+  } catch (error) {
+    console.error('Import grade3 failed:', error)
+    MessagePlugin.error('导入失败')
+  } finally {
+    importing.value = false
+  }
+}
+
+// 导入 Demo 词库
+async function handleImportDemo() {
+  if (!viewingDictionary.value) {
+    MessagePlugin.warning('词典信息丢失')
+    return
+  }
+
+  importing.value = true
+  try {
+    // 动态导入 defaultWords
+    const { defaultWords } = await import('@/stores/words')
+    
+    // 过滤掉已存在的单词
+    const existingWords = new Set(viewingWords.value.map(w => w.word.toLowerCase()))
+    const newWords = defaultWords.filter(w => !existingWords.has(w.word.toLowerCase()))
+
+    if (newWords.length === 0) {
+      MessagePlugin.info('Demo 词库中的单词已全部存在')
+      return
+    }
+
+    const addedWords = await dictionaryStore.addWords(
+      viewingDictionary.value.id,
+      newWords.map(w => ({
+        word: w.word || '',
+        pronunciation: w.pronunciation || '',
+        definition: w.definition || '',
+        definition_cn: w.definition_cn || '',
+        part_of_speech: w.part_of_speech || '',
+        example_sentence: w.example_sentence || '',
+        difficulty: w.difficulty || 3,
+        category: w.category || ''
+      }))
+    )
+
+    // store 会自动更新 viewingWords
+    MessagePlugin.success(`成功导入 ${addedWords.length} 个单词`)
+  } catch (error) {
+    console.error('Import demo failed:', error)
+    MessagePlugin.error('导入失败')
+  } finally {
+    importing.value = false
+  }
 }
 
 async function handleJSONUpload(file: { raw: File }) {
@@ -675,12 +781,9 @@ async function handleJSONUpload(file: { raw: File }) {
     const reader = new FileReader()
     reader.onload = async (e) => {
       try {
-        if (!currentDictionary.value) throw new Error('词典信息丢失')
-        const addedWords = await dictionaryStore.importFromJSON(e.target?.result as string, currentDictionary.value.id)
-        // 直接更新本地单词列表（避免重复）
-        const existingWords = new Set(words.value.map(w => w.word.toLowerCase()))
-        const uniqueNewWords = addedWords.filter(w => !existingWords.has(w.word.toLowerCase()))
-        words.value = [...words.value, ...uniqueNewWords]
+        if (!viewingDictionary.value) throw new Error('词典信息丢失')
+        const addedWords = await dictionaryStore.importFromJSON(e.target?.result as string, viewingDictionary.value.id)
+        // store 会自动更新 viewingWords
         MessagePlugin.success(`成功导入 ${addedWords.length} 个单词`)
         showImportDialog.value = false
         resolve({ status: 'success' })
@@ -699,12 +802,9 @@ async function handleCSVUpload(file: { raw: File }) {
     const reader = new FileReader()
     reader.onload = async (e) => {
       try {
-        if (!currentDictionary.value) throw new Error('词典信息丢失')
-        const addedWords = await dictionaryStore.importFromCSV(e.target?.result as string, currentDictionary.value.id)
-        // 直接更新本地单词列表（避免重复）
-        const existingWords = new Set(words.value.map(w => w.word.toLowerCase()))
-        const uniqueNewWords = addedWords.filter(w => !existingWords.has(w.word.toLowerCase()))
-        words.value = [...words.value, ...uniqueNewWords]
+        if (!viewingDictionary.value) throw new Error('词典信息丢失')
+        const addedWords = await dictionaryStore.importFromCSV(e.target?.result as string, viewingDictionary.value.id)
+        // store 会自动更新 viewingWords
         MessagePlugin.success(`成功导入 ${addedWords.length} 个单词`)
         showImportDialog.value = false
         resolve({ status: 'success' })
@@ -725,7 +825,7 @@ async function handleImportConfirm() {
       return
     }
 
-    if (!currentDictionary.value) {
+    if (!viewingDictionary.value) {
       MessagePlugin.warning('词典信息丢失')
       return
     }
@@ -746,8 +846,8 @@ async function handleImportConfirm() {
       )
 
       if (success.length > 0) {
-        const addedWords = await dictionaryStore.addWords(
-          currentDictionary.value.id,
+        await dictionaryStore.addWords(
+          viewingDictionary.value.id,
           success.map(w => ({
             word: w.word || '',
             pronunciation: w.pronunciation || '',
@@ -759,10 +859,7 @@ async function handleImportConfirm() {
             category: w.category || ''
           }))
         )
-        // 直接更新本地单词列表（避免重复）
-        const existingWords = new Set(words.value.map(w => w.word.toLowerCase()))
-        const uniqueNewWords = addedWords.filter(w => !existingWords.has(w.word.toLowerCase()))
-        words.value = [...words.value, ...uniqueNewWords]
+        // store 会自动更新 viewingWords
       }
 
       importProgress.status = 'success'
@@ -802,7 +899,7 @@ async function handleBatchGenerate() {
     return
   }
 
-  if (!currentDictionary.value) {
+  if (!viewingDictionary.value) {
     MessagePlugin.warning('词典信息丢失')
     return
   }
@@ -826,8 +923,8 @@ async function handleBatchGenerate() {
     )
 
     if (success.length > 0) {
-      const addedWords = await dictionaryStore.addWords(
-        currentDictionary.value.id,
+      await dictionaryStore.addWords(
+        viewingDictionary.value.id,
         success.map(w => ({
           word: w.word || '',
           pronunciation: w.pronunciation || '',
@@ -839,10 +936,7 @@ async function handleBatchGenerate() {
           category: w.category || ''
         }))
       )
-      // 直接更新本地单词列表（避免重复）
-      const existingWords = new Set(words.value.map(w => w.word.toLowerCase()))
-      const uniqueNewWords = addedWords.filter(w => !existingWords.has(w.word.toLowerCase()))
-      words.value = [...words.value, ...uniqueNewWords]
+      // store 会自动更新 viewingWords
     }
 
     batchProgress.status = 'success'
@@ -860,29 +954,30 @@ async function handleBatchGenerate() {
       batchProgress.show = false
     }, 1500)
   } catch (error) {
+    console.error('Batch generate failed:', error)
     batchProgress.status = 'error'
-    batchProgress.message = '生成失败'
-    MessagePlugin.error('生成失败')
+    batchProgress.message = (error as Error).message || '生成失败'
+    MessagePlugin.error((error as Error).message || '生成失败')
   } finally {
     batchGenerating.value = false
   }
 }
 
 function handleExport() {
-  if (!currentDictionary.value) {
+  if (!viewingDictionary.value) {
     MessagePlugin.warning('词典信息丢失')
     return
   }
 
   const data = JSON.stringify({
     dictionary: {
-      name: currentDictionary.value.name,
-      description: currentDictionary.value.description,
-      author: currentDictionary.value.author,
-      level: currentDictionary.value.level,
-      type: currentDictionary.value.type
+      name: viewingDictionary.value.name,
+      description: viewingDictionary.value.description,
+      author: viewingDictionary.value.author,
+      level: viewingDictionary.value.level,
+      type: viewingDictionary.value.type
     },
-    words: words.value.map(w => ({
+    words: viewingWords.value.map(w => ({
       word: w.word,
       pronunciation: w.pronunciation,
       definition: w.definition,
@@ -898,7 +993,7 @@ function handleExport() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${currentDictionary.value.name}-${new Date().toISOString().split('T')[0]}.json`
+  a.download = `${viewingDictionary.value.name}-${new Date().toISOString().split('T')[0]}.json`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
@@ -913,70 +1008,37 @@ async function loadDictionaryWords() {
     return
   }
 
-  loading.value = true
   try {
-    // 先加载词典信息
+    // 先初始化 store（加载当前使用的词典信息）
     await dictionaryStore.init()
-    
+
     // 保存进入页面时的"当前使用"词典ID
     savedCurrentDictId.value = dictionaryStore.currentDictionary?.id || null
-    
-    // 从服务器加载词典详情（不改变当前选用的词典）
-    const { data: dictData, error: dictError } = await supabase
-      .from('dictionaries')
-      .select('*')
-      .eq('id', dictId)
-      .single()
-    
-    if (dictError) throw dictError
-    
-    // 加载单词列表
-    await refreshWordsList(dictId)
-    
-    currentDictionary.value = dictData as Dictionary
+
+    // 使用 store 方法加载查看的词典和单词
+    await dictionaryStore.loadViewingDictionary(dictId)
   } catch (error) {
     console.error('Failed to load dictionary:', error)
     MessagePlugin.error('加载词典失败')
-  } finally {
-    loading.value = false
   }
 }
 
-// 单独刷新单词列表（不重新加载词典信息）
-async function refreshWordsList(dictId?: string) {
-  const targetDictId = dictId || (route.params.id as string)
-  if (!targetDictId) return
-  
-  try {
-    const { data: wordsData, error: wordsError } = await supabase
-      .from('dictionary_words')
-      .select('*')
-      .eq('dictionary_id', targetDictId)
-      .order('sort_order', { ascending: true })
-    
-    if (wordsError) throw wordsError
-    
-    words.value = wordsData as Word[]
-  } catch (error) {
-    console.error('Failed to refresh words:', error)
-  }
-}
-
-// 监听路由变化
+// 监听路由变化（使用 immediate: true 替代 onMounted）
 watch(() => route.params.id, (newId) => {
   if (newId) {
     loadDictionaryWords()
   }
 }, { immediate: true })
 
-onMounted(() => {
-  loadDictionaryWords()
+// 组件卸载时清理 viewing 状态
+onUnmounted(() => {
+  dictionaryStore.clearViewingDictionary()
 })
 </script>
 
 <style lang="scss" scoped>
 .words-page {
-  max-width: 1400px;
+  max-width: 1000px;
   margin: 0 auto;
 
   .page-header {
@@ -996,8 +1058,8 @@ onMounted(() => {
 
     .card-cover {
       position: relative;
-      width: 200px;
-      min-height: 200px;
+      width: 280px;
+      min-height: 180px;
       flex-shrink: 0;
       background: linear-gradient(135deg, var(--honey-100), var(--honey-200));
 
@@ -1017,28 +1079,28 @@ onMounted(() => {
       }
     }
 
-    .card-badge {
+    .card-right-action {
       position: absolute;
       top: 12px;
-      right: 12px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 6px 12px;
-      background: var(--honey-500);
-      color: white;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      white-space: nowrap;
+      right: 16px;
+      
+      .card-bookmark {
+        color: var(--honey-500);
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        
+        :deep(.t-icon) {
+          font-size: 40px;
+        }
+      }
     }
 
     .card-body {
       flex: 1;
       padding: 1.5rem;
+      padding-right: 100px; // 为右侧按钮留出空间
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: center;
 
       .card-content {
         h1 {
@@ -1073,12 +1135,6 @@ onMounted(() => {
           gap: 0.5rem;
         }
       }
-
-      .card-actions {
-        margin-top: 1rem;
-        display: flex;
-        gap: 0.5rem;
-      }
     }
   }
 
@@ -1100,11 +1156,11 @@ onMounted(() => {
       align-items: center;
       flex-wrap: wrap;
     }
-    
+
     .search-input {
       width: 280px;
     }
-    
+
     .filter-select {
       width: 140px;
     }
@@ -1183,19 +1239,21 @@ onMounted(() => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 4rem 2rem;
+    padding: 3rem 2rem;
     background: var(--bg-card);
     border-radius: 12px;
     text-align: center;
     color: var(--text-secondary);
 
     h3 {
-      margin: 1rem 0 0.5rem;
+      margin: 0.75rem 0 0.25rem;
+      font-size: 1.1rem;
       color: var(--text-primary);
     }
 
     p {
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
     }
   }
 }
@@ -1281,13 +1339,13 @@ onMounted(() => {
     align-items: center;
     gap: 0.75rem;
     margin-bottom: 1rem;
-    
+
     label {
       font-weight: 500;
       white-space: nowrap;
     }
   }
-  
+
   .wordlist-preview {
     margin-top: 1rem;
     padding: 1rem;
@@ -1322,6 +1380,13 @@ onMounted(() => {
   :deep(.t-dropdown__item:hover) {
     background-color: var(--td-bg-color-container-hover) !important;
   }
+  
+  // 修复 dark 主题下 t-alert 背景色
+  .batch-word-dialog :deep(.t-alert),
+  .wordlist-import :deep(.t-alert) {
+    background-color: var(--td-bg-color-container) !important;
+    border-color: var(--td-component-border) !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1331,25 +1396,42 @@ onMounted(() => {
 
       .card-cover {
         width: 100%;
-        min-height: 180px;
-        max-height: 220px;
+        height: 160px;
+        min-height: auto;
+        max-height: 160px;
+      }
+
+      .card-right-action {
+        top: 8px;
+        right: 12px;
+        
+        .card-bookmark {
+          :deep(.t-icon) {
+            font-size: 32px;
+          }
+        }
       }
 
       .card-body {
+        padding: 1rem;
+        padding-right: 1rem;
+
         .card-content {
-          text-align: center;
+          h1 {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+          }
+
+          .description {
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+          }
 
           .card-meta {
-            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
           }
-
-          .card-tags {
-            justify-content: center;
-          }
-        }
-
-        .card-actions {
-          justify-content: center;
         }
       }
     }
@@ -1360,18 +1442,18 @@ onMounted(() => {
       .toolbar-left {
         width: 100%;
         flex-direction: row;
-        
+
         .search-input {
           flex: 1;
           min-width: 0;
         }
-        
+
         .filter-select {
           width: 120px;
           flex-shrink: 0;
         }
       }
-      
+
       .toolbar-right {
         width: 100%;
         flex-wrap: wrap;
