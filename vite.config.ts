@@ -83,6 +83,66 @@ export default defineConfig({
               }
             }
           },
+          // Unsplash 图片缓存 - 词典封面和挑战背景图
+          {
+            urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'unsplash-images-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Picsum 图片缓存（备用图片源）
+          {
+            urlPattern: /^https:\/\/picsum\.photos\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'picsum-images-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // Picsum 重定向后的图片 (fastly CDN)
+          {
+            urlPattern: /^https:\/\/fastly\.picsum\.photos\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'picsum-images-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // LoremFlickr 图片缓存
+          {
+            urlPattern: /^https:\/\/loremflickr\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'loremflickr-images-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
           {
             urlPattern: /\/words\/.*\.json$/,
             handler: 'CacheFirst',

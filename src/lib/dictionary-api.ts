@@ -193,8 +193,27 @@ function estimateDifficulty(word: string): number {
 
 /**
  * 查询单词定义（根据当前服务商）
+ * 可选传入 findExistingFn 先从数据库查找
  */
-export async function lookupWord(word: string): Promise<Partial<Word>> {
+export async function lookupWord(
+  word: string,
+  findExistingFn?: (words: string[]) => Promise<Map<string, Partial<Word>>>
+): Promise<Partial<Word>> {
+  // 先尝试从数据库查找
+  if (findExistingFn) {
+    try {
+      const existing = await findExistingFn([word])
+      const found = existing.get(word.toLowerCase())
+      if (found && (found.definition || found.definition_cn)) {
+        console.log('[lookupWord] Found existing definition for:', word)
+        return { ...found, word }
+      }
+    } catch (error) {
+      console.warn('[lookupWord] Failed to find existing definition:', error)
+    }
+  }
+  
+  // 从在线 API 查询
   if (currentProvider === 'mymemory') {
     const result = await queryWordWithTranslation(word)
     if (result) {
@@ -251,10 +270,12 @@ export async function lookupWords(
 
 /**
  * 从单词列表生成完整词库
+ * 优先从数据库查找已有定义，只有不存在的单词才调用在线 API
  */
 export async function generateWordDefinitions(
   wordList: string[],
-  onProgress?: (current: number, total: number, word: string, status: 'success' | 'failed') => void
+  onProgress?: (current: number, total: number, word: string, status: 'success' | 'failed' | 'cached') => void,
+  findExistingFn?: (words: string[]) => Promise<Map<string, Partial<Word>>>
 ): Promise<{
   success: Partial<Word>[]
   failed: string[]
@@ -266,9 +287,38 @@ export async function generateWordDefinitions(
   const uniqueWords = [...new Set(wordList.map(w => w.trim().toLowerCase()))].filter(w => w.length > 0)
   const total = uniqueWords.length
   
+  // 第一步：从数据库查找已有定义
+  let existingDefinitions = new Map<string, Partial<Word>>()
+  if (findExistingFn) {
+    try {
+      existingDefinitions = await findExistingFn(uniqueWords)
+      console.log('[generateWordDefinitions] Found', existingDefinitions.size, 'existing definitions')
+    } catch (error) {
+      console.warn('[generateWordDefinitions] Failed to find existing definitions:', error)
+    }
+  }
+  
+  // 分离已有定义和需要查询的单词
+  const wordsToQuery: string[] = []
+  let processedCount = 0
+  
+  for (const word of uniqueWords) {
+    const existing = existingDefinitions.get(word)
+    if (existing && (existing.definition || existing.definition_cn)) {
+      success.push(existing)
+      processedCount++
+      onProgress?.(processedCount, total, word, 'cached')
+    } else {
+      wordsToQuery.push(word)
+    }
+  }
+  
+  console.log('[generateWordDefinitions] Need to query', wordsToQuery.length, 'words from API')
+  
+  // 第二步：对未找到的单词调用在线 API
   const batchSize = currentProvider === 'mymemory' ? 2 : 3
-  for (let i = 0; i < uniqueWords.length; i += batchSize) {
-    const batch = uniqueWords.slice(i, i + batchSize)
+  for (let i = 0; i < wordsToQuery.length; i += batchSize) {
+    const batch = wordsToQuery.slice(i, i + batchSize)
     
     const batchResults = await Promise.all(
       batch.map(async (word) => {
@@ -277,14 +327,17 @@ export async function generateWordDefinitions(
           
           // 有定义或中文翻译都算成功
           if (result.definition || result.definition_cn) {
-            onProgress?.(success.length + failed.length + 1, total, word, 'success')
+            processedCount++
+            onProgress?.(processedCount, total, word, 'success')
             return { success: true, data: result }
           } else {
-            onProgress?.(success.length + failed.length + 1, total, word, 'failed')
+            processedCount++
+            onProgress?.(processedCount, total, word, 'failed')
             return { success: false, word }
           }
         } catch {
-          onProgress?.(success.length + failed.length + 1, total, word, 'failed')
+          processedCount++
+          onProgress?.(processedCount, total, word, 'failed')
           return { success: false, word }
         }
       })
@@ -299,7 +352,7 @@ export async function generateWordDefinitions(
     })
     
     // 添加延迟
-    if (i + batchSize < uniqueWords.length) {
+    if (i + batchSize < wordsToQuery.length) {
       await new Promise(resolve => setTimeout(resolve, currentProvider === 'mymemory' ? 600 : 300))
     }
   }

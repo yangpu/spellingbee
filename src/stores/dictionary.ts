@@ -493,15 +493,41 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     }
   }
 
-  // 选择词典
+  // 选择词典 - 离线优先策略
+  // 1. 立即从缓存加载并切换（不阻塞UI）
+  // 2. 异步同步到服务器（失败不影响本地操作）
   async function selectDictionary(dictionaryId: string, syncToServer = true): Promise<void> {
+    console.log('[selectDictionary] Selecting dictionary:', dictionaryId, 'syncToServer:', syncToServer)
+    
+    // 第一步：立即从缓存加载（离线优先）
+    let dictWithWords = await loadDictionaryFromCache(dictionaryId)
+    
+    // 如果缓存有数据，立即切换（不等待服务器）
+    if (dictWithWords) {
+      console.log('[selectDictionary] Using cache:', dictWithWords.words?.length || 0, 'words')
+      currentDictionary.value = dictWithWords
+      currentWords.value = dictWithWords.words || []
+      localStorage.setItem(CURRENT_DICT_KEY, dictionaryId)
+      dictionaryVersion.value++
+      
+      // 异步同步到服务器（不阻塞，失败不影响）
+      if (authStore.user && syncToServer) {
+        syncSelectionToServer(dictionaryId).catch(err => {
+          console.warn('[selectDictionary] Failed to sync to server (non-blocking):', err)
+        })
+        // 异步从服务器更新缓存（后台刷新）
+        refreshDictionaryFromServer(dictionaryId).catch(err => {
+          console.warn('[selectDictionary] Failed to refresh from server (non-blocking):', err)
+        })
+      }
+      return
+    }
+    
+    // 第二步：缓存没有数据，尝试从服务器加载
+    console.log('[selectDictionary] No cache, loading from server')
     loading.value = true
     try {
-      // 先尝试从缓存加载
-      let dictWithWords = await loadDictionaryFromCache(dictionaryId)
-      
-      // 如果缓存没有或需要更新，从服务器加载
-      if (!dictWithWords || (authStore.user && syncToServer)) {
+      if (authStore.user) {
         const { data: dictData, error: dictError } = await supabase
           .from('dictionaries')
           .select('*')
@@ -523,32 +549,84 @@ export const useDictionaryStore = defineStore('dictionary', () => {
           words: wordsData as Word[]
         }
         
-        // 缓存
+        // 缓存到本地
         await saveDictionaryToCache(dictData as Dictionary, wordsData as Word[])
-      }
-      
-      currentDictionary.value = dictWithWords
-      currentWords.value = dictWithWords.words || []
-      localStorage.setItem(CURRENT_DICT_KEY, dictionaryId)
-      
-      // 递增版本号，触发依赖此词典的其他 store 更新
-      dictionaryVersion.value++
-      
-      // 同步选择到服务器
-      if (authStore.user && syncToServer) {
-        await supabase
-          .from('user_dictionary_selections')
-          .upsert({
-            user_id: authStore.user.id,
-            dictionary_id: dictionaryId,
-            selected_at: new Date().toISOString()
-          })
+        
+        currentDictionary.value = dictWithWords
+        currentWords.value = dictWithWords.words || []
+        localStorage.setItem(CURRENT_DICT_KEY, dictionaryId)
+        dictionaryVersion.value++
+        
+        // 同步选择到服务器
+        if (syncToServer) {
+          await syncSelectionToServer(dictionaryId)
+        }
+      } else {
+        // 离线模式下没有缓存，无法选择
+        throw new Error('词典数据未缓存，请先连接网络')
       }
     } catch (error) {
-      console.error('Failed to select dictionary:', error)
+      console.error('[selectDictionary] Failed:', error)
       throw error
     } finally {
       loading.value = false
+    }
+  }
+  
+  // 异步同步选择到服务器
+  async function syncSelectionToServer(dictionaryId: string): Promise<void> {
+    if (!authStore.user) return
+    
+    try {
+      await supabase
+        .from('user_dictionary_selections')
+        .upsert({
+          user_id: authStore.user.id,
+          dictionary_id: dictionaryId,
+          selected_at: new Date().toISOString()
+        })
+      console.log('[syncSelectionToServer] Selection synced to server')
+    } catch (error) {
+      console.warn('[syncSelectionToServer] Failed:', error)
+      // 不抛出错误，允许离线操作
+    }
+  }
+  
+  // 异步从服务器刷新词典数据到缓存（后台更新）
+  async function refreshDictionaryFromServer(dictionaryId: string): Promise<void> {
+    if (!authStore.user) return
+    
+    try {
+      const { data: dictData, error: dictError } = await supabase
+        .from('dictionaries')
+        .select('*')
+        .eq('id', dictionaryId)
+        .single()
+      
+      if (dictError) throw dictError
+      
+      const { data: wordsData, error: wordsError } = await supabase
+        .from('dictionary_words')
+        .select('*')
+        .eq('dictionary_id', dictionaryId)
+        .order('sort_order', { ascending: true })
+      
+      if (wordsError) throw wordsError
+      
+      // 更新缓存
+      await saveDictionaryToCache(dictData as Dictionary, wordsData as Word[])
+      
+      // 如果仍是当前词典，更新内存状态
+      if (currentDictionary.value?.id === dictionaryId) {
+        const words = wordsData as Word[]
+        currentDictionary.value = { ...(dictData as Dictionary), words }
+        currentWords.value = words
+        dictionaryVersion.value++
+      }
+      
+      console.log('[refreshDictionaryFromServer] Dictionary refreshed from server')
+    } catch (error) {
+      console.warn('[refreshDictionaryFromServer] Failed:', error)
     }
   }
 
@@ -1119,6 +1197,75 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       (w.definition_cn && w.definition_cn.includes(q))
     )
   }
+  
+  // 从数据库查找已有单词定义（用于复用已有词库）
+  // 优先从本地 IndexedDB 查找，再从服务器查找
+  async function findExistingWordDefinitions(words: string[]): Promise<Map<string, Partial<Word>>> {
+    const result = new Map<string, Partial<Word>>()
+    const wordsLower = words.map(w => w.toLowerCase())
+    
+    // 1. 先从 IndexedDB 查找
+    try {
+      const database = await initDB()
+      const transaction = database.transaction([WORDS_STORE], 'readonly')
+      const wordsStore = transaction.objectStore(WORDS_STORE)
+      const allWords = await new Promise<Word[]>((resolve, reject) => {
+        const request = wordsStore.getAll()
+        request.onsuccess = () => resolve(request.result as Word[])
+        request.onerror = () => reject(request.error)
+      })
+      
+      // 匹配单词
+      for (const word of allWords) {
+        const wordLower = word.word.toLowerCase()
+        if (wordsLower.includes(wordLower) && (word.definition || word.definition_cn)) {
+          result.set(wordLower, {
+            word: word.word,
+            pronunciation: word.pronunciation,
+            definition: word.definition,
+            definition_cn: word.definition_cn,
+            part_of_speech: word.part_of_speech,
+            example_sentence: word.example_sentence,
+            difficulty: word.difficulty,
+            category: word.category
+          })
+        }
+      }
+      console.log('[findExistingWordDefinitions] Found', result.size, 'words in local cache')
+    } catch (error) {
+      console.warn('[findExistingWordDefinitions] Failed to search local cache:', error)
+    }
+    
+    // 2. 对于本地没找到的，从服务器查找
+    const notFoundWords = wordsLower.filter(w => !result.has(w))
+    if (notFoundWords.length > 0 && authStore.user) {
+      try {
+        // 分批查询，避免 URL 过长
+        const batchSize = 50
+        for (let i = 0; i < notFoundWords.length; i += batchSize) {
+          const batch = notFoundWords.slice(i, i + batchSize)
+          const { data, error } = await supabase
+            .from('dictionary_words')
+            .select('word, pronunciation, definition, definition_cn, part_of_speech, example_sentence, difficulty, category')
+            .in('word', batch)
+          
+          if (!error && data) {
+            for (const word of data) {
+              const wordLower = word.word.toLowerCase()
+              if (!result.has(wordLower) && (word.definition || word.definition_cn)) {
+                result.set(wordLower, word)
+              }
+            }
+          }
+        }
+        console.log('[findExistingWordDefinitions] Total found after server search:', result.size)
+      } catch (error) {
+        console.warn('[findExistingWordDefinitions] Failed to search server:', error)
+      }
+    }
+    
+    return result
+  }
 
   return {
     // State
@@ -1158,6 +1305,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     importFromCSV,
     importFromWordList,
     getRandomWords,
-    searchWords
+    searchWords,
+    findExistingWordDefinitions
   }
 })

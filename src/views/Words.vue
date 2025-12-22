@@ -640,14 +640,18 @@ function resetWordForm() {
   })
 }
 
-// 从在线词典获取单词定义
+// 从在线词典获取单词定义（优先从数据库查找）
 async function handleFetchWordDefinition() {
   if (!wordForm.word) return
   
   fetchingWordDef.value = true
   try {
     setDictionaryProvider('mymemory') // 使用 MyMemory 获取中英文释义
-    const { success, failed } = await generateWordDefinitions([wordForm.word.trim().toLowerCase()])
+    const { success, failed } = await generateWordDefinitions(
+      [wordForm.word.trim().toLowerCase()],
+      undefined,
+      dictionaryStore.findExistingWordDefinitions // 传入查找已有定义的函数
+    )
     
     if (success.length > 0) {
       const def = success[0]
@@ -841,8 +845,10 @@ async function handleImportConfirm() {
         parsedWordList.value,
         (current, total, word, status) => {
           importProgress.percentage = Math.round((current / total) * 100)
-          importProgress.message = `正在处理: ${word} (${current}/${total})`
-        }
+          const statusText = status === 'cached' ? '(缓存)' : ''
+          importProgress.message = `正在处理: ${word} ${statusText} (${current}/${total})`
+        },
+        dictionaryStore.findExistingWordDefinitions // 传入查找已有定义的函数
       )
 
       if (success.length > 0) {
@@ -918,8 +924,10 @@ async function handleBatchGenerate() {
       parsedBatchWordList.value,
       (current, total, word, status) => {
         batchProgress.percentage = Math.round((current / total) * 100)
-        batchProgress.message = `正在处理: ${word} (${current}/${total})`
-      }
+        const statusText = status === 'cached' ? '(缓存)' : ''
+        batchProgress.message = `正在处理: ${word} ${statusText} (${current}/${total})`
+      },
+      dictionaryStore.findExistingWordDefinitions // 传入查找已有定义的函数
     )
 
     if (success.length > 0) {
