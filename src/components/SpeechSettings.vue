@@ -230,11 +230,19 @@
               <label>API Key</label>
               <t-input
                 v-model="onlineEnglishConfig.apiKey"
-                type="password"
+                :type="showOnlineApiKey ? 'text' : 'password'"
                 autocomplete="off"
                 :placeholder="getOnlineApiKeyPlaceholder"
                 clearable
-              />
+              >
+                <template #suffix>
+                  <t-icon 
+                    :name="showOnlineApiKey ? 'browse' : 'browse-off'" 
+                    class="api-key-toggle"
+                    @click="showOnlineApiKey = !showOnlineApiKey"
+                  />
+                </template>
+              </t-input>
               <span class="config-hint">{{ getOnlineApiKeyHint }}</span>
             </div>
           </div>
@@ -342,11 +350,19 @@
               <label>API Key</label>
               <t-input
                 v-model="aiEnglishConfig.apiKey"
-                type="password"
+                :type="showAIApiKey ? 'text' : 'password'"
                 autocomplete="off"
                 :placeholder="getAIApiKeyPlaceholder"
                 clearable
-              />
+              >
+                <template #suffix>
+                  <t-icon 
+                    :name="showAIApiKey ? 'browse' : 'browse-off'" 
+                    class="api-key-toggle"
+                    @click="showAIApiKey = !showAIApiKey"
+                  />
+                </template>
+              </t-input>
               <span class="config-hint">{{ getAIApiKeyHint }}</span>
             </div>
           </div>
@@ -477,6 +493,8 @@ const isPreviewing = ref(false)
 const isSaving = ref(false)
 const clearingCache = ref(false)
 const cacheStats = ref<{ count: number; totalSize: number } | null>(null)
+const showOnlineApiKey = ref(false)
+const showAIApiKey = ref(false)
 
 // 标签页
 const browserLangTab = ref('english')
@@ -1071,6 +1089,16 @@ onMounted(async () => {
 
     :deep(.t-slider) {
       margin-top: 0.5rem;
+    }
+
+    .api-key-toggle {
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: color 0.2s;
+
+      &:hover {
+        color: var(--text-primary);
+      }
     }
   }
 

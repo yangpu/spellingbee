@@ -1152,8 +1152,7 @@ async function fetchRandomCover() {
       randomCoverUrl.value = ''
       // 不改变 coverType，用户可以再次点击尝试
     }
-  } catch (e) {
-    console.warn('fetchRandomCover failed:', e)
+  } catch {
     randomCoverUrl.value = ''
   } finally {
     loadingRandomCover.value = false
@@ -1188,32 +1187,57 @@ async function fetchFromUnsplashWithWord(word) {
 }
 
 // 从 Picsum 获取图片（备用服务1）
-// Picsum 会重定向到固定的图片 URL，需要获取重定向后的 URL
+// 直接使用 Image 对象加载，避免 CORS 问题
 async function fetchFromPicsum() {
-  // Picsum 提供随机图片，添加时间戳避免缓存
   const randomUrl = `https://picsum.photos/800/400?random=${Date.now()}`
   
-  // 使用 fetch 获取重定向后的实际图片 URL
-  const response = await fetch(randomUrl, { method: 'HEAD' })
-  const finalUrl = response.url
-  
-  // 预加载图片确保可用
-  await preloadImage(finalUrl, 2000)
-  return finalUrl
+  // 使用 Image 对象加载，它会自动处理重定向
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    
+    const timeoutId = setTimeout(() => {
+      img.src = ''
+      reject(new Error('Picsum timeout'))
+    }, 3000)
+    
+    img.onload = () => {
+      clearTimeout(timeoutId)
+      // img.src 会是重定向后的最终 URL
+      resolve(img.src)
+    }
+    img.onerror = () => {
+      clearTimeout(timeoutId)
+      reject(new Error('Picsum load failed'))
+    }
+    img.src = randomUrl
+  })
 }
 
 // 从 LoremFlickr 获取图片（使用单词作为主题）
-// LoremFlickr 也会重定向，需要获取最终 URL
+// 直接使用 Image 对象加载，避免 CORS 问题
 async function fetchFromLoremFlickrWithWord(word) {
   const randomUrl = `https://loremflickr.com/800/400/${encodeURIComponent(word)}?random=${Date.now()}`
   
-  // 使用 fetch 获取重定向后的实际图片 URL
-  const response = await fetch(randomUrl, { method: 'HEAD' })
-  const finalUrl = response.url
-  
-  // 预加载图片确保可用
-  await preloadImage(finalUrl, 2000)
-  return finalUrl
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    
+    const timeoutId = setTimeout(() => {
+      img.src = ''
+      reject(new Error('LoremFlickr timeout'))
+    }, 3000)
+    
+    img.onload = () => {
+      clearTimeout(timeoutId)
+      resolve(img.src)
+    }
+    img.onerror = () => {
+      clearTimeout(timeoutId)
+      reject(new Error('LoremFlickr load failed'))
+    }
+    img.src = randomUrl
+  })
 }
 
 // 预加载图片（不再修改 loadingRandomCover 状态）

@@ -319,7 +319,7 @@
     </div>
 
     <!-- Recent Records -->
-    <div class="records-section">
+    <div class="competition-records-section">
       <div class="section-header">
         <h2>比赛记录</h2>
         <t-button variant="text" @click="clearRecords" v-if="records.length > 0">
@@ -327,42 +327,42 @@
         </t-button>
       </div>
 
-      <div class="records-list" v-if="records.length > 0">
-        <div class="record-card" v-for="record in records" :key="record.id" @click="viewRecordDetail(record.id)">
-          <div class="record-date">
-            {{ formatDate(record.created_at) }}
+      <div class="competition-records-grid" v-if="records.length > 0">
+        <div class="competition-record-card" v-for="record in records.slice(0, 10)" :key="record.id"
+          :class="{ 'is-excellent': record.accuracy >= 90 }" @click="viewRecordDetail(record.id)">
+          <div class="competition-record-header">
+            <div class="competition-result-badge" :class="getBadgeClass(record.accuracy)">
+              <span class="result-icon">{{ record.accuracy >= 90 ? '🏆' : record.accuracy >= 70 ? '⭐' : record.accuracy >= 50 ? '✓' : '💪' }}</span>
+              <span class="result-text">{{ getBadgeText(record.accuracy) }}</span>
+            </div>
+            <div class="competition-score">
+              <span class="score-value">{{ record.score }}</span>
+              <span class="score-label">分</span>
+            </div>
           </div>
-          <div class="record-content">
-            <div class="record-main">
-              <div class="record-score">
-                <span class="score-value">{{ record.score }}</span>
-                <span class="score-label">分</span>
-              </div>
-              <div class="record-meta">
-                <div class="record-badge" :class="getBadgeClass(record.accuracy)">
-                  {{ getBadgeText(record.accuracy) }}
-                </div>
-                <t-icon name="chevron-right" class="record-arrow" />
-              </div>
+          <div class="competition-record-body">
+            <div class="competition-record-dictionary" v-if="record.dictionary_name">
+              <t-icon name="book" size="14px" />
+              <span>{{ record.dictionary_name }}</span>
             </div>
-            <div class="record-details">
-              <div class="detail-item" v-if="record.dictionary_name">
-                <t-icon name="book" />
-                <span>{{ record.dictionary_name }}</span>
-              </div>
-              <div class="detail-item">
-                <t-icon name="check-circle" class="text-success" />
-                <span>{{ record.correct_words }}/{{ record.total_words }} 正确</span>
-              </div>
-              <div class="detail-item">
-                <t-icon name="chart-pie" />
-                <span>{{ record.accuracy }}% 正确率</span>
-              </div>
-              <div class="detail-item">
-                <t-icon name="time" />
-                <span>{{ formatDuration(record.duration) }}</span>
-              </div>
+            <div class="competition-record-meta">
+              <span class="meta-tag">
+                <t-icon name="check-circle" size="14px" />
+                {{ record.correct_words }}/{{ record.total_words }}
+              </span>
+              <span class="meta-tag">
+                <t-icon name="chart-pie" size="14px" />
+                {{ record.accuracy }}%
+              </span>
+              <span class="meta-tag">
+                <t-icon name="time" size="14px" />
+                {{ formatDuration(record.duration) }}
+              </span>
             </div>
+          </div>
+          <div class="competition-record-footer">
+            <span class="competition-record-time">{{ formatDate(record.created_at) }}</span>
+            <t-icon name="chevron-right" class="arrow-icon" />
           </div>
         </div>
       </div>
@@ -382,114 +382,114 @@
       <h2>成就徽章</h2>
       <div class="achievements-grid">
         <!-- 入门成就 -->
-        <div class="achievement" :class="{ unlocked: stats.totalGames >= 1 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('first_game') }">
           <div class="achievement-icon">🎯</div>
           <div class="achievement-name">初次挑战</div>
           <div class="achievement-desc">完成第一场比赛</div>
         </div>
-        <div class="achievement" :class="{ unlocked: learningStats.totalPracticed >= 1 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('first_learn') }">
           <div class="achievement-icon">📖</div>
           <div class="achievement-name">学习起步</div>
           <div class="achievement-desc">完成第一次学习</div>
         </div>
 
         <!-- 勤奋成就 -->
-        <div class="achievement" :class="{ unlocked: stats.totalGames >= 10 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('games_10') }">
           <div class="achievement-icon">🔥</div>
           <div class="achievement-name">勤奋练习</div>
           <div class="achievement-desc">完成10场比赛</div>
         </div>
-        <div class="achievement" :class="{ unlocked: stats.totalGames >= 50 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('games_50') }">
           <div class="achievement-icon">💪</div>
           <div class="achievement-name">坚持不懈</div>
           <div class="achievement-desc">完成50场比赛</div>
         </div>
-        <div class="achievement" :class="{ unlocked: stats.totalGames >= 100 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('games_100') }">
           <div class="achievement-icon">🏅</div>
           <div class="achievement-name">百战老将</div>
           <div class="achievement-desc">完成100场比赛</div>
         </div>
 
         <!-- 正确率成就 -->
-        <div class="achievement" :class="{ unlocked: stats.bestAccuracy >= 80 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('accuracy_80') }">
           <div class="achievement-icon">⭐</div>
           <div class="achievement-name">拼写高手</div>
           <div class="achievement-desc">单场正确率达到80%</div>
         </div>
-        <div class="achievement" :class="{ unlocked: stats.bestAccuracy >= 100 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('accuracy_100') }">
           <div class="achievement-icon">🏆</div>
           <div class="achievement-name">完美无瑕</div>
           <div class="achievement-desc">单场正确率达到100%</div>
         </div>
-        <div class="achievement" :class="{ unlocked: stats.averageAccuracy >= 70 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('avg_accuracy_70') }">
           <div class="achievement-icon">📊</div>
           <div class="achievement-name">稳定发挥</div>
           <div class="achievement-desc">平均正确率达到70%</div>
         </div>
 
         <!-- 高分成就 -->
-        <div class="achievement" :class="{ unlocked: stats.bestScore >= 200 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('score_200') }">
           <div class="achievement-icon">💎</div>
           <div class="achievement-name">高分选手</div>
           <div class="achievement-desc">单场得分超过200</div>
         </div>
-        <div class="achievement" :class="{ unlocked: stats.bestScore >= 500 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('score_500') }">
           <div class="achievement-icon">👑</div>
           <div class="achievement-name">分数王者</div>
           <div class="achievement-desc">单场得分超过500</div>
         </div>
-        <div class="achievement" :class="{ unlocked: stats.bestScore >= 1000 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('score_1000') }">
           <div class="achievement-icon">🌟</div>
           <div class="achievement-name">传奇选手</div>
           <div class="achievement-desc">单场得分超过1000</div>
         </div>
 
         <!-- 词汇量成就 -->
-        <div class="achievement" :class="{ unlocked: stats.totalCorrect >= 100 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('words_100') }">
           <div class="achievement-icon">📚</div>
           <div class="achievement-name">词汇大师</div>
           <div class="achievement-desc">累计正确拼写100个单词</div>
         </div>
-        <div class="achievement" :class="{ unlocked: stats.totalCorrect >= 500 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('words_500') }">
           <div class="achievement-icon">🎓</div>
           <div class="achievement-name">词汇学者</div>
           <div class="achievement-desc">累计正确拼写500个单词</div>
         </div>
-        <div class="achievement" :class="{ unlocked: stats.totalCorrect >= 1000 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('words_1000') }">
           <div class="achievement-icon">🧠</div>
           <div class="achievement-name">词汇专家</div>
           <div class="achievement-desc">累计正确拼写1000个单词</div>
         </div>
 
         <!-- 学习成就 -->
-        <div class="achievement" :class="{ unlocked: masteredCount >= 50 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('mastered_50') }">
           <div class="achievement-icon">✨</div>
           <div class="achievement-name">初级掌握</div>
           <div class="achievement-desc">掌握50个单词</div>
         </div>
-        <div class="achievement" :class="{ unlocked: masteredCount >= 200 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('mastered_200') }">
           <div class="achievement-icon">🌈</div>
           <div class="achievement-name">中级掌握</div>
           <div class="achievement-desc">掌握200个单词</div>
         </div>
-        <div class="achievement" :class="{ unlocked: masteredCount >= 500 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('mastered_500') }">
           <div class="achievement-icon">🎖️</div>
           <div class="achievement-name">高级掌握</div>
           <div class="achievement-desc">掌握500个单词</div>
         </div>
 
         <!-- 积分等级成就 -->
-        <div class="achievement" :class="{ unlocked: totalPoints >= 1000 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('points_1000') }">
           <div class="achievement-icon">🥉</div>
           <div class="achievement-name">青铜学员</div>
           <div class="achievement-desc">总积分达到1000</div>
         </div>
-        <div class="achievement" :class="{ unlocked: totalPoints >= 5000 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('points_5000') }">
           <div class="achievement-icon">🥈</div>
           <div class="achievement-name">白银学员</div>
           <div class="achievement-desc">总积分达到5000</div>
         </div>
-        <div class="achievement" :class="{ unlocked: totalPoints >= 10000 }">
+        <div class="achievement" :class="{ unlocked: isAchievementUnlocked('points_10000') }">
           <div class="achievement-icon">🥇</div>
           <div class="achievement-name">黄金学员</div>
           <div class="achievement-desc">总积分达到10000</div>
@@ -499,14 +499,16 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useCompetitionStore } from '@/stores/competition'
 import { useLearningStore } from '@/stores/learning'
 import { useChallengeStore } from '@/stores/challenge'
 import { useAuthStore } from '@/stores/auth'
+import { getUserStats, type UserStats } from '@/services/stats-service'
+import type { Challenge } from '@/types'
 
 const router = useRouter()
 const competitionStore = useCompetitionStore()
@@ -514,28 +516,99 @@ const learningStore = useLearningStore()
 const challengeStore = useChallengeStore()
 const authStore = useAuthStore()
 
-const stats = computed(() => competitionStore.stats)
+// 云端统计数据
+const cloudStats = ref<UserStats | null>(null)
+const loadingStats = ref(false)
+
+// 本地统计数据（作为备用）
+const localStats = computed(() => competitionStore.stats)
 const records = computed(() => competitionStore.records)
 
-// Learning stats
-const learningStats = computed(() => learningStore.stats)
-const totalLearned = computed(() => learningStore.totalLearned)
-const masteredCount = computed(() => learningStore.masteredWords.length)
-const reviewCount = computed(() => learningStore.wordsToReview.length)
+// Learning stats - 优先使用云端数据
+const learningStats = computed(() => {
+  if (cloudStats.value) {
+    return {
+      totalPracticed: cloudStats.value.learning_total_practiced,
+      totalCorrect: cloudStats.value.learning_total_correct,
+      totalIncorrect: cloudStats.value.learning_total_incorrect,
+      accuracy: cloudStats.value.learning_total_practiced > 0 
+        ? Math.round((cloudStats.value.learning_total_correct / cloudStats.value.learning_total_practiced) * 100)
+        : 0,
+      todayPracticed: cloudStats.value.learning_today_practiced,
+      todayCorrect: cloudStats.value.learning_today_correct
+    }
+  }
+  return learningStore.stats
+})
 
-// Challenge stats
-const challengeStats = computed(() => challengeStore.challengeStats)
+const totalLearned = computed(() => {
+  if (cloudStats.value) return cloudStats.value.learning_total_learned
+  return learningStore.totalLearned
+})
+
+const masteredCount = computed(() => {
+  if (cloudStats.value) return cloudStats.value.learning_mastered_count
+  return learningStore.masteredWords.length
+})
+
+const reviewCount = computed(() => {
+  if (cloudStats.value) return cloudStats.value.learning_review_count
+  return learningStore.wordsToReview.length
+})
+
+// Competition stats - 优先使用云端数据
+const stats = computed(() => {
+  if (cloudStats.value) {
+    return {
+      totalGames: cloudStats.value.competition_total_games,
+      totalWords: cloudStats.value.competition_total_words,
+      totalCorrect: cloudStats.value.competition_total_correct,
+      averageScore: Math.round(cloudStats.value.competition_average_score),
+      averageAccuracy: Math.round(cloudStats.value.competition_average_accuracy),
+      bestScore: cloudStats.value.competition_best_score,
+      bestAccuracy: cloudStats.value.competition_best_accuracy
+    }
+  }
+  return localStats.value
+})
+
+// Challenge stats - 优先使用云端数据
+const challengeStats = computed(() => {
+  if (cloudStats.value) {
+    const totalGames = cloudStats.value.challenge_total_games
+    const wins = cloudStats.value.challenge_wins
+    return {
+      totalGames,
+      wins,
+      winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0,
+      totalEarned: cloudStats.value.challenge_total_earned,
+      totalSpent: cloudStats.value.challenge_total_spent,
+      netPoints: cloudStats.value.challenge_net_points
+    }
+  }
+  return challengeStore.challengeStats
+})
+
 const challengeRecords = computed(() => challengeStore.myChallengeRecords)
+
+// 等级类型定义
+interface Level {
+  name: string
+  icon: string
+  minPoints: number
+  color: string
+  class: string
+}
 
 // 等级详情弹窗
 const levelDialogVisible = ref(false)
-const selectedLevel = ref(null)
+const selectedLevel = ref<Level | null>(null)
 const selectedLevelIndex = ref(0)
 
 // 等级系统定义 - 合理递进，前期需努力但可达成，后期逐渐增加难度
 // 积分来源：比赛得分 + 学习正确×2 + 掌握单词×5
 // 参考：10场比赛约200-500分，学习100个单词约200分，掌握50个约250分
-const levels = [
+const levels: Level[] = [
   { name: '见习生', icon: '🐣', minPoints: 0, color: '#9CA3AF', class: 'level-novice' },
   { name: '学徒', icon: '🌱', minPoints: 100, color: '#84CC16', class: 'level-apprentice' },
   { name: '初学者', icon: '📖', minPoints: 300, color: '#22C55E', class: 'level-beginner' },
@@ -562,22 +635,27 @@ const levelDescriptions = [
   '传奇人物，拼写界的巅峰！'
 ]
 
-function getLevelDescription(index) {
+function getLevelDescription(index: number): string {
   return levelDescriptions[index] || ''
 }
 
-// 获取等级解锁日期（模拟，实际需要存储）
-function getLevelUnlockDate(index) {
+// 获取等级解锁日期 - 优先从云端获取
+function getLevelUnlockDate(index: number): string | null {
   const level = levels[index]
   if (totalPoints.value < level.minPoints) return null
 
-  // 从localStorage读取等级解锁记录
+  // 优先从云端数据获取
+  if (cloudStats.value?.level_unlocks?.[level.name]) {
+    return cloudStats.value.level_unlocks[level.name]
+  }
+
+  // 从localStorage读取等级解锁记录（备用）
   const unlockRecords = JSON.parse(localStorage.getItem('spellingbee_level_unlocks') || '{}')
   return unlockRecords[level.name] || null
 }
 
-// 保存等级解锁记录
-function saveLevelUnlock(levelName) {
+// 保存等级解锁记录（本地备份）
+function saveLevelUnlock(levelName: string): void {
   const unlockRecords = JSON.parse(localStorage.getItem('spellingbee_level_unlocks') || '{}')
   if (!unlockRecords[levelName]) {
     unlockRecords[levelName] = new Date().toLocaleDateString('zh-CN', {
@@ -590,7 +668,7 @@ function saveLevelUnlock(levelName) {
 }
 
 // 检查并记录新解锁的等级
-function checkAndSaveLevelUnlocks() {
+function checkAndSaveLevelUnlocks(): void {
   levels.forEach(level => {
     if (totalPoints.value >= level.minPoints) {
       saveLevelUnlock(level.name)
@@ -598,28 +676,31 @@ function checkAndSaveLevelUnlocks() {
   })
 }
 
-function showLevelDetail(level, index) {
+function showLevelDetail(level: Level, index: number): void {
   selectedLevel.value = level
   selectedLevelIndex.value = index
   levelDialogVisible.value = true
 }
 
-// 计算总积分 - 统一积分机制
-// 比赛积分：比赛得分
-// 学习积分：每次正确学习得2分，掌握一个单词额外得5分
-// 挑战积分：挑战赛净收益（获得 - 花费）
+// 计算总积分 - 优先使用云端数据
 const totalPoints = computed(() => {
-  // 比赛积分：总分数
+  if (cloudStats.value) {
+    return cloudStats.value.total_points
+  }
+  // 本地计算（备用）
   const competitionPoints = records.value.reduce((sum, r) => sum + (r.score || 0), 0)
-  // 学习积分：每次正确学习得2分，掌握一个单词额外得5分
-  const learningPoints = (learningStats.value.totalCorrect || 0) * 2 + masteredCount.value * 5
-  // 挑战积分：净收益
-  const challengePoints = challengeStats.value.netPoints || 0
+  const learningPoints = (learningStore.stats.totalCorrect || 0) * 2 + learningStore.masteredWords.length * 5
+  const challengePoints = challengeStore.challengeStats.netPoints || 0
   return competitionPoints + learningPoints + challengePoints
 })
 
-// 当前等级
+// 当前等级 - 优先使用云端数据
 const currentLevel = computed(() => {
+  if (cloudStats.value?.current_level) {
+    const level = levels.find(l => l.name === cloudStats.value!.current_level)
+    if (level) return level
+  }
+  // 本地计算（备用）
   const points = totalPoints.value
   for (let i = levels.length - 1; i >= 0; i--) {
     if (points >= levels[i].minPoints) {
@@ -652,10 +733,49 @@ const levelProgress = computed(() => {
   return Math.round(Math.min(100, Math.max(0, progress)))
 })
 
-function formatDate(dateStr) {
+// 已解锁的成就 - 优先使用云端数据
+const unlockedAchievements = computed(() => {
+  if (cloudStats.value?.achievements) {
+    return new Set(cloudStats.value.achievements)
+  }
+  return new Set<string>()
+})
+
+// 检查成就是否已解锁
+function isAchievementUnlocked(achievementId: string): boolean {
+  if (cloudStats.value?.achievements) {
+    return cloudStats.value.achievements.includes(achievementId)
+  }
+  // 本地计算（备用）
+  const conditions: Record<string, boolean> = {
+    'first_game': stats.value.totalGames >= 1,
+    'first_learn': learningStats.value.totalPracticed >= 1,
+    'games_10': stats.value.totalGames >= 10,
+    'games_50': stats.value.totalGames >= 50,
+    'games_100': stats.value.totalGames >= 100,
+    'accuracy_80': stats.value.bestAccuracy >= 80,
+    'accuracy_100': stats.value.bestAccuracy >= 100,
+    'avg_accuracy_70': stats.value.averageAccuracy >= 70,
+    'score_200': stats.value.bestScore >= 200,
+    'score_500': stats.value.bestScore >= 500,
+    'score_1000': stats.value.bestScore >= 1000,
+    'words_100': stats.value.totalCorrect >= 100,
+    'words_500': stats.value.totalCorrect >= 500,
+    'words_1000': stats.value.totalCorrect >= 1000,
+    'mastered_50': masteredCount.value >= 50,
+    'mastered_200': masteredCount.value >= 200,
+    'mastered_500': masteredCount.value >= 500,
+    'points_1000': totalPoints.value >= 1000,
+    'points_5000': totalPoints.value >= 5000,
+    'points_10000': totalPoints.value >= 10000,
+  }
+  return conditions[achievementId] || false
+}
+
+function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
   const now = new Date()
-  const diff = now - date
+  const diff = now.getTime() - date.getTime()
 
   if (diff < 60000) return '刚刚'
   if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
@@ -669,32 +789,32 @@ function formatDate(dateStr) {
   })
 }
 
-function formatDuration(seconds) {
+function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
   return mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`
 }
 
-function getBadgeClass(accuracy) {
+function getBadgeClass(accuracy: number): string {
   if (accuracy >= 90) return 'badge-gold'
   if (accuracy >= 70) return 'badge-silver'
   if (accuracy >= 50) return 'badge-bronze'
   return 'badge-iron'
 }
 
-function getBadgeText(accuracy) {
+function getBadgeText(accuracy: number): string {
   if (accuracy >= 90) return '优秀'
   if (accuracy >= 70) return '良好'
   if (accuracy >= 50) return '及格'
   return '加油'
 }
 
-function viewRecordDetail(recordId) {
+function viewRecordDetail(recordId: string): void {
   router.push(`/stats/record/${recordId}`)
 }
 
 // 查看挑战详情
-function viewChallengeDetail(challenge) {
+function viewChallengeDetail(challenge: Challenge): void {
   challengeStore.viewFinishedChallenge(challenge)
   router.push('/challenge')
 }
@@ -719,12 +839,41 @@ function clearRecords() {
   })
 }
 
-onMounted(() => {
+// 加载云端统计数据
+async function loadCloudStats() {
+  if (!authStore.user) return
+  
+  loadingStats.value = true
+  try {
+    const data = await getUserStats()
+    if (data) {
+      cloudStats.value = data
+    }
+  } catch (error) {
+    console.error('加载云端统计失败:', error)
+  } finally {
+    loadingStats.value = false
+  }
+}
+
+// 监听用户登录状态变化
+watch(() => authStore.user, (newUser) => {
+  if (newUser) {
+    loadCloudStats()
+  } else {
+    cloudStats.value = null
+  }
+})
+
+onMounted(async () => {
   competitionStore.loadRecords()
-  // 加载挑战记录
+  
+  // 加载云端统计数据
   if (authStore.user) {
+    await loadCloudStats()
     challengeStore.loadMyChallengeRecords()
   }
+  
   // 检查并保存等级解锁记录
   setTimeout(() => {
     checkAndSaveLevelUnlocks()
@@ -1155,7 +1304,8 @@ onMounted(() => {
     }
   }
 
-  .records-section {
+  // 比赛记录卡片样式 - 与挑战记录保持一致
+  .competition-records-section {
     margin-bottom: 3rem;
 
     .section-header {
@@ -1169,119 +1319,131 @@ onMounted(() => {
       }
     }
 
-    .records-list {
-      display: flex;
-      flex-direction: column;
+    .competition-records-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 1rem;
     }
 
-    .record-card {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      padding: 1.25rem 1.5rem;
+    .competition-record-card {
       background: var(--bg-card);
       border-radius: 16px;
-      transition: all 0.3s;
+      padding: 1rem;
       cursor: pointer;
+      transition: all 0.3s;
+      border: 2px solid transparent;
 
       &:hover {
+        transform: translateY(-2px);
         box-shadow: var(--shadow-md);
-        transform: translateX(4px);
       }
 
-      .record-date {
-        font-size: 0.85rem;
-        color: var(--text-muted);
-        min-width: 80px;
+      &.is-excellent {
+        border-color: var(--honey-400);
+        border-width: 1px;
       }
 
-      .record-content {
-        flex: 1;
+      .competition-record-header {
         display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-
-      .record-main {
-        display: flex;
-        align-items: center;
         justify-content: space-between;
-      }
+        align-items: center;
+        margin-bottom: 0.75rem;
 
-      .record-score {
-        display: flex;
-        align-items: baseline;
-        gap: 0.25rem;
-
-        .score-value {
-          font-size: 2rem;
-          font-weight: 700;
-          font-family: Georgia, 'Times New Roman', 'Songti SC', 'SimSun', serif;
-          color: var(--honey-600);
-        }
-
-        .score-label {
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-        }
-      }
-
-      .record-details {
-        display: flex;
-        gap: 1.5rem;
-        flex-wrap: wrap;
-
-        .detail-item {
+        .competition-result-badge {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          font-size: 0.9rem;
-          color: var(--text-secondary);
+          gap: 0.375rem;
+          padding: 0.25rem 0.75rem;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          font-weight: 600;
 
-          .text-success {
-            color: var(--success);
+          .result-icon {
+            font-size: 1rem;
+          }
+
+          &.badge-gold {
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: white;
+          }
+
+          &.badge-silver {
+            background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);
+            color: white;
+          }
+
+          &.badge-bronze {
+            background: linear-gradient(135deg, #CD7F32 0%, #B87333 100%);
+            color: white;
+          }
+
+          &.badge-iron {
+            background: var(--charcoal-100);
+            color: var(--charcoal-600);
+          }
+        }
+
+        .competition-score {
+          display: flex;
+          align-items: baseline;
+          gap: 0.125rem;
+
+          .score-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            font-family: Georgia, 'Times New Roman', serif;
+            color: var(--honey-600);
+          }
+
+          .score-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
           }
         }
       }
 
-      .record-meta {
+      .competition-record-body {
+        .competition-record-dictionary {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          font-size: 0.75rem;
+          color: var(--honey-600);
+          margin-bottom: 0.5rem;
+        }
+
+        .competition-record-meta {
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+
+          .meta-tag {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+          }
+        }
+      }
+
+      .competition-record-footer {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 0.75rem;
-        flex-shrink: 0;
-      }
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--charcoal-100);
 
-      .record-badge {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-
-        &.badge-gold {
-          background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-          color: white;
+        .competition-record-time {
+          font-size: 0.75rem;
+          color: var(--text-muted);
         }
 
-        &.badge-silver {
-          background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);
-          color: white;
+        .arrow-icon {
+          color: var(--text-muted);
+          font-size: 14px;
         }
-
-        &.badge-bronze {
-          background: linear-gradient(135deg, #CD7F32 0%, #B87333 100%);
-          color: white;
-        }
-
-        &.badge-iron {
-          background: var(--charcoal-200);
-          color: var(--charcoal-600);
-        }
-      }
-
-      .record-arrow {
-        color: var(--text-muted);
-        flex-shrink: 0;
       }
     }
 

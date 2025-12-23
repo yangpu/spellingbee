@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { useWordsStore } from './words'
+import { updateUserStats } from '@/services/stats-service'
 import type { Word, WordProgress, LearningRecord, LearningSession } from '@/types'
 
 const SESSION_KEY = 'spellingbee_learning_session'
@@ -153,6 +154,14 @@ export const useLearningStore = defineStore('learning', () => {
         await supabase.from('learning_records').insert({
           ...record,
           user_id: authStore.user.id
+        })
+        
+        // 更新用户统计
+        updateUserStats('learning', {
+          is_correct: isCorrect,
+          mastered_count: masteredWords.value.length,
+          review_count: wordsToReview.value.length,
+          total_learned: totalLearned.value
         })
       } catch (error) {
         console.error('Error saving learning record:', error)

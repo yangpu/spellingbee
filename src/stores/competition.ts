@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { useWordsStore } from './words'
+import { updateUserStats } from '@/services/stats-service'
 import type { Word, CompetitionRecord, IncorrectWord, CompetitionSession } from '@/types'
 
 const SESSION_KEY = 'spellingbee_competition_session'
@@ -292,6 +293,14 @@ export const useCompetitionStore = defineStore('competition', () => {
         if (error) {
           console.error('Supabase insert error:', error.message, error.details, error.hint)
         }
+        
+        // 更新用户统计
+        updateUserStats('competition', {
+          score: finalScore,
+          total_words: words.value.length,
+          correct_words: correctWords.value.length,
+          accuracy: accuracy.value
+        })
       } catch (error) {
         console.error('Error saving record:', error)
       }

@@ -294,22 +294,18 @@ export const useDictionaryStore = defineStore('dictionary', () => {
   async function init(): Promise<void> {
     // 如果已经初始化过，直接返回（防止重复初始化覆盖用户选择）
     if (initialized) {
-      console.log('[init] Already initialized, skipping')
       return
     }
     if (loading.value) {
-      console.log('[init] Already loading, skipping')
       return
     }
     
-    console.log('[init] Starting initialization')
     loading.value = true
     try {
       // 先从缓存加载
       const cachedDicts = await loadAllDictionariesFromCache()
       if (cachedDicts.length > 0) {
         dictionaries.value = cachedDicts
-        console.log('[init] Loaded', cachedDicts.length, 'dictionaries from cache')
       }
       
       // 恢复当前选择的词典
@@ -319,7 +315,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         if (cached) {
           currentDictionary.value = cached
           currentWords.value = cached.words || []
-          console.log('[init] Restored current dictionary:', savedDictId, 'with', currentWords.value.length, 'words')
         }
       }
       
@@ -330,7 +325,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       
       // 标记为已初始化
       initialized = true
-      console.log('[init] Initialization complete')
     } catch (error) {
       console.error('Failed to initialize dictionary store:', error)
     } finally {
@@ -406,6 +400,9 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     type?: DictionaryType
     is_public?: boolean
   }): Promise<Dictionary> {
+    // 记录创建前是否有词典（用于判断是否为第一个词典）
+    const isFirstDictionary = dictionaries.value.length === 0
+    
     const newDict: Dictionary = {
       id: crypto.randomUUID(),
       name: data.name,
@@ -421,6 +418,8 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       updated_at: new Date().toISOString()
     }
     
+    let createdDict: Dictionary
+    
     if (authStore.user) {
       const { data: insertedData, error } = await supabase
         .from('dictionaries')
@@ -430,16 +429,25 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       
       if (error) throw error
       
-      const dict = insertedData as Dictionary
-      dictionaries.value.unshift(dict)
-      await saveDictionaryToCache(dict)
-      return dict
+      createdDict = insertedData as Dictionary
+      dictionaries.value.unshift(createdDict)
+      await saveDictionaryToCache(createdDict)
     } else {
       // 离线模式
-      dictionaries.value.unshift(newDict)
-      await saveDictionaryToCache(newDict)
-      return newDict
+      createdDict = newDict
+      dictionaries.value.unshift(createdDict)
+      await saveDictionaryToCache(createdDict)
     }
+    
+    // 如果是第一个词典，自动选用
+    if (isFirstDictionary) {
+      currentDictionary.value = { ...createdDict, words: [] }
+      currentWords.value = []
+      localStorage.setItem(CURRENT_DICT_KEY, createdDict.id)
+      dictionaryVersion.value++
+    }
+    
+    return createdDict
   }
 
   // 更新词典
@@ -481,13 +489,34 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       if (error) throw error
     }
     
+    // 先从列表中移除
     dictionaries.value = dictionaries.value.filter(d => d.id !== id)
     await deleteDictionaryFromCache(id)
     
-    if (currentDictionary.value?.id === id) {
-      currentDictionary.value = null
-      currentWords.value = []
-      localStorage.removeItem(CURRENT_DICT_KEY)
+    // 如果删除的是当前选用的词典，或者当前词典已不在列表中
+    const currentId = currentDictionary.value?.id
+    const currentStillExists = currentId && dictionaries.value.some(d => d.id === currentId)
+    
+    if (currentId === id || !currentStillExists) {
+      // 检查是否还有其他词典
+      if (dictionaries.value.length > 0) {
+        // 自动选择第一个词典
+        const firstDict = dictionaries.value[0]
+        const cached = await loadDictionaryFromCache(firstDict.id)
+        if (cached) {
+          currentDictionary.value = cached
+          currentWords.value = cached.words || []
+        } else {
+          currentDictionary.value = { ...firstDict, words: [] }
+          currentWords.value = []
+        }
+        localStorage.setItem(CURRENT_DICT_KEY, firstDict.id)
+      } else {
+        // 没有词典了，清空当前选用
+        currentDictionary.value = null
+        currentWords.value = []
+        localStorage.removeItem(CURRENT_DICT_KEY)
+      }
       // 递增版本号，触发依赖此词典的其他 store 更新
       dictionaryVersion.value++
     }
@@ -497,14 +526,11 @@ export const useDictionaryStore = defineStore('dictionary', () => {
   // 1. 立即从缓存加载并切换（不阻塞UI）
   // 2. 异步同步到服务器（失败不影响本地操作）
   async function selectDictionary(dictionaryId: string, syncToServer = true): Promise<void> {
-    console.log('[selectDictionary] Selecting dictionary:', dictionaryId, 'syncToServer:', syncToServer)
-    
     // 第一步：立即从缓存加载（离线优先）
     let dictWithWords = await loadDictionaryFromCache(dictionaryId)
     
     // 如果缓存有数据，立即切换（不等待服务器）
     if (dictWithWords) {
-      console.log('[selectDictionary] Using cache:', dictWithWords.words?.length || 0, 'words')
       currentDictionary.value = dictWithWords
       currentWords.value = dictWithWords.words || []
       localStorage.setItem(CURRENT_DICT_KEY, dictionaryId)
@@ -512,19 +538,14 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       
       // 异步同步到服务器（不阻塞，失败不影响）
       if (authStore.user && syncToServer) {
-        syncSelectionToServer(dictionaryId).catch(err => {
-          console.warn('[selectDictionary] Failed to sync to server (non-blocking):', err)
-        })
+        syncSelectionToServer(dictionaryId).catch(() => {})
         // 异步从服务器更新缓存（后台刷新）
-        refreshDictionaryFromServer(dictionaryId).catch(err => {
-          console.warn('[selectDictionary] Failed to refresh from server (non-blocking):', err)
-        })
+        refreshDictionaryFromServer(dictionaryId).catch(() => {})
       }
       return
     }
     
     // 第二步：缓存没有数据，尝试从服务器加载
-    console.log('[selectDictionary] No cache, loading from server')
     loading.value = true
     try {
       if (authStore.user) {
@@ -532,9 +553,10 @@ export const useDictionaryStore = defineStore('dictionary', () => {
           .from('dictionaries')
           .select('*')
           .eq('id', dictionaryId)
-          .single()
+          .maybeSingle()
         
         if (dictError) throw dictError
+        if (!dictData) throw new Error('词典不存在')
         
         const { data: wordsData, error: wordsError } = await supabase
           .from('dictionary_words')
@@ -566,7 +588,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         throw new Error('词典数据未缓存，请先连接网络')
       }
     } catch (error) {
-      console.error('[selectDictionary] Failed:', error)
+      console.error('Failed to select dictionary:', error)
       throw error
     } finally {
       loading.value = false
@@ -585,9 +607,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
           dictionary_id: dictionaryId,
           selected_at: new Date().toISOString()
         })
-      console.log('[syncSelectionToServer] Selection synced to server')
-    } catch (error) {
-      console.warn('[syncSelectionToServer] Failed:', error)
+    } catch {
       // 不抛出错误，允许离线操作
     }
   }
@@ -601,9 +621,10 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         .from('dictionaries')
         .select('*')
         .eq('id', dictionaryId)
-        .single()
+        .maybeSingle()
       
       if (dictError) throw dictError
+      if (!dictData) return // 词典不存在，静默返回
       
       const { data: wordsData, error: wordsError } = await supabase
         .from('dictionary_words')
@@ -623,30 +644,37 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         currentWords.value = words
         dictionaryVersion.value++
       }
-      
-      console.log('[refreshDictionaryFromServer] Dictionary refreshed from server')
-    } catch (error) {
-      console.warn('[refreshDictionaryFromServer] Failed:', error)
+    } catch {
+      // 静默失败
     }
   }
 
   // 加载指定词典用于查看（不改变当前选用的词典）
   // 优先从缓存加载，forceRefresh=true 时强制从服务器刷新
   async function loadViewingDictionary(dictionaryId: string, forceRefresh = false): Promise<void> {
-    console.log('[loadViewingDictionary] Start loading:', dictionaryId, 'forceRefresh:', forceRefresh)
-    
     viewingDictId.value = dictionaryId
     
     // 如果不是强制刷新，先尝试从缓存加载
     if (!forceRefresh) {
       const cached = await loadDictionaryFromCache(dictionaryId)
-      if (cached && cached.words && cached.words.length > 0) {
-        console.log('[loadViewingDictionary] Using cache:', cached.words.length, 'words')
+      // 只要缓存中有词典数据就使用（即使没有单词）
+      if (cached) {
         viewingDictionary.value = cached
-        viewingWords.value = cached.words
+        viewingWords.value = cached.words || []
         return
       }
-      console.log('[loadViewingDictionary] No cache found, loading from server')
+    }
+    
+    // 未登录用户只能使用本地缓存
+    if (!authStore.user) {
+      // 尝试从 dictionaries 列表中查找
+      const localDict = dictionaries.value.find(d => d.id === dictionaryId)
+      if (localDict) {
+        viewingDictionary.value = localDict
+        viewingWords.value = []
+        return
+      }
+      throw new Error('词典不存在或未同步')
     }
     
     loading.value = true
@@ -661,9 +689,13 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         .from('dictionaries')
         .select('*')
         .eq('id', dictionaryId)
-        .single()
+        .maybeSingle()
       
       if (dictError) throw dictError
+      
+      if (!dictData) {
+        throw new Error('词典不存在')
+      }
       
       // 加载单词列表
       const { data: wordsData, error: wordsError } = await supabase
@@ -677,8 +709,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       const dict = dictData as Dictionary
       const words = wordsData as Word[]
       const actualCount = words.length
-      
-      console.log('[loadViewingDictionary] Server returned:', actualCount, 'words')
       
       // 更新内存状态
       viewingDictionary.value = { ...dict, word_count: actualCount }
@@ -698,7 +728,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       
       // 同步更新 IndexedDB 缓存
       await saveDictionaryToCache({ ...dict, word_count: actualCount }, words)
-      console.log('[loadViewingDictionary] Cache updated')
     } catch (error) {
       console.error('Failed to load viewing dictionary:', error)
       throw error
@@ -715,7 +744,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
   
   // 清除查看状态
   function clearViewingDictionary(): void {
-    console.log('[clearViewingDictionary] Clearing viewing state')
     viewingDictionary.value = null
     viewingWords.value = []
     viewingDictId.value = null
@@ -822,7 +850,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
 
   // 批量添加单词
   async function addWords(dictionaryId: string, wordsData: Omit<Word, 'id' | 'created_at' | 'dictionary_id'>[]): Promise<Word[]> {
-    console.log('[addWords] Adding', wordsData.length, 'words to dictionary:', dictionaryId)
     // 获取当前最大的 sort_order
     let existingCount = 0
     
@@ -861,8 +888,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
       )
       const wordsToInsert = newWords.filter(w => !existingWordsLower.has(w.word.toLowerCase()))
       
-      console.log('[addWords] Words to insert after filtering:', wordsToInsert.length)
-      
       if (wordsToInsert.length > 0) {
         const { data, error } = await supabase
           .from('dictionary_words')
@@ -871,7 +896,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         
         if (error) throw error
         insertedWords = (data || []) as Word[]
-        console.log('[addWords] Server insert returned:', insertedWords.length, 'words')
       }
     } else {
       // 离线模式：过滤重复后直接使用
@@ -886,7 +910,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     // 更新 viewingWords
     if (viewingDictId.value === dictionaryId && insertedWords.length > 0) {
       viewingWords.value = [...viewingWords.value, ...insertedWords]
-      console.log('[addWords] viewingWords updated:', viewingWords.value.length)
     }
     
     // 更新 currentWords
@@ -905,18 +928,15 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     for (const word of insertedWords) {
       await addWordToCache(word)
     }
-    console.log('[addWords] Cache updated')
     
     // 统一同步词典单词数量
     await syncDictionaryWordCount(dictionaryId)
-    console.log('[addWords] Word count synced')
     
     return insertedWords
   }
   
   // 同步词典单词数量（从数据库获取实际数量并更新所有相关状态和缓存）
   async function syncDictionaryWordCount(dictionaryId: string): Promise<void> {
-    console.log('[syncDictionaryWordCount] Start syncing for dictionary:', dictionaryId)
     let newCount: number
     
     if (authStore.user) {
@@ -926,23 +946,15 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         .eq('dictionary_id', dictionaryId)
       
       if (error || count === null) {
-        console.log('[syncDictionaryWordCount] Failed to get count:', error)
         return
       }
       newCount = count
-      console.log('[syncDictionaryWordCount] Server word count:', newCount)
       
       // 更新数据库中的 word_count
-      const { error: updateError } = await supabase
+      await supabase
         .from('dictionaries')
         .update({ word_count: newCount, updated_at: new Date().toISOString() })
         .eq('id', dictionaryId)
-      
-      if (updateError) {
-        console.log('[syncDictionaryWordCount] Failed to update dictionary:', updateError)
-      } else {
-        console.log('[syncDictionaryWordCount] Dictionary word_count updated to:', newCount)
-      }
     } else {
       // 离线模式：从本地状态获取
       if (viewingDictId.value === dictionaryId) {
@@ -956,11 +968,9 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     
     // 更新内存状态
     updateLocalDictionaryCount(dictionaryId, newCount)
-    console.log('[syncDictionaryWordCount] Local state updated')
     
     // 更新 IndexedDB 缓存
     await updateDictionaryCountInCache(dictionaryId, newCount)
-    console.log('[syncDictionaryWordCount] Cache updated')
   }
   
   // 更新本地词典数量（不涉及数据库）
@@ -1023,7 +1033,6 @@ export const useDictionaryStore = defineStore('dictionary', () => {
 
   // 删除单词
   async function deleteWord(wordId: string): Promise<void> {
-    console.log('[deleteWord] Deleting word:', wordId)
     // 先从 viewingWords 或 currentWords 找到单词
     let wordToDelete = viewingWords.value.find(w => w.id === wordId)
     if (!wordToDelete) {
@@ -1038,12 +1047,10 @@ export const useDictionaryStore = defineStore('dictionary', () => {
         .eq('id', wordId)
       
       if (error) throw error
-      console.log('[deleteWord] Server delete successful')
     }
     
     // 更新 viewingWords
     viewingWords.value = viewingWords.value.filter(w => w.id !== wordId)
-    console.log('[deleteWord] viewingWords updated:', viewingWords.value.length)
     
     // 更新 currentWords（如果是同一个词典，直接同步）
     if (dictionaryId && currentDictionary.value?.id === dictionaryId) {
@@ -1056,12 +1063,10 @@ export const useDictionaryStore = defineStore('dictionary', () => {
     
     // 从 IndexedDB 缓存中删除单词
     await deleteWordFromCache(wordId)
-    console.log('[deleteWord] Cache delete successful')
     
     // 同步词典单词数量（会同时更新内存状态和缓存）
     if (dictionaryId) {
       await syncDictionaryWordCount(dictionaryId)
-      console.log('[deleteWord] Word count synced')
     }
   }
 
@@ -1162,7 +1167,7 @@ export const useDictionaryStore = defineStore('dictionary', () => {
   }
 
   // 从单词列表导入（逗号分隔）
-  async function importFromWordList(wordList: string, dictionaryId?: string): Promise<string[]> {
+  async function importFromWordList(wordList: string, _dictionaryId?: string): Promise<string[]> {
     const words = wordList
       .split(/[,\n]/)
       .map(w => w.trim())
@@ -1231,9 +1236,8 @@ export const useDictionaryStore = defineStore('dictionary', () => {
           })
         }
       }
-      console.log('[findExistingWordDefinitions] Found', result.size, 'words in local cache')
-    } catch (error) {
-      console.warn('[findExistingWordDefinitions] Failed to search local cache:', error)
+    } catch {
+      // 静默失败
     }
     
     // 2. 对于本地没找到的，从服务器查找
@@ -1258,9 +1262,8 @@ export const useDictionaryStore = defineStore('dictionary', () => {
             }
           }
         }
-        console.log('[findExistingWordDefinitions] Total found after server search:', result.size)
-      } catch (error) {
-        console.warn('[findExistingWordDefinitions] Failed to search server:', error)
+      } catch {
+        // 静默失败
       }
     }
     

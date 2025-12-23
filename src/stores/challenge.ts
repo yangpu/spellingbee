@@ -7,6 +7,7 @@ import { useWordsStore } from './words'
 import { useLearningStore } from './learning'
 import { useCompetitionStore } from './competition'
 import { useAnnouncerStore } from './announcer'
+import { updateUserStats } from '@/services/stats-service'
 import type { Challenge, ChallengeParticipant, ChallengeWord, ChallengeMessage, ChallengeWordResult, Word } from '@/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
@@ -3351,7 +3352,15 @@ export const useChallengeStore = defineStore('challenge', () => {
     updateChallengeInList(currentChallenge.value)
     // 不再标记刷新，因为 updateChallengeInList 已经更新了本地缓存
 
-    // TODO: 更新赢家积分到用户账户
+    // 更新用户统计
+    if (authStore.user) {
+      const isWinner = winnerId === authStore.user.id
+      updateUserStats('challenge', {
+        is_winner: isWinner,
+        entry_fee: currentChallenge.value.entry_fee,
+        prize_pool: isWinner ? totalPrize : undefined
+      })
+    }
   }
 
   // 更新缓存列表中的挑战赛
