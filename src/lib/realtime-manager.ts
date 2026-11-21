@@ -62,9 +62,12 @@ export interface ManagedChannel {
   config: ChannelConfig
   channel: RealtimeChannel | null
   status: RealtimeStatus
-  subscribePromise: Promise<void> | null
+  subscribePromise: Promise<RealtimeChannel> | null
   lastError: Error | null
   retryCount: number
+  // 订阅超时句柄与作废标记：避免迟到的回调操作已被清理的 channel
+  subscribeTimeoutId?: ReturnType<typeof setTimeout> | null
+  aborted?: boolean
 }
 
 type StatusCallback = (status: RealtimeStatus) => void
@@ -111,6 +114,9 @@ const CONFIG = {
   WS_CONNECT_CHECK_INTERVAL: 100,
   // Channel 订阅间隔（毫秒）- 避免并发订阅冲突
   CHANNEL_SUBSCRIBE_DELAY: 50,
+  // 重连期间待发广播的最大条数与有效期（毫秒）
+  MAX_PENDING_BROADCASTS: 50,
+  PENDING_BROADCAST_TTL: 20000,
 } as const
 
 // ==================== RealtimeManager 类 ====================
@@ -130,10 +136,22 @@ class RealtimeManager {
   
   // 重连相关
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private hardReconnectTimer: ReturnType<typeof setTimeout> | null = null
   private softReconnectAttempts = 0
   private hardReconnectAttempts = 0
   private isReconnecting = false
   private reconnectLockTime = 0  // 记录重连锁定开始时间
+
+  // 单一重连协调器：所有重连请求合并到同一个 in-flight Promise，
+  // 避免 online/visibility/focus/pageshow 同时触发多个并发 hardReconnect
+  private hardReconnectInFlight: Promise<void> | null = null
+  private reconnectEpoch = 0
+
+  // 重连期间的广播/Presence 缓冲，连接恢复后按序补发
+  private pendingBroadcasts: Array<{ channelName: string; event: string; payload: unknown; at: number }> = []
+  private pendingPresence: Map<string, Record<string, unknown>> = new Map()
+  // 重连期间期望恢复的频道；channels 被清空时不能误判为「全部已连接」
+  private expectedChannels: string[] = []
   
   // 事件监听器是否已添加
   private listenersInitialized = false
@@ -183,29 +201,34 @@ class RealtimeManager {
   /**
    * 创建并订阅一个 channel
    */
-  async subscribe(config: ChannelConfig): Promise<RealtimeChannel> {
+  async subscribe(config: ChannelConfig, skipReconnectWait = false): Promise<RealtimeChannel> {
     this.log(`Subscribe called for ${config.name}`)
     this.init() // 确保已初始化
-    
-    // 如果正在重连，等待重连完成
-    if (this.isReconnecting) {
+
+    // 外部订阅等待正在进行的重连；重连内部重订阅必须跳过，避免自等待死锁
+    if (!skipReconnectWait && this.hardReconnectInFlight) {
       this.log(`Waiting for reconnect to complete before subscribing ${config.name}...`)
-      await this.waitForReconnect()
-      this.log(`Reconnect wait completed for ${config.name}`)
+      await this.hardReconnectInFlight
     }
-    
+
     const existingManaged = this.channels.get(config.name)
     if (existingManaged?.channel && existingManaged.status === 'connected') {
       this.log(`Channel ${config.name} already subscribed, returning existing`)
       return existingManaged.channel
     }
-    
+
+    // 同名 channel 正在订阅中：复用同一个 Promise，避免重复建连造成幽灵 channel
+    if (existingManaged?.status === 'connecting' && existingManaged.subscribePromise) {
+      this.log(`Channel ${config.name} is connecting, reusing in-flight subscription`)
+      return await existingManaged.subscribePromise
+    }
+
     // 如果存在旧的 channel，先清理
     if (existingManaged) {
       this.log(`Cleaning up existing channel ${config.name}`)
       await this.unsubscribe(config.name)
     }
-    
+
     // 创建新的 managed channel
     const managed: ManagedChannel = {
       config,
@@ -214,14 +237,18 @@ class RealtimeManager {
       subscribePromise: null,
       lastError: null,
       retryCount: 0,
+      subscribeTimeoutId: null,
+      aborted: false,
     }
-    
+
     this.channels.set(config.name, managed)
     this.log(`Created managed channel for ${config.name}, calling doSubscribe...`)
-    
-    // 执行订阅
+
+    const subscribePromise = this.doSubscribe(managed)
+    managed.subscribePromise = subscribePromise
+
     try {
-      const channel = await this.doSubscribe(managed)
+      const channel = await subscribePromise
       this.log(`doSubscribe completed for ${config.name}`)
       return channel
     } catch (error) {
@@ -229,6 +256,8 @@ class RealtimeManager {
       managed.status = 'disconnected'
       managed.lastError = error as Error
       throw error
+    } finally {
+      managed.subscribePromise = null
     }
   }
   
@@ -254,9 +283,11 @@ class RealtimeManager {
    * 取消订阅一个 channel
    */
   async unsubscribe(name: string): Promise<void> {
+    // 主动退订时同步移除期望，避免离线后被重连逻辑反复重建
+    this.expectedChannels = this.expectedChannels.filter(n => n !== name)
     const managed = this.channels.get(name)
     if (!managed) return
-    
+
     await this.cleanupChannel(managed)
     this.channels.delete(name)
     this.log(`Channel ${name} unsubscribed`)
@@ -289,16 +320,33 @@ class RealtimeManager {
    * 强制重连所有 channel
    */
   async forceReconnect(): Promise<void> {
-    this.log('Force reconnecting all channels...')
-    
-    // 重置所有重连计数器和状态
+    this.log('Force reconnect requested')
+    await this.requestHardReconnect()
+  }
+
+  /**
+   * 单一重连协调器：合并并发请求，保证同一时刻只有一个 hardReconnect 在跑。
+   * 事件监听、健康检查、业务层都走这里，避免反复 disconnect/connect 把房间踢下线。
+   */
+  private async requestHardReconnect(): Promise<void> {
+    if (this.isUnloading) return
+    if (this.hardReconnectInFlight) {
+      this.log('Hard reconnect already in flight, coalescing request')
+      return this.hardReconnectInFlight
+    }
+
     this.clearReconnectTimer()
-    this.softReconnectAttempts = 0
-    this.hardReconnectAttempts = 0
-    this.isReconnecting = false  // 强制重置，允许立即重连
-    this.reconnectLockTime = 0
-    
-    await this.hardReconnect()
+    // 不重置 hardReconnectAttempts，保留指数退避，避免失败时 200ms 无限重连
+    this.reconnectEpoch++
+    const epoch = this.reconnectEpoch
+
+    const task = this.hardReconnect(epoch).finally(() => {
+      if (this.reconnectEpoch === epoch) {
+        this.hardReconnectInFlight = null
+      }
+    })
+    this.hardReconnectInFlight = task
+    return task
   }
   
   /**
@@ -323,18 +371,54 @@ class RealtimeManager {
   broadcast(channelName: string, event: string, payload: unknown): void {
     const managed = this.channels.get(channelName)
     if (!managed?.channel || managed.status !== 'connected') {
-      // 静默忽略，channel 可能正在重连中
+      // 重连期间缓存消息，连接恢复后补发，避免心跳/状态广播直接丢失
+      this.queueBroadcast(channelName, event, payload)
       return
     }
-    
+
+    this.sendBroadcast(managed.channel, event, payload)
+  }
+
+  private queueBroadcast(channelName: string, event: string, payload: unknown): void {
+    const now = Date.now()
+    this.pendingBroadcasts = this.pendingBroadcasts.filter(
+      item => now - item.at < CONFIG.PENDING_BROADCAST_TTL
+    )
+    this.pendingBroadcasts.push({ channelName, event, payload, at: now })
+    if (this.pendingBroadcasts.length > CONFIG.MAX_PENDING_BROADCASTS) {
+      this.pendingBroadcasts.splice(0, this.pendingBroadcasts.length - CONFIG.MAX_PENDING_BROADCASTS)
+    }
+  }
+
+  private sendBroadcast(channel: RealtimeChannel, event: string, payload: unknown): void {
     try {
-      managed.channel.send({
+      const result = channel.send({
         type: 'broadcast',
         event,
         payload,
       })
+      // supabase-js 的 send 可能返回 Promise，记录失败以便观测限流/断连
+      if (result && typeof (result as Promise<unknown>).catch === 'function') {
+        ;(result as Promise<unknown>).catch((e) => {
+          this.warn(`Broadcast send failed (${event}):`, e)
+        })
+      }
     } catch (e) {
-      // 忽略发送错误
+      this.warn(`Broadcast send threw (${event}):`, e)
+    }
+  }
+
+  private flushPendingBroadcasts(channelName: string, channel: RealtimeChannel): void {
+    const now = Date.now()
+    const ready = this.pendingBroadcasts.filter(
+      item => item.channelName === channelName && now - item.at < CONFIG.PENDING_BROADCAST_TTL
+    )
+    this.pendingBroadcasts = this.pendingBroadcasts.filter(item => !ready.includes(item))
+    for (const item of ready) {
+      this.sendBroadcast(channel, item.event, item.payload)
+    }
+    if (ready.length > 0) {
+      this.log(`Flushed ${ready.length} queued broadcasts for ${channelName}`)
     }
   }
   
@@ -344,14 +428,16 @@ class RealtimeManager {
   async trackPresence(channelName: string, state: Record<string, unknown>): Promise<void> {
     const managed = this.channels.get(channelName)
     if (!managed?.channel || managed.status !== 'connected') {
-      // 静默忽略，channel 可能正在重连中
+      // 重连期间记下最新的 Presence，恢复连接后自动重新 track
+      this.pendingPresence.set(channelName, state)
       return
     }
-    
+
     try {
       await managed.channel.track(state)
     } catch (e) {
       // 忽略 track 错误，可能是连接断开
+      this.warn(`Presence track failed for ${channelName}:`, e)
     }
   }
   
@@ -407,6 +493,7 @@ class RealtimeManager {
     this.clearReconnectTimer()
     this.stopHealthCheck()
     this.removeEventListeners()
+    this.expectedChannels = []
     await this.unsubscribeAll()
     this.statusCallbacks.clear()
     this.errorCallbacks.clear()
@@ -439,7 +526,10 @@ class RealtimeManager {
     }
     
     const channel = supabase.channel(channelName, channelOptions)
-    
+    // 立即登记 channel，确保订阅中/超时也能被 cleanupChannel 正确移除
+    managed.channel = channel
+    managed.aborted = false
+
     // 添加订阅
     for (const sub of config.subscriptions) {
       if (sub.type === 'broadcast' && sub.event) {
@@ -456,56 +546,64 @@ class RealtimeManager {
     // 订阅并等待连接
     return new Promise((resolve, reject) => {
       let resolved = false
-      
+
       const timeoutId = setTimeout(() => {
-        if (!resolved) {
+        if (!resolved && !managed.aborted) {
           resolved = true
           managed.status = 'disconnected'
-          this.cleanupChannel(managed)
+          void this.cleanupChannel(managed)
           reject(new Error(`Channel ${config.name} subscription timeout`))
         }
       }, timeout)
-      
+      managed.subscribeTimeoutId = timeoutId
+
       channel.subscribe(async (status, err) => {
-        if (resolved) return
-        
+        if (managed.aborted) return
+
         this.log(`Channel ${config.name} status: ${status}`)
-        
+
         if (status === 'SUBSCRIBED') {
+          if (resolved) return
           resolved = true
           clearTimeout(timeoutId)
+          managed.subscribeTimeoutId = null
           managed.channel = channel
           managed.status = 'connected'
           managed.retryCount = 0
-          
-          // 更新全局状态
+
           this.updateGlobalStatus()
-          
-          // 如果有 presence 初始状态，立即 track
-          if (config.presenceConfig?.initialState) {
+
+          // 恢复重连期间缓存的 Presence 状态（优先于初始状态）
+          const queuedPresence = this.pendingPresence.get(config.name)
+          const presenceState = queuedPresence || config.presenceConfig?.initialState
+          if (presenceState) {
             try {
-              await channel.track(config.presenceConfig.initialState)
+              await channel.track(presenceState)
+              this.pendingPresence.delete(config.name)
             } catch (e) {
-              this.warn(`Failed to track initial presence for ${config.name}:`, e)
+              this.warn(`Failed to track presence for ${config.name}:`, e)
             }
           }
-          
+
+          // 补发重连期间缓存的广播
+          this.flushPendingBroadcasts(config.name, channel)
+
           resolve(channel)
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          if (resolved) return
           resolved = true
           clearTimeout(timeoutId)
+          managed.subscribeTimeoutId = null
           managed.status = 'disconnected'
           managed.lastError = new Error(`Channel ${status}: ${err}`)
           this.notifyError(managed.lastError, config.name)
           reject(managed.lastError)
         } else if (status === 'CLOSED') {
-          if (!resolved) {
-            managed.status = 'disconnected'
-            this.updateGlobalStatus()
-            // 如果配置了自动重订阅，安排重连
-            if (config.autoResubscribe && this._isOnline.value) {
-              this.scheduleReconnect()
-            }
+          managed.status = 'disconnected'
+          this.updateGlobalStatus()
+          // 订阅成功后真实断连也要触发重连（原来只在未 resolve 时处理）
+          if (config.autoResubscribe && this._isOnline.value && !this.isUnloading) {
+            void this.requestHardReconnect()
           }
         }
       })
@@ -516,24 +614,37 @@ class RealtimeManager {
    * 清理单个 channel
    */
   private async cleanupChannel(managed: ManagedChannel): Promise<void> {
+    // 先作废，让迟到的订阅回调/超时不再操作已清理对象
+    managed.aborted = true
+    if (managed.subscribeTimeoutId) {
+      clearTimeout(managed.subscribeTimeoutId)
+      managed.subscribeTimeoutId = null
+    }
+    managed.subscribePromise = null
+
     const channel = managed.channel
     managed.channel = null
     managed.status = 'disconnected'
-    
+
     if (!channel) return
-    
+
+    // 先发起 removeChannel（内部会 unsubscribe），再 untrack；
+    // 最多等待 1 秒，避免底层连接已死时把重连流程卡住，但移除动作仍会完成
+    const removal = (async () => {
+      try { await supabase.removeChannel(channel) } catch {}
+    })()
+    try {
+      const untrack = channel.untrack()
+      if (untrack && typeof (untrack as Promise<unknown>).catch === 'function') {
+        ;(untrack as Promise<unknown>).catch(() => {})
+      }
+    } catch {}
     try {
       await Promise.race([
-        (async () => {
-          try { await channel.untrack() } catch {}
-          try { await channel.unsubscribe() } catch {}
-          try { await supabase.removeChannel(channel) } catch {}
-        })(),
-        new Promise(resolve => setTimeout(resolve, 3000)),
+        removal,
+        new Promise(resolve => setTimeout(resolve, 1000)),
       ])
-    } catch (e) {
-      // 忽略清理错误
-    }
+    } catch {}
   }
   
   /**
@@ -599,16 +710,9 @@ class RealtimeManager {
     
     // 如果连接已断开，立即重连
     if (!this.isAllConnected()) {
-      this.log('Network changed and not all connected, triggering immediate reconnect')
-      this.clearReconnectTimer()
-      this.softReconnectAttempts = 0
-      this.hardReconnectAttempts = 0
-      // 强制重置重连状态
-      this.isReconnecting = false
-      this.reconnectLockTime = 0
-      
-      // 立即重连，不等待
-      await this.hardReconnect()
+      this.log('Network changed and not all connected, requesting reconnect')
+      // 交给单一协调器，避免与 online/visibility/focus 事件并发重连
+      await this.requestHardReconnect()
     }
   }
   
@@ -618,21 +722,13 @@ class RealtimeManager {
   private handleOnline = async (): Promise<void> => {
     this.log('Network online')
     this._isOnline.value = true
-    
-    // 清除之前的重连计时器
-    this.clearReconnectTimer()
-    this.softReconnectAttempts = 0
-    this.hardReconnectAttempts = 0
-    // 强制重置重连状态
-    this.isReconnecting = false
-    this.reconnectLockTime = 0
-    
-    // 立即检查连接状态，快速重连
+
+    // 立即检查连接状态，快速重连（由协调器合并并发请求）
     await new Promise(resolve => setTimeout(resolve, CONFIG.NETWORK_RECOVERY_DELAY))
-    
+
     if (this._isOnline.value && !this.isAllConnected()) {
-      this.log('Network online and not all connected, triggering immediate reconnect')
-      await this.hardReconnect()
+      this.log('Network online and not all connected, requesting reconnect')
+      await this.requestHardReconnect()
     }
   }
   
@@ -669,23 +765,12 @@ class RealtimeManager {
       // 只有在网络在线时才处理
       if (!this._isOnline.value) return
       
-      // 重置重连计数
-      this.softReconnectAttempts = 0
-      this.hardReconnectAttempts = 0
-      
-      // 无论隐藏时间多长，只要连接断开就立即重连
-      if (!this.isAllConnected()) {
-        this.log('Triggering hard reconnect due to disconnected channels after visibility change')
-        // 强制重置重连状态，确保能立即重连
-        this.isReconnecting = false
-        this.reconnectLockTime = 0
-        await this.hardReconnect()
-      } else if (hiddenDuration > CONFIG.VISIBILITY_RECONNECT_THRESHOLD) {
-        // 隐藏时间超过阈值，即使看起来连接正常也强制重连确保状态正确
-        this.log('Triggering hard reconnect due to long visibility change')
-        this.isReconnecting = false
-        this.reconnectLockTime = 0
-        await this.hardReconnect()
+      // 切回前台时健康检查会补连；只有长时间隐藏后才主动请求一次重连，
+      // 避免每次 visibilitychange 都全局 disconnect/connect 把房间踢下线
+      if (hiddenDuration > CONFIG.VISIBILITY_RECONNECT_THRESHOLD &&
+          (!this.isAllConnected() || !this.isChannelHealthy())) {
+        this.log('Requesting reconnect after long visibility change')
+        await this.requestHardReconnect()
       }
     }
   }
@@ -727,12 +812,10 @@ class RealtimeManager {
     // 只有在网络在线时才处理
     if (!this._isOnline.value) return
     
-    // 检查连接状态，如果断开则立即重连
-    if (!this.isAllConnected() && !this.isReconnecting) {
-      this.log('Window focused and not all connected, triggering reconnect')
-      this.softReconnectAttempts = 0
-      this.hardReconnectAttempts = 0
-      await this.hardReconnect()
+    // 检查连接状态，如果断开则请求重连（协调器会合并并发请求）
+    if (!this.isChannelHealthy()) {
+      this.log('Window focused and channels unhealthy, requesting reconnect')
+      await this.requestHardReconnect()
     }
   }
   
@@ -746,10 +829,8 @@ class RealtimeManager {
       this.isUnloading = false
       
       if (this._isOnline.value && !this.isAllConnected()) {
-        this.log('Page restored and not all connected, triggering reconnect')
-        this.softReconnectAttempts = 0
-        this.hardReconnectAttempts = 0
-        await this.hardReconnect()
+        this.log('Page restored and not all connected, requesting reconnect')
+        await this.requestHardReconnect()
       }
     }
   }
@@ -783,8 +864,8 @@ class RealtimeManager {
     if (!this._isOnline.value) return
     if (document.visibilityState === 'hidden') return
     
-    // 检查重连锁定是否超时
-    if (this.isReconnecting && this.reconnectLockTime > 0) {
+    // 硬重连期间不强制解锁，避免健康检查打断重订阅循环
+    if (this.isReconnecting && !this.hardReconnectInFlight && this.reconnectLockTime > 0) {
       const lockDuration = Date.now() - this.reconnectLockTime
       if (lockDuration > CONFIG.RECONNECT_LOCK_TIMEOUT) {
         this.warn(`Reconnect lock timeout after ${lockDuration}ms, forcing reset`)
@@ -793,10 +874,10 @@ class RealtimeManager {
       }
     }
     
-    // 检查是否有 channel 断开
+    // 检查是否有 channel 断开；协调器会合并重连期间的所有重复请求
     if (!this.isAllConnected() && !this.isReconnecting) {
-      this.log('Health check: found disconnected channels, triggering reconnect')
-      await this.hardReconnect()
+      this.log('Health check: found disconnected channels, requesting reconnect')
+      await this.requestHardReconnect()
     }
     
     // 更新全局状态
@@ -808,14 +889,14 @@ class RealtimeManager {
    */
   private scheduleReconnect(): void {
     if (this.isUnloading) return  // 页面正在卸载，不重连
-    if (this.isReconnecting || this.reconnectTimer) return
+    if (this.isReconnecting || this.reconnectTimer || this.hardReconnectInFlight) return
     if (!this._isOnline.value) return
-    
+
     // 检查是否超过最大重试次数
     if (this.softReconnectAttempts >= CONFIG.MAX_SOFT_RECONNECT_ATTEMPTS) {
-      this.log('Max soft reconnect attempts reached, triggering hard reconnect')
+      this.log('Max soft reconnect attempts reached, requesting hard reconnect')
       this.softReconnectAttempts = 0
-      this.hardReconnect()
+      void this.requestHardReconnect()
       return
     }
     
@@ -843,7 +924,7 @@ class RealtimeManager {
    */
   private async softReconnect(): Promise<void> {
     if (this.isUnloading) return  // 页面正在卸载，不重连
-    if (this.isReconnecting) return
+    if (this.isReconnecting || this.hardReconnectInFlight) return
     this.isReconnecting = true
     this._status.value = 'reconnecting'
     this.notifyStatus('reconnecting')
@@ -888,68 +969,49 @@ class RealtimeManager {
   
   /**
    * 硬重连：彻底销毁所有连接并重建
+   * 由 requestHardReconnect 单入口调用；epoch 用于作废被新请求打断的旧流程。
    */
-  private async hardReconnect(): Promise<void> {
-    // 页面正在卸载，不重连
+  private async hardReconnect(epoch: number): Promise<void> {
     if (this.isUnloading) return
-    
+
     if (this.hardReconnectAttempts >= CONFIG.MAX_HARD_RECONNECT_ATTEMPTS) {
       this.warn('Max hard reconnect attempts reached, resetting counter and trying again')
       this.hardReconnectAttempts = 0
-      // 不放弃，继续尝试
     }
-    
-    // 检查重连锁定是否超时
-    if (this.isReconnecting) {
-      const lockDuration = Date.now() - this.reconnectLockTime
-      if (lockDuration > CONFIG.RECONNECT_LOCK_TIMEOUT) {
-        this.warn(`Reconnect lock timeout, forcing reset`)
-        this.isReconnecting = false
-        this.reconnectLockTime = 0
-      } else {
-        this.log('Already reconnecting, skip duplicate call')
-        return
-      }
-    }
-    
+
     this.hardReconnectAttempts++
     this.isReconnecting = true
     this.reconnectLockTime = Date.now()
     this._status.value = 'reconnecting'
     this.notifyStatus('reconnecting')
-    
+
     this.log(`Hard reconnecting (attempt ${this.hardReconnectAttempts})...`)
-    
+    const stillCurrent = () => epoch === this.reconnectEpoch && !this.isUnloading
+
     try {
       // 1. 刷新 session
       const hasSession = await this.refreshSession()
       if (!hasSession) {
         this.warn('No valid session, cannot reconnect')
-        this.isReconnecting = false
-        this.reconnectLockTime = 0
-        this.updateGlobalStatus()
         this.scheduleHardReconnect()
         return
       }
-      
-      // 2. 保存需要重订阅的 channel 配置
+      if (!stillCurrent()) return
+
+      // 2. 保存所有 channel 配置（含 autoResubscribe:false），避免版本频道永久丢失
       const channelsToResubscribe = Array.from(this.channels.values())
-        .filter(m => m.config.autoResubscribe)
-        .map(m => ({ ...m.config }))  // 深拷贝配置
-      
-      // 3. 清理所有 channel（不删除配置，只清理连接）
+        .map(m => ({ ...m.config }))
+      this.expectedChannels = channelsToResubscribe.map(c => c.name)
+
+      // 3. 清理所有 channel
       for (const managed of this.channels.values()) {
         await this.cleanupChannel(managed)
       }
       this.channels.clear()
-      
+
       // 4. 移除所有残留的 channel
-      try {
-        await supabase.removeAllChannels()
-      } catch (e) {
-        // 忽略错误
-      }
-      
+      try { await supabase.removeAllChannels() } catch {}
+
       // 5. 断开 Realtime
       try {
         // @ts-ignore
@@ -957,13 +1019,11 @@ class RealtimeManager {
           // @ts-ignore
           supabase.realtime.disconnect()
         }
-      } catch (e) {
-        // 忽略错误
-      }
-      
-      // 等待 WebSocket 完全断开
+      } catch {}
+
       await new Promise(resolve => setTimeout(resolve, CONFIG.WS_DISCONNECT_DELAY))
-      
+      if (!stillCurrent()) return
+
       // 6. 重连 Realtime
       try {
         // @ts-ignore
@@ -971,55 +1031,39 @@ class RealtimeManager {
           // @ts-ignore
           supabase.realtime.connect()
         }
-      } catch (e) {
-        // 忽略错误
-      }
-      
-      // 等待 WebSocket 连接建立（带超时检测）
+      } catch {}
+
       const wsConnected = await this.waitForWebSocketConnection()
       if (!wsConnected) {
-        this.warn('WebSocket connection timeout, will retry')
-        this.isReconnecting = false
-        this.reconnectLockTime = 0
-        this.scheduleHardReconnect()
-        return
+        // 底层 WS 尚未就绪也继续订阅：supabase-js 会在 channel.subscribe 时按需建连，
+        // 直接放弃会把已清空的频道永久留在断开状态
+        this.warn('WebSocket not ready yet, still attempting channel resubscribe')
       }
-      
-      // 7. 重新订阅所有 channel（标记为非重连状态以避免死锁）
-      this.isReconnecting = false
-      this.reconnectLockTime = 0
-      
-      // 串行订阅 channel，避免并发冲突
-      // 按优先级排序：
-      // 1. challenge room channel（最高优先级，游戏核心功能）
-      // 2. challenge-notifications（挑战赛通知）
-      // 3. 其他 channel（如 app-version-updates）
+      if (!stillCurrent()) return
+
+      // 7. 串行重新订阅；跳过等待自身，避免死锁
       const sortedChannels = channelsToResubscribe.sort((a, b) => {
         const getPriority = (name: string) => {
-          if (name.startsWith('challenge:')) return 0  // 挑战赛房间最高优先级
-          if (name === 'challenge-notifications') return 1  // 挑战赛通知次之
-          return 2  // 其他 channel 最低优先级
+          if (name.startsWith('challenge:')) return 0
+          if (name === 'challenge-notifications') return 1
+          return 2
         }
         return getPriority(a.name) - getPriority(b.name)
       })
-      
+
       for (const config of sortedChannels) {
+        if (!stillCurrent()) return
         try {
-          await this.subscribe(config)
-          // 短暂延迟，避免并发订阅冲突
+          await this.subscribe(config, true)
           await new Promise(resolve => setTimeout(resolve, CONFIG.CHANNEL_SUBSCRIBE_DELAY))
         } catch (e) {
-          // 订阅失败不阻塞其他 channel
           this.warn(`Failed to resubscribe channel ${config.name}:`, e)
-          // 如果是非关键 channel（如 app-version-updates），继续处理其他 channel
-          // 关键 channel 失败会在后续健康检查中重试
         }
       }
-      
-      this.updateGlobalStatus()
-      
+
       if (this.isAllConnected()) {
         this.log('Hard reconnect successful')
+        this.expectedChannels = []
         this.hardReconnectAttempts = 0
         this.softReconnectAttempts = 0
       } else {
@@ -1027,41 +1071,32 @@ class RealtimeManager {
       }
     } catch (e) {
       this.error('Hard reconnect failed:', e)
+      this.scheduleHardReconnect()
+    } finally {
+      // 关键：锁必须在整个重订阅循环结束后才释放，否则 5s 健康检查会反复打断重连
       this.isReconnecting = false
       this.reconnectLockTime = 0
       this.updateGlobalStatus()
-      this.scheduleHardReconnect()
     }
   }
-  
+
   /**
-   * 安排硬重连
+   * 安排硬重连（单一可取消定时器）
    */
   private scheduleHardReconnect(): void {
-    if (this.isUnloading) return  // 页面正在卸载，不重连
-    
-    // 快速指数退避：200ms, 400ms, 800ms, 1.6s, 3.2s, 5s...
+    if (this.isUnloading || this.hardReconnectTimer) return
+
     const delay = Math.min(
       CONFIG.BASE_RECONNECT_DELAY * Math.pow(2, this.hardReconnectAttempts),
       CONFIG.MAX_RECONNECT_DELAY
     )
-    
+
     this.log(`Scheduling hard reconnect in ${delay}ms`)
-    
-    setTimeout(() => {
-      if (this.isUnloading) return  // 页面正在卸载，不重连
-      if (this._isOnline.value && !this.isAllConnected()) {
-        // 检查是否卡在 isReconnecting 状态
-        if (this.isReconnecting) {
-          const lockDuration = Date.now() - this.reconnectLockTime
-          if (lockDuration > CONFIG.RECONNECT_LOCK_TIMEOUT) {
-            this.isReconnecting = false
-            this.reconnectLockTime = 0
-          }
-        }
-        if (!this.isReconnecting) {
-          this.hardReconnect()
-        }
+    this.hardReconnectTimer = setTimeout(() => {
+      this.hardReconnectTimer = null
+      if (this.isUnloading || !this._isOnline.value) return
+      if (!this.isAllConnected() && !this.hardReconnectInFlight) {
+        void this.requestHardReconnect()
       }
     }, delay)
   }
@@ -1117,17 +1152,44 @@ class RealtimeManager {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
+    if (this.hardReconnectTimer) {
+      clearTimeout(this.hardReconnectTimer)
+      this.hardReconnectTimer = null
+    }
   }
-  
+
   /**
    * 检查是否所有 channel 都已连接
    */
   private isAllConnected(): boolean {
-    if (this.channels.size === 0) return true
-    
+    if (this.channels.size === 0 && this.expectedChannels.length === 0) return true
+
+    // 重连期间按「期望频道」判定，避免 channels.clear() 之后短暂误判为已连接
+    if (this.expectedChannels.length > 0) {
+      for (const name of this.expectedChannels) {
+        const managed = this.channels.get(name)
+        if (!managed || managed.status !== 'connected') return false
+      }
+      return true
+    }
+
     for (const managed of this.channels.values()) {
       if (managed.status !== 'connected') return false
     }
+    return true
+  }
+
+  /**
+   * 除 channel 状态外，再检查底层 WebSocket 是否真的打开。
+   * 切后台再回前台时 channel 状态可能仍是 connected，但底层连接已断。
+   */
+  private isChannelHealthy(): boolean {
+    if (!this.isAllConnected()) return false
+    try {
+      // @ts-ignore - 访问内部 WebSocket 状态
+      const ws = supabase.realtime?.conn
+      if (ws && ws.readyState !== WebSocket.OPEN) return false
+    } catch {}
     return true
   }
   

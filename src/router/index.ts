@@ -55,6 +55,12 @@ const routes: RouteRecordRaw[] = [
     path: '/stats/record/:id',
     name: 'CompetitionRecord',
     component: () => import('@/views/CompetitionRecord.vue')
+  },
+  {
+    // Supabase 重置密码邮件的落地页（生产实际地址为 /spellingbee/reset-password）
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('@/views/ResetPassword.vue')
   }
 ]
 

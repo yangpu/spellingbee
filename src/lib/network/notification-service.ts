@@ -7,6 +7,7 @@
 
 import { ref, computed } from 'vue'
 import { realtimeManager, type ChannelConfig } from '@/lib/realtime-manager'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import type { Challenge } from '@/types'
 import type { ChallengeNotification, NotificationHandler } from './types'
 
@@ -47,8 +48,13 @@ class ChallengeNotificationService {
    * 注意：连接失败不会抛出错误，允许应用继续运行
    */
   async init(userId: string): Promise<void> {
+    // 幂等：登录状态变化会多次触发 init，重复注册回调会泄漏并放大状态通知
+    if (this.unsubscribeStatus) {
+      this.userId = userId
+      return
+    }
     this.userId = userId
-    
+
     // 监听 RealtimeManager 状态变化
     this.unsubscribeStatus = realtimeManager.onStatusChange((status) => {
       this.syncStatus()
@@ -180,7 +186,7 @@ class ChallengeNotificationService {
       fromUser: {
         id: challenge.creator_id,
         nickname: challenge.creator_name || 'Unknown',
-        avatar_url: challenge.creator_avatar
+        avatar_url: normalizeMediaUrl(challenge.creator_avatar)
       },
       timestamp: Date.now()
     }

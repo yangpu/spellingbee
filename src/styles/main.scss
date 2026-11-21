@@ -924,5 +924,16 @@ h4 { font-size: 1.25rem; }
     height: 48px;
     font-size: 1.25rem;
   }
+
+  // 手机端禁止整页横向滚动；内容超宽时由局部容器自行处理
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  #app, .app-container {
+    max-width: 100%;
+    overflow-x: clip;
+  }
 }
 

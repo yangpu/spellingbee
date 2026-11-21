@@ -3,7 +3,7 @@
  * 负责与 Supabase Edge Function 通信，更新和获取用户统计数据
  */
 
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseUrl } from '@/lib/supabase'
 
 // 统计更新类型
 export type StatsUpdateType = 'learning' | 'competition' | 'challenge'
@@ -71,8 +71,8 @@ export interface StatsUpdateResponse {
   levelUp: { from: string; to: string } | null
 }
 
-// Edge Function URL
-const EDGE_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-stats`
+// Edge Function URL（跟随同源代理地址）
+const EDGE_FUNCTION_URL = `${supabaseUrl}functions/v1/update-user-stats`
 
 /**
  * 更新用户统计

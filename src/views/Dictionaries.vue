@@ -250,6 +250,7 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import { useDictionaryStore } from '@/stores/dictionary'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import { DictionaryLevelLabels, DictionaryTypeLabels } from '@/types'
 import type { Dictionary, DictionaryLevel, DictionaryType } from '@/types'
 
@@ -383,7 +384,7 @@ function getCoverUrl(dict: Dictionary): string {
   if (dict.cover_image === 'default' || dict.cover_image.includes('dictionary-default')) {
     return `${baseUrl}dictionary-default.svg`
   }
-  return dict.cover_image
+  return normalizeMediaUrl(dict.cover_image)
 }
 
 async function handleSelectDictionary(dict: Dictionary) {
@@ -410,14 +411,15 @@ function handleEditDictionary(dict: Dictionary) {
     coverType.value = 'none'
   } else if (dict.cover_image === 'default' || dict.cover_image.includes('dictionary-default')) {
     coverType.value = 'default'
-  } else if (dict.cover_image.startsWith('http')) {
-    // 判断是随机图片还是自定义图片（通过URL判断）
-    if (dict.cover_image.includes('unsplash') || dict.cover_image.includes('picsum') || dict.cover_image.includes('loremflickr')) {
+  } else {
+    // 判断是随机图片还是自定义图片；归一化后可能是同源代理的相对路径
+    const cover = normalizeMediaUrl(dict.cover_image)
+    if (cover.includes('unsplash') || cover.includes('picsum') || cover.includes('loremflickr')) {
       coverType.value = 'random'
-      randomCoverUrl.value = dict.cover_image
+      randomCoverUrl.value = cover
     } else {
       coverType.value = 'custom'
-      customCoverUrl.value = dict.cover_image
+      customCoverUrl.value = cover
     }
   }
   coverFiles.value = []
@@ -457,11 +459,12 @@ async function handleUploadCover(file: { raw: File }) {
       .from('dictionary-covers')
       .getPublicUrl(data.path)
 
-    formData.cover_image = urlData.publicUrl
+    const normalized = normalizeMediaUrl(urlData.publicUrl)
+    formData.cover_image = normalized
 
     return {
       status: 'success',
-      response: { url: urlData.publicUrl }
+      response: { url: normalized }
     }
   } catch (error: any) {
     console.error('Upload error:', error)
@@ -487,7 +490,7 @@ function selectCoverType(type: 'none' | 'default' | 'random' | 'custom') {
   } else if (type === 'random' && randomCoverUrl.value) {
     formData.cover_image = randomCoverUrl.value
   } else if (type === 'custom' && customCoverUrl.value) {
-    formData.cover_image = customCoverUrl.value
+    formData.cover_image = normalizeMediaUrl(customCoverUrl.value)
   }
 }
 

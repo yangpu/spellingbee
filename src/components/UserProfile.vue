@@ -9,7 +9,7 @@
       <!-- 用户信息展示 -->
       <div v-if="!isEditing" class="profile-view">
         <div class="profile-header">
-          <t-avatar size="80px" :image="authStore.profile?.avatar_url">
+          <t-avatar size="80px" :image="normalizeMediaUrl(authStore.profile?.avatar_url)">
             {{ avatarText }}
           </t-avatar>
           <div class="profile-info">
@@ -81,7 +81,7 @@
         <div class="edit-header">
           <div class="avatar-section">
             <div class="avatar-upload-wrapper">
-              <t-avatar size="80px" :image="profileData.avatar_url || undefined">
+              <t-avatar size="80px" :image="normalizeMediaUrl(profileData.avatar_url) || undefined">
                 {{ editAvatarText }}
               </t-avatar>
               <t-upload
@@ -161,6 +161,7 @@ import { useLearningStore } from '@/stores/learning'
 import { useSpeechStore } from '@/stores/speech'
 import { useChallengeNotifications } from '@/lib/network'
 import { supabase } from '@/lib/supabase'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import SystemSettings from './SystemSettings.vue'
 import SpeechSettings from './SpeechSettings.vue'
 import AnnouncerSettings from './AnnouncerSettings.vue'
@@ -326,7 +327,8 @@ const uploadAvatar = async (file: File) => {
       .getPublicUrl(filePath)
     
     if (urlData?.publicUrl) {
-      profileData.avatar_url = urlData.publicUrl
+      // 存同源代理相对路径，避免把某个 host（或 supabase.co 直链）写进数据库
+      profileData.avatar_url = normalizeMediaUrl(urlData.publicUrl)
       MessagePlugin.success('头像上传成功')
     }
   } catch (error) {

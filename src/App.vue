@@ -38,7 +38,7 @@
         <t-button v-else variant="text" shape="round" class="user-avatar-btn" @click="showProfileDialog = true">
           <template #icon>
             <div class="avatar-wrapper">
-              <t-avatar size="small" :image="authStore.profile?.avatar_url">
+              <t-avatar size="small" :image="normalizeMediaUrl(authStore.profile?.avatar_url)">
                 {{ avatarText }}
               </t-avatar>
               <span class="avatar-status-dot" :class="{ connected: supabaseConnected }"></span>
@@ -90,6 +90,7 @@ import { useAnnouncerStore } from '@/stores/announcer';
 import { useDictionaryStore } from '@/stores/dictionary';
 import { useChallengeNotifications, notificationService } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
+import { normalizeMediaUrl } from '@/lib/media-url';
 import UserProfile from '@/components/UserProfile.vue';
 import AuthDialog from '@/components/AuthDialog.vue';
 import NetworkStatus from '@/components/NetworkStatus.vue';
@@ -596,15 +597,37 @@ watch(() => authStore.user, async (newUser, oldUser) => {
 // Mobile responsive
 @media (max-width: 768px) {
   .app-nav {
-    padding: 0 1rem;
+    padding: 0 0.5rem;
+    gap: 0.25rem;
 
-    .nav-brand .brand-text {
-      display: none;
+    .nav-brand {
+      .brand-icon {
+        width: 40px;
+      }
+
+      .brand-text {
+        display: none;
+      }
     }
 
     .nav-links {
-      .nav-link span {
-        display: none;
+      min-width: 0;
+      gap: 0.25rem;
+
+      .nav-link {
+        // 图标放大到 20px，用更小的左右留白抵消宽度，避免再次溢出/重叠
+        padding: 0.5rem 0.5rem;
+        min-height: 40px;
+
+        :deep(.t-icon) {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+
+        span {
+          display: none;
+        }
       }
 
       .home-link {
@@ -612,13 +635,46 @@ watch(() => authStore.user, async (newUser, oldUser) => {
       }
     }
 
-    .nav-user .user-avatar-btn .user-name {
-      display: none;
+    .nav-user {
+      flex-shrink: 0;
+
+      .t-button--theme-primary {
+        padding: 0 0.5rem !important;
+      }
+
+      .user-avatar-btn {
+        padding: 0 0.25rem !important;
+
+        .user-name {
+          display: none;
+        }
+      }
     }
   }
 
   .app-main {
     padding: 1rem;
+  }
+}
+
+// 主流手机宽度空间更充裕，图标再放大一档
+@media (min-width: 375px) and (max-width: 768px) {
+  .app-nav {
+    .nav-brand .brand-icon {
+      width: 44px;
+    }
+
+    .nav-links .nav-link :deep(.t-icon) {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+  }
+}
+
+@media (max-width: 360px) {
+  .app-nav .nav-links {
+    gap: 0.125rem;
   }
 }
 </style>

@@ -157,7 +157,7 @@
                   :class="{ 'is-winner': challenge.status === 'finished' && p.user_id === challenge.winner_id }">
                   <span class="winner-icon"
                     v-if="challenge.status === 'finished' && p.user_id === challenge.winner_id">🏆</span>
-                  <t-avatar v-else size="18px" :image="p.avatar_url">{{ p.nickname?.charAt(0) }}</t-avatar>
+                  <t-avatar v-else size="18px" :image="normalizeMediaUrl(p.avatar_url)">{{ p.nickname?.charAt(0) }}</t-avatar>
                   <span class="participant-name">{{ p.nickname }}</span>
                 </div>
               </template>
@@ -167,7 +167,7 @@
                   :class="{ 'is-winner': challenge.status === 'finished' && getCreator(challenge).user_id === challenge.winner_id }">
                   <span class="winner-icon"
                     v-if="challenge.status === 'finished' && getCreator(challenge).user_id === challenge.winner_id">🏆</span>
-                  <t-avatar v-else size="18px" :image="getCreator(challenge).avatar_url">{{
+                  <t-avatar v-else size="18px" :image="normalizeMediaUrl(getCreator(challenge).avatar_url)">{{
                     getCreator(challenge).nickname?.charAt(0) }}</t-avatar>
                   <span class="participant-name">{{ getCreator(challenge).nickname }}</span>
                 </div>
@@ -175,7 +175,7 @@
                 <template v-for="p in getOtherParticipants(challenge)" :key="p.user_id">
                   <span class="winner-icon-only"
                     v-if="challenge.status === 'finished' && p.user_id === challenge.winner_id">🏆</span>
-                  <t-avatar v-else size="18px" :image="p.avatar_url" class="participant-avatar-only">{{
+                  <t-avatar v-else size="18px" :image="normalizeMediaUrl(p.avatar_url)" class="participant-avatar-only">{{
                     p.nickname?.charAt(0) }}</t-avatar>
                 </template>
               </template>
@@ -376,6 +376,7 @@ import { useChallengeStore } from '@/stores/challenge'
 import { useWordsStore } from '@/stores/words'
 import { useDictionaryStore } from '@/stores/dictionary'
 import { supabase } from '@/lib/supabase'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import ChallengeRoom from '@/components/ChallengeRoom.vue'
 
 const baseUrl = import.meta.env.BASE_URL
@@ -648,8 +649,8 @@ function getCoverUrl(challenge) {
   if (challenge.image_url === 'default' || challenge.image_url.includes('challenge-default.svg')) {
     return defaultCoverUrl
   }
-  // 否则直接返回存储的URL（自定义封面）
-  return challenge.image_url
+  // 否则返回归一化后的 URL（自定义封面 / Supabase Storage 直链）
+  return normalizeMediaUrl(challenge.image_url)
 }
 
 // 过滤和分页
@@ -1045,8 +1046,9 @@ const uploadCover = async (file) => {
       .getPublicUrl(filePath)
 
     if (urlData?.publicUrl) {
-      customCoverUrl.value = urlData.publicUrl
-      createData.image_url = urlData.publicUrl
+      const normalized = normalizeMediaUrl(urlData.publicUrl)
+      customCoverUrl.value = normalized
+      createData.image_url = normalized
       coverType.value = 'custom'
       MessagePlugin.success('封面上传成功')
     }

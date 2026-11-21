@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseUrl } from '@/lib/supabase'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import { realtimeManager, type ChannelConfig, type RealtimeStatus } from '@/lib/realtime-manager'
 import { useAuthStore } from './auth'
 import { useWordsStore } from './words'
@@ -19,10 +20,12 @@ const HEARTBEAT_CONFIG = {
   HOST_BROADCAST_INTERVAL: 3000,  // 减少到3秒，更快同步状态
   // 主持人广播状态的间隔（毫秒）- 有离线选手时，提高频率以同步倒计时
   HOST_BROADCAST_INTERVAL_FAST: 1000,
-  // 心跳超时时间（毫秒）- 超过此时间未收到心跳视为离线
-  HEARTBEAT_TIMEOUT: 15000,  // 增加到15秒，减少误判
+  // 心跳超时时间（毫秒）- 需覆盖重连窗口与移动端后台定时器节流，避免误判离线
+  HEARTBEAT_TIMEOUT: 30000,
   // 离线保护时间（毫秒）- 离线后等待此时间才判定为退赛
-  OFFLINE_PROTECTION_TIME: 30000,
+  OFFLINE_PROTECTION_TIME: 60000,
+  // 重连成功后的宽限期（毫秒），期间冻结离线判定
+  RECONNECT_GRACE_PERIOD: 20000,
   // 快速离线检测时间（毫秒）- 用于 UI 显示离线状态
   QUICK_OFFLINE_DETECTION: 12000,  // 增加到12秒
   // 本地倒计时检查间隔（毫秒）- 所有客户端都检查
@@ -117,8 +120,21 @@ export const useChallengeStore = defineStore('challenge', () => {
     if (unsubscribeRealtimeStatus) return
     
     unsubscribeRealtimeStatus = realtimeManager.onStatusChange(async (status) => {
+      const previousStatus = realtimeStatus.value
       realtimeStatus.value = status
-      
+
+      // 连接抖动期间冻结离线判定，恢复后再给一段宽限期等待心跳补齐
+      if (status === 'connected') {
+        reconnectGraceUntil = Date.now() + HEARTBEAT_CONFIG.RECONNECT_GRACE_PERIOD
+      } else if (status === 'connecting' || status === 'reconnecting') {
+        reconnectGraceUntil = Date.now() + HEARTBEAT_CONFIG.RECONNECT_GRACE_PERIOD * 2
+      }
+
+      // 只在真正恢复连接时补发 Presence，避免每次状态通知都重复 track
+      if (status === 'connected' && previousStatus === 'connected') {
+        return
+      }
+
       // 更新本地用户的在线状态
       if (currentChallenge.value && authStore.user) {
         const myParticipant = currentChallenge.value.participants.find(
@@ -172,8 +188,9 @@ export const useChallengeStore = defineStore('challenge', () => {
   const roundTimer = ref<ReturnType<typeof setInterval> | null>(null)
   const gameStatus = ref<'waiting' | 'ready' | 'playing' | 'round_result' | 'finished'>('waiting')
   
-  // Realtime 数据库订阅 channel（用于监听 challenges 表变更）
+  // Realtime 数据库订阅 channel（统一交给 RealtimeManager 托管，重连后能自动恢复）
   const dbChannel = ref<RealtimeChannel | null>(null)
+  let dbChangesChannelName = ''
   const roundResults = ref<ChallengeWordResult[]>([])
   const myAnswer = ref('')
   const hasSubmitted = ref(false)
@@ -186,6 +203,10 @@ export const useChallengeStore = defineStore('challenge', () => {
   let hostBroadcastTimer: ReturnType<typeof setInterval> | null = null
   // 记录每个选手最后心跳时间（主机用）
   const lastHeartbeatMap = new Map<string, number>()
+  // 重连宽限期截止时间戳：期间冻结离线判定，避免重连窗口内互相误判掉线
+  let reconnectGraceUntil = 0
+  // 已处理消息去重（10 秒窗口），避免同一条消息被重复广播多次执行
+  const processedMessages = new Map<string, number>()
   // 记录每个选手离线开始时间（用于保护期计算）- 所有客户端都维护
   const offlineStartTimeMap = new Map<string, number>()
   // 页面可见性和网络状态监听器清理函数
@@ -272,7 +293,7 @@ export const useChallengeStore = defineStore('challenge', () => {
         initialState: {
           user_id: authStore.user.id,
           nickname: authStore.profile?.nickname || authStore.user.email?.split('@')[0],
-          avatar_url: authStore.profile?.avatar_url,
+          avatar_url: normalizeMediaUrl(authStore.profile?.avatar_url),
           is_ready: myParticipant?.is_ready ?? false,
           score: myParticipant?.score ?? 0,
           online_at: new Date().toISOString()
@@ -416,19 +437,17 @@ export const useChallengeStore = defineStore('challenge', () => {
       
       if (presences && presences.length > 0) {
         const presence = presences[0]
-        
-        // 如果心跳机制已确认该用户离线，忽略 Presence sync 的状态
-        // 心跳机制的优先级更高，因为它是应用层的主动检测
-        if (heartbeatConfirmedOffline.has(userId)) {
-          return
+
+        // Presence 是服务端权威在线快照：只要用户仍在快照中就恢复在线，
+        // 否则一次心跳抖动会把用户永久锁死在离线状态、无法自愈。
+        if (!participant.has_left) {
+          lastHeartbeatMap.set(userId, Date.now())
+          heartbeatConfirmedOffline.delete(userId)
+          offlineStartTimeMap.delete(userId)
+          participant.offline_since = undefined
+          participant.exit_countdown = undefined
         }
-        
-        // 如果用户已经在离线倒计时中，不要因为 Presence 状态恢复在线
-        // Presence 可能有延迟或缓存，导致用户关闭页面后状态仍然存在
-        if (offlineStartTimeMap.has(userId)) {
-          return
-        }
-        
+
         // 用户在 Presence 中存在，说明在线
         participant.is_online = true
         if (isCreator) {
@@ -475,23 +494,24 @@ export const useChallengeStore = defineStore('challenge', () => {
   function handlePresenceJoin(userId: string, presence: any): void {
     if (!currentChallenge.value) return
     
-    // 如果是主机且已被确认离线，忽略 Presence join 事件
-    // 主机离线检测的优先级更高
-    if (userId === currentChallenge.value.creator_id && hostConfirmedOffline) {
-      return
+    // Presence join 是服务端权威的「用户在线」信号：
+    // 清除此前心跳/Presence 造成的离线标记并初始化心跳时间，
+    // 否则新加入者因 lastHeartbeatMap 缺省值 0 会在 3 秒内被误判离线。
+    lastHeartbeatMap.set(userId, Date.now())
+    heartbeatConfirmedOffline.delete(userId)
+    offlineCountMap.delete(userId)
+    offlineStartTimeMap.delete(userId)
+    if (userId === currentChallenge.value.creator_id) {
+      hostConfirmedOffline = false
     }
-    
-    // 如果用户已在离线倒计时中，忽略 Presence join 事件
-    // Presence 可能有延迟，需要通过心跳恢复在线
-    if (offlineStartTimeMap.has(userId) || heartbeatConfirmedOffline.has(userId)) {
-      return
-    }
-    
+
     let participant = currentChallenge.value.participants.find(p => p.user_id === userId)
-    
+
     if (participant) {
       // 更新已存在的参与者状态
       participant.is_online = true
+      participant.offline_since = undefined
+      participant.exit_countdown = undefined
       if (userId === currentChallenge.value.creator_id) {
         participant.is_ready = true
       } else {
@@ -502,7 +522,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       const newParticipant: ChallengeParticipant = {
         user_id: userId,
         nickname: presence.nickname || '未知用户',
-        avatar_url: presence.avatar_url,
+        avatar_url: normalizeMediaUrl(presence.avatar_url),
         is_online: true,
         is_ready: presence.is_ready || false,
         score: presence.score || 0,
@@ -536,7 +556,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       ...currentState,
       user_id: authStore.user.id,
       nickname: authStore.profile?.nickname || authStore.user.email?.split('@')[0],
-      avatar_url: authStore.profile?.avatar_url,
+      avatar_url: normalizeMediaUrl(authStore.profile?.avatar_url),
       ...data,
       online_at: new Date().toISOString()
     })
@@ -565,6 +585,22 @@ export const useChallengeStore = defineStore('challenge', () => {
   
   // Handle incoming message
   function handleMessage(message: ChallengeMessage, _fromUserId: string): void {
+    // 全局幂等：房主为保证送达会对同一条消息连发 3 次，重连补发也可能重复
+    const now = Date.now()
+    let dataKey = ''
+    try {
+      dataKey = JSON.stringify(message.data ?? {}).slice(0, 300)
+    } catch {}
+    const dedupKey = `${message.sender_id}|${message.type}|${message.timestamp ?? ''}|${dataKey}`
+    const seenAt = processedMessages.get(dedupKey)
+    if (seenAt && now - seenAt < 10000) return
+    processedMessages.set(dedupKey, now)
+    if (processedMessages.size > 300) {
+      for (const [key, at] of processedMessages) {
+        if (now - at >= 10000) processedMessages.delete(key)
+      }
+    }
+
     switch (message.type) {
       case 'join':
         handleJoinMessage(message)
@@ -630,12 +666,19 @@ export const useChallengeStore = defineStore('challenge', () => {
 
     //console.log('handleJoinMessage: user', data.nickname, 'peer_id', data.peer_id)
 
+    // 新加入者必须初始化心跳时间，否则房主下一轮心跳检查会立即判其离线
+    lastHeartbeatMap.set(data.user_id, Date.now())
+    heartbeatConfirmedOffline.delete(data.user_id)
+    offlineStartTimeMap.delete(data.user_id)
+
     // 查找参与者
     let participant = currentChallenge.value.participants.find(p => p.user_id === data.user_id)
     
     if (participant) {
       // 更新已存在的参与者状态
       participant.is_online = true
+      participant.offline_since = undefined
+      participant.exit_countdown = undefined
       participant.peer_id = data.peer_id
       //console.log('handleJoinMessage: updated existing participant online status')
     } else {
@@ -643,7 +686,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       const newParticipant: ChallengeParticipant = {
         user_id: data.user_id,
         nickname: data.nickname,
-        avatar_url: data.avatar_url,
+        avatar_url: normalizeMediaUrl(data.avatar_url),
         is_online: true,
         is_ready: false,
         score: 0,
@@ -1121,7 +1164,13 @@ export const useChallengeStore = defineStore('challenge', () => {
   // 注意：这个消息由主机广播，主机已确认该用户离线
   function handlePlayerOfflineMessage(message: ChallengeMessage): void {
     if (!currentChallenge.value) return
-    
+
+    // 只有房主确认的离线才可信；任何客户端自行广播的 player_offline
+    //（切后台/断网/关页面）都会让其他端互相误判掉线。
+    if (message.sender_id !== currentChallenge.value.creator_id) return
+    // 重连窗口内不采信离线通知
+    if (isInReconnectGrace()) return
+
     const data = message.data as { user_id: string }
     const participant = currentChallenge.value.participants.find(p => p.user_id === data.user_id)
     if (participant) {
@@ -1646,6 +1695,12 @@ export const useChallengeStore = defineStore('challenge', () => {
   // 增加容错机制：连续多次未收到广播才确认离线，避免网络抖动导致的误判
   function checkHostOnline(): void {
     if (isHost.value || !currentChallenge.value) return
+
+    // 自己正在重连时不要判房主离线
+    if (isInReconnectGrace()) {
+      hostOfflineCheckCount = 0
+      return
+    }
     
     const now = Date.now()
     const timeSinceLastBroadcast = now - lastHostBroadcastTime
@@ -1699,12 +1754,23 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
   }
   
+  // 重连窗口内不做离线判定，避免连接抖动被误判成选手掉线
+  function isInReconnectGrace(): boolean {
+    return realtimeStatus.value !== 'connected' || Date.now() < reconnectGraceUntil
+  }
+
   // 检查心跳并广播状态（主机调用）
   function checkHeartbeatsAndBroadcast(): void {
     if (!isHost.value || !currentChallenge.value) return
     
     const now = Date.now()
     let hasStatusChange = false
+    const inGrace = isInReconnectGrace()
+
+    // 宽限期内把心跳时间顺延，恢复后不会立刻因为窗口内没心跳而判离线
+    if (inGrace) {
+      currentChallenge.value.participants.forEach(p => lastHeartbeatMap.set(p.user_id, now))
+    }
     
     currentChallenge.value.participants.forEach(p => {
       // 跳过主机自己
@@ -1713,7 +1779,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       const lastHeartbeat = lastHeartbeatMap.get(p.user_id) || 0
       const timeSinceLastHeartbeat = now - lastHeartbeat
       
-      if (timeSinceLastHeartbeat > HEARTBEAT_CONFIG.HEARTBEAT_TIMEOUT) {
+      if (!inGrace && timeSinceLastHeartbeat > HEARTBEAT_CONFIG.HEARTBEAT_TIMEOUT) {
         // 心跳超时，标记为离线
         if (p.is_online) {
           p.is_online = false
@@ -1820,15 +1886,8 @@ export const useChallengeStore = defineStore('challenge', () => {
       if (!currentChannelName.value || !authStore.user) return
       
       if (document.visibilityState === 'hidden') {
-        // 页面隐藏时，通知主机（如果不是主机）
-        if (!isHost.value) {
-          broadcast({
-            type: 'player_offline',
-            data: { user_id: authStore.user.id, reason: 'visibility_hidden' },
-            sender_id: authStore.user.id,
-            timestamp: Date.now()
-          })
-        }
+        // 切后台不等于掉线：不再广播 player_offline，由 Presence/心跳判断，
+        // 避免移动端切后台一次就被其他端永久标记离线
       } else if (document.visibilityState === 'visible') {
         // 页面恢复可见时，检查连接状态并立即重连
         if (realtimeStatus.value !== 'connected') {
@@ -1871,12 +1930,13 @@ export const useChallengeStore = defineStore('challenge', () => {
     const handleOnline = async (): Promise<void> => {
       if (!currentChannelName.value || !authStore.user) return
       
-      // 网络恢复，立即触发 RealtimeManager 重连
-      // 这会比等待 RealtimeManager 自己检测更快
-      try {
-        await realtimeManager.forceReconnect()
-      } catch (e) {
-        console.warn('[Challenge] Force reconnect failed:', e)
+      // 仅在确实未连接时请求重连，避免网络抖动就全局断开重建
+      if (realtimeStatus.value !== 'connected') {
+        try {
+          await realtimeManager.forceReconnect()
+        } catch (e) {
+          console.warn('[Challenge] Force reconnect failed:', e)
+        }
       }
       
       // 重连后立即发送心跳/通知上线
@@ -1908,17 +1968,9 @@ export const useChallengeStore = defineStore('challenge', () => {
     
     const handleOffline = (): void => {
       if (!currentChannelName.value || !authStore.user) return
-      
-      // 网络断开，通知离线（尽力发送，可能发不出去）
-      if (!isHost.value) {
-        broadcast({
-          type: 'player_offline',
-          data: { user_id: authStore.user.id, reason: 'network_offline' },
-          sender_id: authStore.user.id,
-          timestamp: Date.now()
-        })
-      }
-      
+
+      // 网络断开时不再自行广播离线（既发不出也容易被其他端误信），
+      // 由房主的 Presence/心跳检测统一判定
       // 更新自己的在线状态
       const myP = currentChallenge.value?.participants.find(p => p.user_id === authStore.user?.id)
       if (myP) {
@@ -1926,17 +1978,9 @@ export const useChallengeStore = defineStore('challenge', () => {
       }
     }
     
-    // 页面卸载前处理
+    // 页面卸载前处理：RealtimeManager 会统一 untrack，Presence leave 即为离线信号
     const handleBeforeUnload = (): void => {
-      if (!currentChannelName.value || !authStore.user) return
-      
-      // 页面关闭前，发送离线通知
-      broadcast({
-        type: 'player_offline',
-        data: { user_id: authStore.user.id, reason: 'page_unload' },
-        sender_id: authStore.user.id,
-        timestamp: Date.now()
-      })
+      // 不再广播 player_offline，避免关闭页面时误伤其他端状态
     }
     
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -2063,28 +2107,37 @@ export const useChallengeStore = defineStore('challenge', () => {
   async function subscribeToDbChanges(): Promise<void> {
     if (!currentChallenge.value) return
     
-    // 先清理旧的订阅
-    unsubscribeFromDbChanges()
+    // 先清理旧的订阅（等待完成，避免同名 channel 竞态）
+    await unsubscribeFromDbChanges()
     
     const challengeId = currentChallenge.value.id
     const channelName = `db-changes:${challengeId}`
-    
-    // 创建数据库变更订阅 channel
-    dbChannel.value = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'challenges',
-          filter: `id=eq.${challengeId}`
-        },
-        (payload) => {
-          handleDbChange(payload.new as Challenge)
-        }
-      )
-      .subscribe()
+
+    // 交由 RealtimeManager 托管，避免硬重连的 removeAllChannels() 把它永久移除
+    try {
+      await realtimeManager.subscribe({
+        name: channelName,
+        type: 'postgres_changes',
+        autoResubscribe: true,
+        timeout: 10000,
+        subscriptions: [
+          {
+            type: 'postgres_changes',
+            postgresChanges: {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'challenges',
+              filter: `id=eq.${challengeId}`
+            },
+            callback: (payload) => handleDbChange(payload.new as Challenge)
+          }
+        ]
+      })
+      dbChangesChannelName = channelName
+      dbChannel.value = realtimeManager.getChannel(channelName)
+    } catch (e) {
+      console.warn('[Challenge] Failed to subscribe db changes:', e)
+    }
   }
   
   // 处理数据库变更
@@ -2155,15 +2208,15 @@ export const useChallengeStore = defineStore('challenge', () => {
   
   // 取消数据库变更订阅
   async function unsubscribeFromDbChanges(): Promise<void> {
-    if (dbChannel.value) {
+    if (dbChangesChannelName) {
       try {
-        await dbChannel.value.unsubscribe()
-        await supabase.removeChannel(dbChannel.value as any)
+        await realtimeManager.unsubscribe(dbChangesChannelName)
       } catch (e) {
         console.error('[Challenge] Error unsubscribing from db changes:', e)
       }
-      dbChannel.value = null
+      dbChangesChannelName = ''
     }
+    dbChannel.value = null
   }
 
   function endRound(winnerId: string | null): void {
@@ -2604,10 +2657,9 @@ export const useChallengeStore = defineStore('challenge', () => {
   // 后台静默获取数据（不显示 loading）
   async function fetchInBackground(): Promise<void> {
     try {
-      const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
-      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
-      
-      const url = `${supabaseUrl}/rest/v1/challenges?select=*&status=in.(waiting,ready,in_progress,finished)&order=created_at.desc&limit=50`
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+      const url = `${supabaseUrl}rest/v1/challenges?select=*&status=in.(waiting,ready,in_progress,finished)&order=created_at.desc&limit=50`
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
@@ -2642,10 +2694,9 @@ export const useChallengeStore = defineStore('challenge', () => {
   // 绕过缓存获取最新数据（使用 fetch API 直接请求）
   async function fetchFreshChallenges(): Promise<void> {
     // 使用 fetch API 直接请求，添加 Cache-Control 头绕过 SW 缓存
-    const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
-    
-    const url = `${supabaseUrl}/rest/v1/challenges?select=*&status=in.(waiting,ready,in_progress,finished)&order=created_at.desc&limit=50`
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+    const url = `${supabaseUrl}rest/v1/challenges?select=*&status=in.(waiting,ready,in_progress,finished)&order=created_at.desc&limit=50`
     
     // 创建 AbortController 用于超时控制
     const controller = new AbortController()
@@ -2724,14 +2775,14 @@ export const useChallengeStore = defineStore('challenge', () => {
       assisted_input: data.assisted_input ?? true,
       creator_id: authStore.user.id,
       creator_name: authStore.profile?.nickname || authStore.user.email?.split('@')[0],
-      creator_avatar: authStore.profile?.avatar_url,
+      creator_avatar: normalizeMediaUrl(authStore.profile?.avatar_url),
       dictionary_id: dictionaryInfo?.id,
       dictionary_name: dictionaryInfo?.name,
       status: 'waiting',
       participants: [{
         user_id: authStore.user.id,
         nickname: authStore.profile?.nickname || authStore.user.email?.split('@')[0] || '',
-        avatar_url: authStore.profile?.avatar_url,
+        avatar_url: normalizeMediaUrl(authStore.profile?.avatar_url),
         is_online: true,
         is_ready: true,
         score: 0,
@@ -3005,7 +3056,7 @@ export const useChallengeStore = defineStore('challenge', () => {
     const newParticipant: ChallengeParticipant = {
       user_id: authStore.user.id,
       nickname: authStore.profile?.nickname || authStore.user.email?.split('@')[0] || '',
-      avatar_url: authStore.profile?.avatar_url,
+      avatar_url: normalizeMediaUrl(authStore.profile?.avatar_url),
       is_online: true,
       is_ready: false,
       score: 0,
@@ -3043,7 +3094,7 @@ export const useChallengeStore = defineStore('challenge', () => {
       data: {
         user_id: authStore.user.id,
         nickname: newParticipant.nickname,
-        avatar_url: newParticipant.avatar_url
+        avatar_url: normalizeMediaUrl(newParticipant.avatar_url)
       },
       sender_id: authStore.user.id,
       timestamp: Date.now()
@@ -3079,15 +3130,14 @@ export const useChallengeStore = defineStore('challenge', () => {
       return p
     })
 
-    // 使用 fetch API 直接更新，绕过可能断开的 supabase 客户端
-    const supabaseUrl = 'https://ctsxrhgjvkeyokaejwqb.supabase.co'
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0c3hyaGdqdmtleW9rYWVqd3FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ5MjU2MTUsImV4cCI6MjA4MDUwMTYxNX0.L2Xt2kkBw-2LRfHEF-uZQhYU8b5gDnZZNjpBEpZMkSc'
-    
+    // 使用 fetch API 直接更新，走同源代理避免手机直连 Supabase 失败
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 3000) // 3秒超时
+    const timeoutId = setTimeout(() => controller.abort(), 8000) // 8秒超时
     
     try {
-      await fetch(`${supabaseUrl}/rest/v1/challenges?id=eq.${currentChallenge.value.id}`, {
+      await fetch(`${supabaseUrl}rest/v1/challenges?id=eq.${currentChallenge.value.id}`, {
         method: 'PATCH',
         headers: {
           'apikey': supabaseKey,
@@ -3434,9 +3484,25 @@ export const useChallengeStore = defineStore('challenge', () => {
     }
   })
 
+  // cleanup 幂等：离开房间时 UI 会并发调用 leaveChallenge()/cleanup()，
+  // 重复执行会互相退订、把新房间的状态清掉。
+  let cleanupInFlight: Promise<void> | null = null
+
   async function cleanup(): Promise<void> {
+    if (cleanupInFlight) return cleanupInFlight
+    cleanupInFlight = performCleanup().finally(() => {
+      cleanupInFlight = null
+    })
+    return cleanupInFlight
+  }
+
+  async function performCleanup(): Promise<void> {
+    // 记录本次清理属于哪个房间：快速从 A 房切到 B 房时，
+    // 迟到的清理不能退订新房间的 channel 或清空新房间状态
+    const cleaningChannelName = currentChannelName.value
+    const cleaningChallengeId = currentChallenge.value?.id || null
     stopRoundTimer()
-    unsubscribeFromDbChanges() // 清理数据库订阅
+    await unsubscribeFromDbChanges() // 清理数据库订阅
     cleanupRealtimeStatusListener() // 清理 RealtimeManager 状态监听
     
     // 清理心跳和状态广播定时器
@@ -3449,6 +3515,8 @@ export const useChallengeStore = defineStore('challenge', () => {
     lastHeartbeatMap.clear()
     offlineStartTimeMap.clear()
     heartbeatConfirmedOffline.clear()
+    processedMessages.clear()
+    reconnectGraceUntil = 0
     lastHostBroadcastTime = 0
     gameEndedByMe = false  // 重置游戏结束标志
     
@@ -3462,12 +3530,20 @@ export const useChallengeStore = defineStore('challenge', () => {
     offlineCountMap.clear()
     
     // 清理 Supabase Realtime Channel（通过 RealtimeManager）
-    if (currentChannelName.value) {
+    if (cleaningChannelName) {
       try {
-        await realtimeManager.untrackPresence(currentChannelName.value)
-        await realtimeManager.unsubscribe(currentChannelName.value)
+        await realtimeManager.untrackPresence(cleaningChannelName)
+        await realtimeManager.unsubscribe(cleaningChannelName)
       } catch {}
-      currentChannelName.value = ''
+      // 只有仍停留在原房间时才清空频道名
+      if (currentChannelName.value === cleaningChannelName) {
+        currentChannelName.value = ''
+      }
+    }
+
+    // 清理期间已切换到新房间：保留新房间的状态，不继续重置
+    if (currentChallenge.value?.id && currentChallenge.value.id !== cleaningChallengeId) {
+      return
     }
     
     // 清理旧的 PeerJS 相关（兼容）

@@ -5,6 +5,7 @@
 
 import Peer, { DataConnection } from 'peerjs'
 import { supabase } from '@/lib/supabase'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import type { ChallengeMessage, ChallengeParticipant } from '@/types'
 import type {
   NetworkConnector,
@@ -64,7 +65,7 @@ export class PeerJSConnector implements NetworkConnector {
     if (profile) {
       this.userInfo = {
         nickname: profile.nickname || user.email?.split('@')[0] || 'Unknown',
-        avatar_url: profile.avatar_url
+        avatar_url: normalizeMediaUrl(profile.avatar_url)
       }
     } else {
       this.userInfo = {

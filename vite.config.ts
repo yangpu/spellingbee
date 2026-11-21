@@ -1,11 +1,38 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
 import { readFileSync } from 'fs'
+import type { IncomingMessage, ServerResponse } from 'http'
 
-const isProduction = process.env.NODE_ENV === 'production'
-const base = isProduction ? '/spellingbee/' : '/'
+// 开发、构建、线上统一使用 /spellingbee/ 前缀，避免 nginx 代理或本地直开根路径时路由/资源错位
+const base = '/spellingbee/'
+
+// Vite 只会自动把 '/' 重定向到 base，'/spellingbee' 仍会 404；
+// 开发/预览服务里补一个 301，保证两种写法都能进入应用。
+function baseRedirectPlugin(): Plugin {
+  const prefix = base.slice(0, -1)
+  const middleware = (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+    const [pathname, ...queryParts] = (req.url || '').split('?')
+    if (pathname === prefix) {
+      const query = queryParts.length ? `?${queryParts.join('?')}` : ''
+      res.statusCode = 301
+      res.setHeader('Location', `${base}${query}`)
+      res.end()
+      return
+    }
+    next()
+  }
+  return {
+    name: 'spellingbee-base-redirect',
+    configureServer(server) {
+      server.middlewares.use(middleware)
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(middleware)
+    }
+  }
+}
 
 // 读取 package.json 获取版本号
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
@@ -15,6 +42,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version)
   },
   plugins: [
+    baseRedirectPlugin(),
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -50,7 +78,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
-        navigateFallback: isProduction ? '/spellingbee/index.html' : '/index.html',
+        navigateFallback: `${base}index.html`,
         navigateFallbackDenylist: [/^\/api/],
         // 禁用 workbox 的日志
         disableDevLogs: true,
@@ -173,7 +201,7 @@ export default defineConfig({
           },
           // Supabase API 缓存 - 挑战赛列表（使用 StaleWhileRevalidate 策略）
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/challenges.*/i,
+            urlPattern: /(?:^https:\/\/.*\.supabase\.co\/|\/spellingbee\/sb\/)rest\/v1\/challenges.*/i,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'supabase-challenges-cache',
@@ -188,7 +216,7 @@ export default defineConfig({
           },
           // Supabase API 缓存 - 词典列表（使用 StaleWhileRevalidate 策略）
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/dictionaries.*/i,
+            urlPattern: /(?:^https:\/\/.*\.supabase\.co\/|\/spellingbee\/sb\/)rest\/v1\/dictionaries.*/i,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'supabase-dictionaries-cache',
@@ -203,7 +231,7 @@ export default defineConfig({
           },
           // Supabase API 缓存 - 词典单词（使用 StaleWhileRevalidate 策略）
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/dictionary_words.*/i,
+            urlPattern: /(?:^https:\/\/.*\.supabase\.co\/|\/spellingbee\/sb\/)rest\/v1\/dictionary_words.*/i,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'supabase-dictionary-words-cache',
@@ -218,7 +246,7 @@ export default defineConfig({
           },
           // Supabase Storage 缓存 - 头像和封面图片（CacheFirst，长期缓存）
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
+            urlPattern: /(?:^https:\/\/.*\.supabase\.co\/|\/spellingbee\/sb\/)storage\/v1\/object\/public\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'supabase-storage-cache',
@@ -233,7 +261,7 @@ export default defineConfig({
           },
           // TTS 语音缓存 - Supabase Storage 中的音频文件（CacheFirst，长期缓存）
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/tts-cache\/.*/i,
+            urlPattern: /(?:^https:\/\/.*\.supabase\.co\/|\/spellingbee\/sb\/)storage\/v1\/object\/public\/tts-cache\/.*/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'tts-audio-cache',
@@ -248,7 +276,7 @@ export default defineConfig({
           },
           // Supabase API 缓存 - 其他 REST API（profiles 等）
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,
+            urlPattern: /(?:^https:\/\/.*\.supabase\.co\/|\/spellingbee\/sb\/)rest\/v1\/.*/i,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'supabase-api-cache',
@@ -266,7 +294,7 @@ export default defineConfig({
       devOptions: {
         enabled: true, // 开发模式下启用 PWA 以测试缓存
         type: 'module',
-        navigateFallback: 'index.html'
+        navigateFallback: `${base}index.html`
       },
       // 禁用 workbox 的 verbose 和 debug 日志
       injectRegister: 'auto',
@@ -274,6 +302,18 @@ export default defineConfig({
     })
   ],
   base,
+  // 局域网调试：浏览器只访问本机 dev server，由它把 /spellingbee/sb 转发到
+  // 云主机的同源代理，避免手机直连 Supabase 时被 TLS 重置。
+  server: {
+    proxy: {
+      '/spellingbee/sb': {
+        target: 'https://yangruoji.com',
+        changeOrigin: true,
+        secure: true,
+        ws: true
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')

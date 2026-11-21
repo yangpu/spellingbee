@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { appUrl } from '@/lib/app-url'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import type { User, UserProfile } from '@/types'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
@@ -12,6 +14,23 @@ function toUser(supabaseUser: SupabaseUser | undefined | null): User | null {
     id: supabaseUser.id,
     email: supabaseUser.email
   } as User
+}
+
+// WebKit 的网络失败消息通常是 "Load failed"，换成用户能理解且可操作的提示，
+// 并把原始错误带上，方便在手机上直接看到失败原因而不是笼统的“网络异常”。
+function normalizeAuthError(error: any): Error {
+  const message = String(error?.message || error || '')
+  if (/load failed|failed to fetch|fetch failed|network|timeout|timed out/i.test(message)) {
+    console.error('[auth] network error:', {
+      error,
+      origin: window.location.origin,
+      secureContext: window.isSecureContext,
+      userAgent: navigator.userAgent
+    })
+    const detail = error?.name && message ? `${error.name}: ${message}` : (message || error?.name || '未知错误')
+    return new Error(`网络连接失败（${detail}）：请检查手机是否能访问 Supabase，或稍后重试`)
+  }
+  return error instanceof Error ? error : new Error(message || '操作失败')
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -100,7 +119,9 @@ export const useAuthStore = defineStore('auth', () => {
         .maybeSingle()
       
       if (!error && data) {
-        profile.value = data as UserProfile
+        const loaded = data as UserProfile
+        // 历史头像存的是 supabase.co 直链，iPhone 无法加载；统一改走同源代理
+        profile.value = { ...loaded, avatar_url: normalizeMediaUrl(loaded.avatar_url) }
       } else if (!data) {
         // No profile found, create default profile
         profile.value = {
@@ -121,6 +142,9 @@ export const useAuthStore = defineStore('auth', () => {
       const profileData = {
         user_id: user.value.id,
         ...updates,
+        ...(updates.avatar_url !== undefined
+          ? { avatar_url: normalizeMediaUrl(updates.avatar_url) }
+          : {}),
         updated_at: new Date().toISOString()
       }
       
@@ -149,26 +173,34 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-    if (error) throw error
-    user.value = toUser(data.user)
-    await loadProfile()
-    return data
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      if (error) throw error
+      user.value = toUser(data.user)
+      await loadProfile()
+      return data
+    } catch (error) {
+      throw normalizeAuthError(error)
+    }
   }
 
   async function register(email: string, password: string) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}${window.location.pathname}`
-      }
-    })
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: appUrl()
+        }
+      })
+      if (error) throw error
+      return data
+    } catch (error) {
+      throw normalizeAuthError(error)
+    }
   }
 
   async function logout(): Promise<void> {
@@ -179,18 +211,22 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function resetPassword(email: string) {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
-    })
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: appUrl('reset-password')
+      })
+      if (error) throw error
+      return data
+    } catch (error) {
+      throw normalizeAuthError(error)
+    }
   }
 
   async function loginWithGitHub() {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: `${window.location.origin}${window.location.pathname}`
+        redirectTo: appUrl()
       }
     })
     if (error) throw error

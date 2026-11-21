@@ -323,6 +323,7 @@ import { useDictionaryStore } from '@/stores/dictionary'
 import { useAuthStore } from '@/stores/auth'
 import { useSpeechStore } from '@/stores/speech'
 import { generateWordDefinitions, setDictionaryProvider, type DictionaryProvider } from '@/lib/dictionary-api'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import { DictionaryLevelLabels, DictionaryTypeLabels } from '@/types'
 import type { Word } from '@/types'
 
@@ -529,7 +530,7 @@ function getCoverUrl(dict: { cover_image?: string } | null): string {
   if (dict.cover_image === 'default' || dict.cover_image.includes('dictionary-default')) {
     return `${baseUrl}dictionary-default.svg`
   }
-  return dict.cover_image
+  return normalizeMediaUrl(dict.cover_image)
 }
 
 function getWordIndex(wordId: string) {

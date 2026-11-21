@@ -34,7 +34,13 @@ function loadEnv() {
 loadEnv()
 
 // 从环境变量获取 Supabase 配置
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL
+// 前端使用同源代理路径 /spellingbee/sb/，Node 脚本需要绝对地址
+const rawSupabaseUrl = process.env.VITE_SUPABASE_DIRECT_URL || process.env.VITE_SUPABASE_URL
+const SUPABASE_URL = rawSupabaseUrl && /^https?:\/\//.test(rawSupabaseUrl)
+  ? rawSupabaseUrl
+  : rawSupabaseUrl
+    ? `https://yangruoji.com${rawSupabaseUrl}`
+    : 'https://yangruoji.com/spellingbee/sb/'
 // 优先使用 service key，如果没有则使用 anon key（需要确保 RLS 允许插入）
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_ANON_KEY
 

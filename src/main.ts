@@ -4,7 +4,12 @@ import TDesign from 'tdesign-vue-next'
 import 'tdesign-vue-next/es/style/index.css'
 import router from './router'
 import App from './App.vue'
+import { ensureAppBase } from './lib/app-url'
 import './styles/main.scss'
+
+// nginx 不再把站点根路径自动重定向到 /spellingbee/，
+// 若用户从根路径进入（例如旧邮件链接），先纠正地址再挂载应用。
+ensureAppBase()
 
 // 在应用挂载前初始化主题（避免闪烁）
 const THEME_KEY = 'spellingbee_theme'

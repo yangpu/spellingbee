@@ -89,7 +89,7 @@
           <div class="participant-card" v-for="p in challenge?.participants" :key="p.user_id"
             :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-creator': p.user_id === challenge?.creator_id }">
             <div class="participant-avatar">
-              <t-avatar :image="p.avatar_url" size="large">
+              <t-avatar :image="normalizeMediaUrl(p.avatar_url)" size="large">
                 {{ p.nickname?.charAt(0) }}
               </t-avatar>
               <div class="online-status" :class="{ online: isParticipantOnline(p) }"></div>
@@ -203,7 +203,7 @@
           :class="{ 'is-me': p.user_id === authStore.user?.id, 'is-leader': index === 0, 'is-offline': !isParticipantOnline(p) }">
           <div class="score-rank">{{ index + 1 }}</div>
           <div class="score-avatar">
-            <t-avatar :image="p.avatar_url" size="small">{{ p.nickname?.charAt(0) }}</t-avatar>
+            <t-avatar :image="normalizeMediaUrl(p.avatar_url)" size="small">{{ p.nickname?.charAt(0) }}</t-avatar>
             <div class="online-dot" :class="{ online: isParticipantOnline(p) }"></div>
           </div>
           <span class="score-name">{{ p.nickname }}</span>
@@ -443,7 +443,7 @@
                 <span v-if="p.has_left">-</span>
                 <span v-else>{{ index + 1 }}</span>
               </div>
-              <t-avatar :image="p.avatar_url" size="36px">{{ p.nickname?.charAt(0) }}</t-avatar>
+              <t-avatar :image="normalizeMediaUrl(p.avatar_url)" size="36px">{{ p.nickname?.charAt(0) }}</t-avatar>
               <span class="player-name">
                 {{ p.nickname }}
                 <t-tag v-if="p.has_left" size="small" theme="danger" variant="light" class="left-tag">已退赛</t-tag>
@@ -551,6 +551,7 @@ import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useChallengeStore } from '@/stores/challenge'
 import { useSpeechStore } from '@/stores/speech'
+import { normalizeMediaUrl } from '@/lib/media-url'
 import LetterInput from '@/components/LetterInput.vue'
 
 const baseUrl = import.meta.env.BASE_URL
@@ -568,8 +569,8 @@ function getCoverUrl(imageUrl) {
   if (imageUrl === 'default' || imageUrl.includes('challenge-default.svg')) {
     return defaultCoverUrl
   }
-  // 否则直接返回存储的URL（自定义封面）
-  return imageUrl
+  // 否则返回归一化后的 URL（自定义封面 / Supabase Storage 直链）
+  return normalizeMediaUrl(imageUrl)
 }
 
 // 跳转到词典详情页
@@ -953,7 +954,7 @@ function getParticipantName(userId) {
 
 function getWinnerAvatar() {
   const winner = challenge.value?.participants?.find(p => p.user_id === challenge.value?.winner_id)
-  return winner?.avatar_url
+  return normalizeMediaUrl(winner?.avatar_url)
 }
 
 // 获取难度文本
