@@ -250,7 +250,7 @@
         <div class="custom-content" :class="showCustomCreate ? 'expanded' : 'collapsed'">
           <t-form ref="createForm" :data="createData" :rules="createRules" @submit="handleCreate" label-width="100px">
             <t-form-item name="name" label="名称">
-              <t-input v-model="createData.name" placeholder="给挑战赛起个名字" maxlength="30" />
+              <t-input v-model="createData.name" readonly maxlength="60" placeholder="名称按规范自动生成" />
             </t-form-item>
             <t-form-item name="description" label="描述">
               <t-textarea v-model="createData.description" placeholder="描述一下这场挑战赛（可选）" maxlength="200" />
@@ -789,20 +789,85 @@ function saveSettings() {
   }
 }
 
-// 获取随机单词作为挑战赛名称
+// 4 位随机「小写」字母或数字
+function randomCode(length = 4) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return result
+}
+
+// 只保留字母数字（词池比对时使用，大小写不敏感）
+function cleanWord(word) {
+  return String(word || '').trim().replace(/[^A-Za-z0-9]/g, '')
+}
+
+// 名称规范：{挑战赛|2人对战|3人对战}-{大写词典单词}-{4位小写随机字母或数字}
+function buildChallengeName(kind, word) {
+  const label = kind === 'challenge' ? '挑战赛' : `${kind}人对战`
+  return `${label}-${cleanWord(word).toUpperCase()}-${randomCode()}`
+}
+
+// 确保当前词典的单词已加载（其他设备/首次进入时缓存可能只有词典元数据）
+async function ensureDictionaryWordsLoaded() {
+  await dictionaryStore.init()
+  const dictId = dictionaryStore.currentDictionary?.id
+  if (dictId && dictionaryStore.currentWords.length === 0) {
+    try {
+      await dictionaryStore.loadViewingDictionary(dictId)
+    } catch (e) {
+      console.warn('[Challenge] Failed to load current dictionary words:', e)
+    }
+  }
+}
+
+// 名称可用的真实单词池：优先当前词典，其次旧版全局词表。
+// 绝不能用随机码/时间戳充当单词（旧封面缓存里存过 Date.now().toString(36)）。
+async function getWordPool() {
+  await ensureDictionaryWordsLoaded()
+  let pool = dictionaryStore.currentWords.map(w => cleanWord(w.word)).filter(Boolean)
+  if (pool.length === 0) {
+    if (wordsStore.words.length === 0) {
+      await wordsStore.init()
+    }
+    pool = wordsStore.words.map(w => cleanWord(w.word)).filter(Boolean)
+  }
+  return pool
+}
+
+// 取一个真实词典单词；preferred 不在词池中时重新随机取
+async function resolveDictionaryWord(preferred) {
+  const pool = await getWordPool()
+  const wanted = cleanWord(preferred).toLowerCase()
+  if (wanted) {
+    const matched = pool.find(w => w.toLowerCase() === wanted)
+    if (matched) return matched
+  }
+  if (pool.length > 0) return pool[Math.floor(Math.random() * pool.length)]
+  return 'BEE' // 极端兜底：至少是一个真实单词，不是随机码
+}
+
 async function getRandomWordForName() {
-  // 确保词汇表已加载
-  if (wordsStore.words.length === 0) {
-    await wordsStore.init()
-  }
+  return resolveDictionaryWord()
+}
 
-  if (wordsStore.words.length > 0) {
-    const randomIndex = Math.floor(Math.random() * wordsStore.words.length)
-    return wordsStore.words[randomIndex].word
-  }
+// 名称规范校验：{前缀}-{大写词典单词}-{4位小写随机字母或数字}
+const CHALLENGE_NAME_PATTERN = /^(?:挑战赛|2人对战|3人对战)-[A-Z0-9]+-[a-z0-9]{4}$/
 
-  // 如果词汇表为空，使用时间戳
-  return Date.now().toString(36)
+// 定制挑战赛：格式合规且中间词确实来自词池才保留，否则重建。
+// 这样旧封面缓存里的伪单词（如 MWQ1W5Q9）不会再通过格式校验混进名称。
+async function ensureChallengeName() {
+  const current = String(createData.name || '')
+  const parts = current.split('-')
+  if (parts.length === 3 && parts[0] === '挑战赛' && CHALLENGE_NAME_PATTERN.test(current)) {
+    const pool = await getWordPool()
+    if (pool.some(w => w.toLowerCase() === parts[1].toLowerCase())) return
+  }
+  const word = await resolveDictionaryWord(savedRandomWord.value || parts[1])
+  savedRandomWord.value = word
+  createData.name = buildChallengeName('challenge', word)
 }
 
 // 打开创建对话框
@@ -815,27 +880,28 @@ async function openCreateDialog() {
   if (coverType.value === 'none') {
     // 无封面模式：生成新的随机单词
     savedRandomWord.value = await getRandomWordForName()
-    createData.name = `挑战赛-${savedRandomWord.value.toUpperCase()}`
+    createData.name = buildChallengeName('challenge', savedRandomWord.value)
     createData.image_url = ''
     randomCoverUrl.value = ''
   } else if (coverType.value === 'default') {
     // 默认封面模式：生成新的随机单词
     savedRandomWord.value = await getRandomWordForName()
-    createData.name = `挑战赛-${savedRandomWord.value.toUpperCase()}`
+    createData.name = buildChallengeName('challenge', savedRandomWord.value)
     createData.image_url = 'default'
     randomCoverUrl.value = ''
   } else if (coverType.value === 'random') {
     // 随机封面模式：优先使用当前封面，否则从缓存获取或实时获取
     if (currentCover.value) {
       // 使用已有的当前封面
-      savedRandomWord.value = currentCover.value.word
-      createData.name = `挑战赛-${currentCover.value.word.toUpperCase()}`
+      savedRandomWord.value = await resolveDictionaryWord(currentCover.value.word)
+      createData.name = buildChallengeName('challenge', savedRandomWord.value)
       randomCoverUrl.value = currentCover.value.imageUrl
       createData.image_url = currentCover.value.imageUrl
     } else {
-      // 从缓存获取或实时获取
+      // 从缓存获取或实时获取；先保证名称按规范生成，避免图片加载失败时名称为空
       createData.image_url = ''
       randomCoverUrl.value = ''
+      await ensureChallengeName()
       fetchRandomCover()
     }
   } else if (coverType.value === 'custom') {
@@ -843,6 +909,7 @@ async function openCreateDialog() {
     createData.image_url = ''
     randomCoverUrl.value = ''
     coverType.value = 'random'
+    await ensureChallengeName()
     fetchRandomCover()
   }
 
@@ -852,7 +919,7 @@ async function openCreateDialog() {
 const createRules = {
   name: [
     { required: true, message: '请输入挑战赛名称', type: 'error' },
-    { min: 2, max: 30, message: '名称长度2-30个字符', type: 'error' }
+    { min: 2, max: 60, message: '名称长度2-60个字符', type: 'error' }
   ]
 }
 
@@ -1122,8 +1189,8 @@ async function fetchRandomCover() {
     if (cached) {
       currentCover.value = cached
       saveCurrentCover()
-      savedRandomWord.value = cached.word
-      createData.name = `挑战赛-${cached.word.toUpperCase()}`
+      savedRandomWord.value = await resolveDictionaryWord(cached.word)
+      createData.name = buildChallengeName('challenge', savedRandomWord.value)
       randomCoverUrl.value = cached.imageUrl
       createData.image_url = cached.imageUrl
       loadingRandomCover.value = false
@@ -1132,10 +1199,10 @@ async function fetchRandomCover() {
       return
     }
 
-    // 3. 缓存为空，实时获取（使用当前的随机单词）
-    const word = savedRandomWord.value || await getRandomWordForName()
+    // 3. 缓存为空，实时获取（使用当前词典中的真实单词）
+    const word = await resolveDictionaryWord(savedRandomWord.value)
     savedRandomWord.value = word
-    createData.name = `挑战赛-${word.toUpperCase()}`
+    createData.name = buildChallengeName('challenge', word)
     
     const imageUrl = await Promise.race([
       fetchImageForWord(word),
@@ -1413,18 +1480,10 @@ async function quickCreate(playerCount) {
   quickCreating.value = playerCount
 
   try {
-    // 使用当前封面的单词，或已保存的随机单词，或重新获取
-    let randomWord = ''
-    if (currentCover.value) {
-      randomWord = currentCover.value.word
-    } else if (savedRandomWord.value) {
-      randomWord = savedRandomWord.value
-    } else {
-      randomWord = await getRandomWordForName()
-    }
-    // 直接使用带时间戳的名称，避免重复检查的数据库请求
-    const timestamp = Date.now().toString(36).slice(-4)
-    const finalName = `${playerCount}人对战-${randomWord.toUpperCase()}-${timestamp}`
+    // 名称里的单词必须来自当前词典，不能沿用可能来自其他词典的封面缓存词
+    const randomWord = await getRandomWordForName()
+    // 名称规范：2人/3人对战-当前词典随机单词-4位随机字母数字
+    const finalName = buildChallengeName(playerCount, randomWord)
 
     // 保存设置
     saveSettings()
@@ -1494,6 +1553,9 @@ async function handleCreate({ validateResult }) {
 
   creating.value = true
   try {
+    // 定制挑战赛也强制按规范生成名称（合规时保留界面上已显示的名称）
+    await ensureChallengeName()
+
     // 保存设置
     saveSettings()
 
